@@ -1,0 +1,27 @@
+# permissions for end users to edit zones.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: powerdns-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: zone-editor-role
+rules:
+- apiGroups:
+  - dns.cav.enablers.ob
+  resources:
+  - zones
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - dns.cav.enablers.ob
+  resources:
+  - zones/status
+  verbs:
+  - get

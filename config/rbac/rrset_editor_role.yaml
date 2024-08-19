@@ -1,0 +1,29 @@
+# permissions for end users to edit rrsets.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: powerdns-operator
+    app.kubernetes.io/managed-by: kustomize
+    rbac.authorization.k8s.io/aggregate-to-admin: "true"
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+  name: rrset-editor-role
+rules:
+- apiGroups:
+  - dns.cav.enablers.ob
+  resources:
+  - rrsets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - dns.cav.enablers.ob
+  resources:
+  - rrsets/status
+  verbs:
+  - get

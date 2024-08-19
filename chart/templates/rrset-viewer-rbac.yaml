@@ -1,0 +1,21 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "chart.fullname" . }}-rrset-viewer-role
+  labels:
+  {{- include "chart.labels" . | nindent 4 }}
+rules:
+- apiGroups:
+  - dns.cav.enablers.ob
+  resources:
+  - rrsets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - dns.cav.enablers.ob
+  resources:
+  - rrsets/status
+  verbs:
+  - get

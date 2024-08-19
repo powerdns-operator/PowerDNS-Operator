@@ -1,0 +1,102 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.14.0
+  name: zones.dns.cav.enablers.ob
+spec:
+  group: dns.cav.enablers.ob
+  names:
+    kind: Zone
+    listKind: ZoneList
+    plural: zones
+    singular: zone
+  scope: Cluster
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .status.serial
+      name: Serial
+      type: integer
+    - jsonPath: .status.id
+      name: ID
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Zone is the Schema for the zones API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ZoneSpec defines the desired state of Zone
+            properties:
+              kind:
+                type: string
+              nameservers:
+                items:
+                  type: string
+                type: array
+            required:
+            - kind
+            - nameservers
+            type: object
+          status:
+            description: ZoneStatus defines the observed state of Zone
+            properties:
+              catalog:
+                type: string
+              dnssec:
+                type: boolean
+              edited_serial:
+                format: int32
+                type: integer
+              id:
+                description: |-
+                  INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
+                  Important: Run "make" to regenerate code after modifying this file
+                type: string
+              kind:
+                type: string
+              masters:
+                items:
+                  type: string
+                type: array
+              name:
+                type: string
+              notified_serial:
+                format: int32
+                type: integer
+              serial:
+                format: int32
+                type: integer
+            required:
+            - catalog
+            - dnssec
+            - edited_serial
+            - id
+            - kind
+            - masters
+            - name
+            - notified_serial
+            - serial
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

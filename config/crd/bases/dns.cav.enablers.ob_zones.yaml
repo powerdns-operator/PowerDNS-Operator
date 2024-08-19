@@ -1,0 +1,112 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.15.0
+  name: zones.dns.cav.enablers.ob
+spec:
+  group: dns.cav.enablers.ob
+  names:
+    kind: Zone
+    listKind: ZoneList
+    plural: zones
+    singular: zone
+  scope: Cluster
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .status.serial
+      name: Serial
+      type: integer
+    - jsonPath: .status.id
+      name: ID
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Zone is the Schema for the zones API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ZoneSpec defines the desired state of Zone
+            properties:
+              kind:
+                description: Kind of the zone, one of "Native", "Master", "Slave",
+                  "Producer", "Consumer".
+                enum:
+                - Native
+                - Master
+                - Slave
+                - Producer
+                - Consumer
+                type: string
+              nameservers:
+                description: List of the nameservers of the zone.
+                items:
+                  pattern: ^([a-zA-Z0-9-]+\.)*[a-zA-Z0-9-]+$
+                  type: string
+                minItems: 1
+                type: array
+            required:
+            - kind
+            - nameservers
+            type: object
+          status:
+            description: ZoneStatus defines the observed state of Zone
+            properties:
+              catalog:
+                description: The catalog this zone is a member of.
+                type: string
+              dnssec:
+                description: Whether or not this zone is DNSSEC signed.
+                type: boolean
+              edited_serial:
+                description: The SOA serial as seen in query responses.
+                format: int32
+                type: integer
+              id:
+                description: ID define the opaque zone id.
+                type: string
+              kind:
+                description: Kind of the zone, one of "Native", "Master", "Slave",
+                  "Producer", "Consumer".
+                type: string
+              masters:
+                description: List of IP addresses configured as a master for this
+                  zone ("Slave" type zones only).
+                items:
+                  type: string
+                type: array
+              name:
+                description: Name of the zone (e.g. "example.com.")
+                type: string
+              notified_serial:
+                description: The SOA serial notifications have been sent out for
+                format: int32
+                type: integer
+              serial:
+                description: The SOA serial number.
+                format: int32
+                type: integer
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
