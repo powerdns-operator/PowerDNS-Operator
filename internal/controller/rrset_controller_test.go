@@ -208,4 +208,57 @@ var _ = Describe("RRset Controller", func() {
 			Expect(*(modifiedZone.Status.Serial)).To(Equal(expectedSerial), "Serial should be incremented")
 		})
 	})
+
+	Context("When updating RRset", func() {
+		It("should successfully reconcile the resource", Label("rrset-modification", "ttl"), func() {
+			// Specific test variables
+			modifiedResourceTTL := uint32(150)
+			// Waiting for the resource to be fully created
+			time.Sleep(500 * time.Millisecond)
+
+			By("Getting the initial Serial of the zone")
+			zone := &dnsv1alpha1.Zone{}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, zoneLookupKey, zone)
+				return err == nil
+			}, timeout, interval).Should(BeTrue())
+			initialSerial := zone.Status.Serial
+
+			By("Updating RRset TTL")
+			resource := &dnsv1alpha1.RRset{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      resourceName,
+					Namespace: resourceNamespace,
+				},
+			}
+			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, resource, func() error {
+				resource.Spec.TTL = modifiedResourceTTL
+				return nil
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Getting the updated resource")
+			// Waiting for the resource to be fully created
+			time.Sleep(1 * time.Second)
+			updatedRRset := &dnsv1alpha1.RRset{}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, rssetLookupKey, updatedRRset)
+				return err == nil
+			}, timeout, interval).Should(BeTrue())
+			Expect(getMockedRecordsForType(resourceName, resourceType)).To(Equal(resourceRecords))
+			Expect(getMockedTTL(resourceName, resourceType)).To(Equal(modifiedResourceTTL))
+
+			By("Getting the modified zone")
+			modifiedZone := &dnsv1alpha1.Zone{}
+			// Waiting for the resource to be fully modified
+			time.Sleep(500 * time.Millisecond)
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, zoneLookupKey, modifiedZone)
+				return err == nil
+			}, timeout, interval).Should(BeTrue())
+			//
+			expectedSerial := *initialSerial + uint32(1)
+			Expect(*(modifiedZone.Status.Serial)).To(Equal(expectedSerial), "Serial should be incremented")
+		})
+	})
 })
