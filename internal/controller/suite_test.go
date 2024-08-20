@@ -185,6 +185,7 @@ func (m mockZonesClient) Get(ctx context.Context, domain string) (*powerdns.Zone
 }
 
 func (m mockZonesClient) Delete(ctx context.Context, domain string) error {
+	delete(records, makeCanonical(domain))
 	if _, ok := zones[makeCanonical(domain)]; !ok {
 		return powerdns.Error{StatusCode: ZONE_NOT_FOUND_CODE, Status: fmt.Sprintf("%d %s", ZONE_NOT_FOUND_CODE, ZONE_NOT_FOUND_MSG), Message: ZONE_NOT_FOUND_MSG}
 	}
