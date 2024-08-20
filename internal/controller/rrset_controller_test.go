@@ -113,6 +113,8 @@ var _ = Describe("RRset Controller", func() {
 			err := k8sClient.Get(ctx, rssetLookupKey, resource)
 			return err == nil
 		}, timeout, interval).Should(BeTrue())
+		// Waiting for the resource to be fully created
+		time.Sleep(500 * time.Millisecond)
 	})
 
 	AfterEach(func() {
@@ -141,8 +143,6 @@ var _ = Describe("RRset Controller", func() {
 		It("should successfully retrieve the resource", Label("rrset-initialization"), func() {
 			By("Getting the existing resource")
 			createdResource := &dnsv1alpha1.RRset{}
-			// Waiting for the resource to be fully created
-			time.Sleep(500 * time.Millisecond)
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, rssetLookupKey, createdResource)
 				return err == nil

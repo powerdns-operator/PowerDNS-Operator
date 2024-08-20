@@ -58,6 +58,8 @@ var _ = Describe("Zone Controller", func() {
 			return nil
 		})
 		Expect(err).NotTo(HaveOccurred())
+		// Waiting for the resource to be fully created
+		time.Sleep(500 * time.Millisecond)
 	})
 
 	AfterEach(func() {
@@ -79,8 +81,6 @@ var _ = Describe("Zone Controller", func() {
 		It("should successfully retrieve the resource", Label("zone-initialization"), func() {
 			By("Getting the existing resource")
 			zone := &dnsv1alpha1.Zone{}
-			// Waiting for the resource to be fully created
-			time.Sleep(500 * time.Millisecond)
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, zone)
 				return err == nil
@@ -99,8 +99,6 @@ var _ = Describe("Zone Controller", func() {
 
 			By("Getting the initial Serial of the resource")
 			zone := &dnsv1alpha1.Zone{}
-			// Waiting for the resource to be fully created
-			time.Sleep(500 * time.Millisecond)
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, zone)
 				return err == nil
@@ -141,8 +139,6 @@ var _ = Describe("Zone Controller", func() {
 
 			By("Getting the initial Serial of the resource")
 			zone := &dnsv1alpha1.Zone{}
-			// Waiting for the resource to be fully created
-			time.Sleep(500 * time.Millisecond)
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, zone)
 				return err == nil
@@ -234,8 +230,6 @@ var _ = Describe("Zone Controller", func() {
 
 	Context("When existing resource", func() {
 		It("should successfully modify a deleted zone", Label("zone-modification-after-deletion"), func() {
-			// Waiting for the resource to be fully created
-			time.Sleep(500 * time.Millisecond)
 			// Specific test variables
 			modifiedResourceNameservers := []string{"ns1.example1.org", "ns2.example1.org", "ns3.example1.org"}
 
@@ -291,8 +285,6 @@ var _ = Describe("Zone Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Deleting a Zone directly in the mock")
-			// Waiting for the resource to be fully created
-			time.Sleep(500 * time.Millisecond)
 			delete(zones, makeCanonical(fakeResourceName))
 			delete(records, makeCanonical(fakeResourceName))
 
