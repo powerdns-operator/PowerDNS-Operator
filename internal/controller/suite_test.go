@@ -282,3 +282,22 @@ func getMockedKind(zoneName string) (result string) {
 	}
 	return
 }
+
+func getMockedRecordsForType(rrsetName, rrsetType string) (result []string) {
+	rrset := records[makeCanonical(rrsetName)]
+	if string(*rrset.Type) == rrsetType {
+		for _, r := range rrset.Records {
+			result = append(result, *r.Content)
+		}
+	}
+	slices.Sort(result)
+	return
+}
+
+func getMockedTTL(rrsetName, rrsetType string) (result uint32) {
+	rrset := records[makeCanonical(rrsetName)]
+	if string(*rrset.Type) == rrsetType {
+		result = *rrset.TTL
+	}
+	return
+}

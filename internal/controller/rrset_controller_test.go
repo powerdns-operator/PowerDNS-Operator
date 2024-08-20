@@ -16,6 +16,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -30,8 +31,8 @@ var _ = Describe("RRset Controller", func() {
 		// Zone
 		zoneName = "example2.org"
 		zoneKind = "Native"
-		zoneNS1  = "ns1.example.org"
-		zoneNS2  = "ns2.example.org"
+		zoneNS1  = "ns1.example2.org"
+		zoneNS2  = "ns2.example2.org"
 
 		// RRset
 		resourceName      = "test.example2.org"
@@ -56,40 +57,26 @@ var _ = Describe("RRset Controller", func() {
 	zoneLookupKey := types.NamespacedName{
 		Name: zoneName,
 	}
-	zone := &dnsv1alpha1.Zone{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: zoneName,
-		},
-		Spec: dnsv1alpha1.ZoneSpec{
-			Kind:        zoneKind,
-			Nameservers: []string{zoneNS1, zoneNS2},
-		},
-	}
 
 	// RRset
 	rssetLookupKey := types.NamespacedName{
 		Name:      resourceName,
 		Namespace: resourceNamespace,
 	}
-	resource := &dnsv1alpha1.RRset{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      resourceName,
-			Namespace: resourceNamespace,
-		},
-		Spec: dnsv1alpha1.RRsetSpec{
-			ZoneRef: dnsv1alpha1.ZoneRef{
-				Name: zoneIdRef,
-			},
-			Type:    resourceType,
-			TTL:     resourceTTL,
-			Records: resourceRecords,
-		},
-	}
 
 	BeforeEach(func() {
 		By("Creating the Zone resource")
+		zone := &dnsv1alpha1.Zone{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: zoneName,
+			},
+		}
 		zone.SetResourceVersion("")
 		_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, zone, func() error {
+			zone.Spec = dnsv1alpha1.ZoneSpec{
+				Kind:        zoneKind,
+				Nameservers: []string{zoneNS1, zoneNS2},
+			}
 			return nil
 		})
 		Expect(err).NotTo(HaveOccurred())
@@ -98,61 +85,82 @@ var _ = Describe("RRset Controller", func() {
 			return err == nil
 		}, timeout, interval).Should(BeTrue())
 
-		By("Ensure the resource does not already exists")
+		By("Ensuring the resource does not already exists")
+		resource := &dnsv1alpha1.RRset{}
 		err = k8sClient.Get(ctx, rssetLookupKey, resource)
 		Expect(err).To(HaveOccurred())
 
 		By("Creating the RRset resource")
+		resource = &dnsv1alpha1.RRset{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      resourceName,
+				Namespace: resourceNamespace,
+			},
+		}
 		resource.SetResourceVersion("")
 		_, err = controllerutil.CreateOrUpdate(ctx, k8sClient, resource, func() error {
+			resource.Spec = dnsv1alpha1.RRsetSpec{
+				ZoneRef: dnsv1alpha1.ZoneRef{
+					Name: zoneIdRef,
+				},
+				Type:    resourceType,
+				TTL:     resourceTTL,
+				Records: resourceRecords,
+			}
 			return nil
 		})
 		Expect(err).NotTo(HaveOccurred())
-
-		time.Sleep(1 * time.Second)
-		By("Getting the created RRset resource")
-		createdResource := &dnsv1alpha1.RRset{}
 		Eventually(func() bool {
-			err := k8sClient.Get(ctx, rssetLookupKey, createdResource)
+			err := k8sClient.Get(ctx, rssetLookupKey, resource)
 			return err == nil
 		}, timeout, interval).Should(BeTrue())
-
-		By("Verifying the created RRset resource")
-		Expect(createdResource.Spec.Records).To(Equal(resourceRecords))
-		Expect(createdResource.Spec.Type).To(Equal(resourceType))
-		Expect(createdResource.Spec.TTL).To(Equal(resourceTTL))
-		Expect(createdResource.Spec.ZoneRef.Name).To(Equal(zoneIdRef))
-		Expect(createdResource.GetOwnerReferences()).NotTo(BeEmpty(), "RRset should have setOwnerReference")
-		Expect(createdResource.GetOwnerReferences()[0].Name).To(Equal(zoneIdRef), "RRset should have setOwnerReference to Zone")
-		Expect(createdResource.GetFinalizers()).To(ContainElement(FINALIZER_NAME), "RRset should contain the finalizer")
 	})
 
 	AfterEach(func() {
+		resource := &dnsv1alpha1.RRset{}
 		err := k8sClient.Get(ctx, rssetLookupKey, resource)
 		Expect(err).NotTo(HaveOccurred())
 
-		By("Cleanup the specific resource instance RRset")
+		By("Cleaning up the specific resource instance RRset")
 		Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
 
 		By("Verifying the resource has been deleted")
 		Eventually(func() bool {
 			err := k8sClient.Get(ctx, rssetLookupKey, resource)
-			return err != nil
+			return errors.IsNotFound(err)
 		}, timeout, interval).Should(BeTrue())
 
-		By("Cleanup the specific resource instance Zone")
+		By("Cleaning up the specific resource instance Zone")
+		zone := &dnsv1alpha1.Zone{}
+		err = k8sClient.Get(ctx, zoneLookupKey, zone)
+		Expect(err).NotTo(HaveOccurred())
 		Expect(k8sClient.Delete(ctx, zone)).To(Succeed())
+		time.Sleep(500 * time.Millisecond)
 	})
 
-	Context("Updating RRset", func() {
-		It("should successfully reconcile the resource", Label("rrset-modification"), func() {
+	Context("When existing resource", func() {
+		It("should successfully retrieve the resource", Label("rrset-initialization"), func() {
 			By("Getting the existing resource")
-			rrset := &dnsv1alpha1.RRset{}
+			createdResource := &dnsv1alpha1.RRset{}
+			// Waiting for the resource to be fully created
+			time.Sleep(500 * time.Millisecond)
 			Eventually(func() bool {
-				err := k8sClient.Get(ctx, rssetLookupKey, rrset)
+				err := k8sClient.Get(ctx, rssetLookupKey, createdResource)
 				return err == nil
 			}, timeout, interval).Should(BeTrue())
-			Expect(rrset.Spec.Records).To(Equal(resourceRecords))
+
+			Expect(getMockedRecordsForType(resourceName, resourceType)).To(Equal(resourceRecords))
+			Expect(getMockedTTL(resourceName, resourceType)).To(Equal(resourceTTL))
+			Expect(createdResource.GetOwnerReferences()).NotTo(BeEmpty(), "RRset should have setOwnerReference")
+			Expect(createdResource.GetOwnerReferences()[0].Name).To(Equal(zoneIdRef), "RRset should have setOwnerReference to Zone")
+			Expect(createdResource.GetFinalizers()).To(ContainElement(FINALIZER_NAME), "RRset should contain the finalizer")
+		})
+	})
+
+	Context("When updating RRset", func() {
+		It("should successfully reconcile the resource", Label("rrset-modification", "records"), func() {
+			// Waiting for the resource to be fully created
+			time.Sleep(500 * time.Millisecond)
 
 			By("Getting the initial Serial of the zone")
 			zone := &dnsv1alpha1.Zone{}
@@ -163,28 +171,34 @@ var _ = Describe("RRset Controller", func() {
 			initialSerial := zone.Status.Serial
 
 			By("Updating RRset records")
+			resource := &dnsv1alpha1.RRset{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      resourceName,
+					Namespace: resourceNamespace,
+				},
+			}
 			updatedRecords := []string{testRecord3}
-			rrset.Spec.Records = updatedRecords
-			Expect(k8sClient.Update(ctx, rrset)).To(Succeed())
+			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, resource, func() error {
+				resource.Spec.Records = updatedRecords
+				return nil
+			})
+			Expect(err).NotTo(HaveOccurred())
 
 			By("Getting the updated resource")
+			// Waiting for the resource to be fully created
+			time.Sleep(1 * time.Second)
 			updatedRRset := &dnsv1alpha1.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, rssetLookupKey, updatedRRset)
 				return err == nil
 			}, timeout, interval).Should(BeTrue())
-			Expect(updatedRRset.Spec.Records).To(Equal(updatedRecords))
-			Expect(updatedRRset.Spec.Type).To(Equal(resourceType))
-			Expect(updatedRRset.Spec.TTL).To(Equal(resourceTTL))
-			Expect(updatedRRset.Spec.ZoneRef.Name).To(Equal(zoneIdRef))
-			Expect(updatedRRset.GetOwnerReferences()).NotTo(BeEmpty(), "rrset should have setOwnerReference")
-			Expect(updatedRRset.GetOwnerReferences()[0].Name).To(Equal(zoneIdRef), "updatedRRset should have setOwnerReference to Zone")
-			Expect(updatedRRset.GetFinalizers()).To(ContainElement(FINALIZER_NAME), "RRset should contain the finalizer")
+			Expect(getMockedRecordsForType(resourceName, resourceType)).To(Equal(updatedRecords))
+			Expect(getMockedTTL(resourceName, resourceType)).To(Equal(resourceTTL))
 
 			By("Getting the modified zone")
 			modifiedZone := &dnsv1alpha1.Zone{}
 			// Waiting for the resource to be fully modified
-			time.Sleep(2 * time.Second)
+			time.Sleep(500 * time.Millisecond)
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, zoneLookupKey, modifiedZone)
 				return err == nil
