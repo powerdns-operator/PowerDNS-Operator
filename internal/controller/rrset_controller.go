@@ -68,8 +68,8 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			}
 			// Race condition when creating Zone+RRset at the same time
 			// RRset is not created because Zone is not created yet
-			// Requeue after 5 seconds
-			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+			// Requeue after few seconds
+			return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
 		} else {
 			return ctrl.Result{}, err
 		}

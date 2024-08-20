@@ -37,13 +37,13 @@ var _ = Describe("Zone Controller", func() {
 	)
 	resourceNameservers := []string{"ns1.example1.org", "ns2.example1.org"}
 
-	ctx := context.Background()
 	typeNamespacedName := types.NamespacedName{
 		Name: resourceName,
 	}
 
 	BeforeEach(func() {
 		By("creating the zone resource")
+		ctx := context.Background()
 		resource := &dnsv1alpha1.Zone{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: resourceName,
@@ -63,6 +63,7 @@ var _ = Describe("Zone Controller", func() {
 	})
 
 	AfterEach(func() {
+		ctx := context.Background()
 		resource := &dnsv1alpha1.Zone{}
 		err := k8sClient.Get(ctx, typeNamespacedName, resource)
 		Expect(err).NotTo(HaveOccurred())
@@ -71,14 +72,22 @@ var _ = Describe("Zone Controller", func() {
 		Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
 
 		By("Verifying the resource has been deleted")
+		// Waiting for the resource to be fully deleted
+		time.Sleep(500 * time.Millisecond)
 		Eventually(func() bool {
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			return errors.IsNotFound(err)
 		}).Should(BeTrue())
+		// Confirm that resource is deleted in the backend
+		Eventually(func() bool {
+			_, found := zones[makeCanonical(resource.Name)]
+			return found
+		}, timeout, interval).Should(BeFalse())
 	})
 
 	Context("When existing resource", func() {
 		It("should successfully retrieve the resource", Label("zone-initialization"), func() {
+			ctx := context.Background()
 			By("Getting the existing resource")
 			zone := &dnsv1alpha1.Zone{}
 			Eventually(func() bool {
@@ -94,6 +103,7 @@ var _ = Describe("Zone Controller", func() {
 
 	Context("When existing resource", func() {
 		It("should successfully modify the nameservers of the zone", Label("zone-modification", "nameservers"), func() {
+			ctx := context.Background()
 			// Specific test variables
 			modifiedResourceNameservers := []string{"ns1.example1.org", "ns2.example1.org", "ns3.example1.org"}
 
@@ -134,6 +144,7 @@ var _ = Describe("Zone Controller", func() {
 
 	Context("When existing resource", func() {
 		It("should successfully modify the kind of the zone", Label("zone-modification", "kind"), func() {
+			ctx := context.Background()
 			// Specific test variables
 			var modifiedResourceKind = []string{"Master", "Native", "Slave", "Producer", "Consumer"}
 
@@ -174,11 +185,11 @@ var _ = Describe("Zone Controller", func() {
 				Expect(*(modifiedZone.Status.Serial)).To(Equal(expectedSerial), "Serial should be incremented")
 			}
 		})
-
 	})
 
 	Context("When existing resource", func() {
 		It("should successfully recreate an existing zone", Label("zone-recreation"), func() {
+			ctx := context.Background()
 			// Specific test variables
 			recreationResourceName := "example3.org"
 			recreationResourceKind := "Native"
@@ -230,6 +241,7 @@ var _ = Describe("Zone Controller", func() {
 
 	Context("When existing resource", func() {
 		It("should successfully modify a deleted zone", Label("zone-modification-after-deletion"), func() {
+			ctx := context.Background()
 			// Specific test variables
 			modifiedResourceNameservers := []string{"ns1.example1.org", "ns2.example1.org", "ns3.example1.org"}
 
@@ -265,6 +277,7 @@ var _ = Describe("Zone Controller", func() {
 
 	Context("When existing resource", func() {
 		It("should successfully delete a deleted zone", Label("zone-deletion-after-deletion"), func() {
+			ctx := context.Background()
 			By("Creating a Zone")
 			fakeResourceName := "fake.org"
 			fakeResourceKind := "Native"

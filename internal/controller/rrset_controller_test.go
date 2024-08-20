@@ -46,12 +46,11 @@ var _ = Describe("RRset Controller", func() {
 		testRecord2 = "127.0.0.2"
 
 		timeout  = time.Second * 10
-		interval = time.Millisecond * 250
+		interval = time.Millisecond * 500
 	)
 
 	// Global
 	resourceRecords := []string{testRecord1, testRecord2}
-	ctx := context.Background()
 
 	// Zone
 	zoneLookupKey := types.NamespacedName{
@@ -65,6 +64,7 @@ var _ = Describe("RRset Controller", func() {
 	}
 
 	BeforeEach(func() {
+		ctx := context.Background()
 		By("Creating the Zone resource")
 		zone := &dnsv1alpha1.Zone{
 			ObjectMeta: metav1.ObjectMeta{
@@ -84,14 +84,19 @@ var _ = Describe("RRset Controller", func() {
 			err := k8sClient.Get(ctx, zoneLookupKey, zone)
 			return err == nil
 		}, timeout, interval).Should(BeTrue())
+		// Confirm that resource is created in the backend
+		Eventually(func() bool {
+			_, found := zones[makeCanonical(zone.Name)]
+			return found
+		}, timeout, interval).Should(BeTrue())
 
 		By("Ensuring the resource does not already exists")
-		resource := &dnsv1alpha1.RRset{}
-		err = k8sClient.Get(ctx, rssetLookupKey, resource)
+		emptyResource := &dnsv1alpha1.RRset{}
+		err = k8sClient.Get(ctx, rssetLookupKey, emptyResource)
 		Expect(err).To(HaveOccurred())
 
 		By("Creating the RRset resource")
-		resource = &dnsv1alpha1.RRset{
+		resource := &dnsv1alpha1.RRset{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      resourceName,
 				Namespace: resourceNamespace,
@@ -116,11 +121,15 @@ var _ = Describe("RRset Controller", func() {
 			err := k8sClient.Get(ctx, rssetLookupKey, resource)
 			return err == nil
 		}, timeout, interval).Should(BeTrue())
-		// Waiting for the resource to be fully created
-		time.Sleep(500 * time.Millisecond)
+		// Confirm that resource is created in the backend
+		Eventually(func() bool {
+			_, found := records[makeCanonical(resource.Name)]
+			return found
+		}, timeout, interval).Should(BeTrue())
 	})
 
 	AfterEach(func() {
+		ctx := context.Background()
 		resource := &dnsv1alpha1.RRset{}
 		err := k8sClient.Get(ctx, rssetLookupKey, resource)
 		Expect(err).NotTo(HaveOccurred())
@@ -139,11 +148,24 @@ var _ = Describe("RRset Controller", func() {
 		err = k8sClient.Get(ctx, zoneLookupKey, zone)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(k8sClient.Delete(ctx, zone)).To(Succeed())
+
+		By("Verifying the resource has been deleted")
+		Eventually(func() bool {
+			err := k8sClient.Get(ctx, zoneLookupKey, zone)
+			return errors.IsNotFound(err)
+		}, timeout, interval).Should(BeTrue())
+		// Confirm that resource is deleted in the backend
+		Eventually(func() bool {
+			_, found := zones[makeCanonical(zone.Name)]
+			return found
+		}, timeout, interval).Should(BeFalse())
+		// Waiting for the resource to be fully deleted
 		time.Sleep(500 * time.Millisecond)
 	})
 
 	Context("When existing resource", func() {
 		It("should successfully retrieve the resource", Label("rrset-initialization"), func() {
+			ctx := context.Background()
 			By("Getting the existing resource")
 			createdResource := &dnsv1alpha1.RRset{}
 			Eventually(func() bool {
@@ -162,6 +184,7 @@ var _ = Describe("RRset Controller", func() {
 
 	Context("When updating RRset", func() {
 		It("should successfully reconcile the resource", Label("rrset-modification", "records"), func() {
+			ctx := context.Background()
 			// Specific test variables
 			updatedRecords := []string{"127.0.0.3"}
 			// Waiting for the resource to be fully created
@@ -206,7 +229,7 @@ var _ = Describe("RRset Controller", func() {
 			time.Sleep(500 * time.Millisecond)
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, zoneLookupKey, modifiedZone)
-				return err == nil
+				return err == nil && *modifiedZone.Status.Serial != *initialSerial
 			}, timeout, interval).Should(BeTrue())
 			//
 			expectedSerial := *initialSerial + uint32(1)
@@ -216,6 +239,7 @@ var _ = Describe("RRset Controller", func() {
 
 	Context("When updating RRset", func() {
 		It("should successfully reconcile the resource", Label("rrset-modification", "ttl"), func() {
+			ctx := context.Background()
 			// Specific test variables
 			modifiedResourceTTL := uint32(150)
 			// Waiting for the resource to be fully created
@@ -260,7 +284,7 @@ var _ = Describe("RRset Controller", func() {
 			time.Sleep(500 * time.Millisecond)
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, zoneLookupKey, modifiedZone)
-				return err == nil
+				return err == nil && *modifiedZone.Status.Serial != *initialSerial
 			}, timeout, interval).Should(BeTrue())
 			//
 			expectedSerial := *initialSerial + uint32(1)
@@ -270,6 +294,7 @@ var _ = Describe("RRset Controller", func() {
 
 	Context("When updating RRset", func() {
 		It("should successfully reconcile the resource", Label("rrset-modification", "comments"), func() {
+			ctx := context.Background()
 			// Specific test variables
 			modifiedResourceComment := "Just another comment"
 			// Waiting for the resource to be fully created
@@ -314,7 +339,7 @@ var _ = Describe("RRset Controller", func() {
 			time.Sleep(500 * time.Millisecond)
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, zoneLookupKey, modifiedZone)
-				return err == nil
+				return err == nil && *modifiedZone.Status.Serial != *initialSerial
 			}, timeout, interval).Should(BeTrue())
 			//
 			expectedSerial := *initialSerial + uint32(1)
