@@ -301,3 +301,10 @@ func getMockedTTL(rrsetName, rrsetType string) (result uint32) {
 	}
 	return
 }
+func getMockedComment(rrsetName, rrsetType string) (result string) {
+	rrset := records[makeCanonical(rrsetName)]
+	if string(*rrset.Type) == rrsetType {
+		result = *rrset.Comments[0].Content
+	}
+	return
+}

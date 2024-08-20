@@ -39,6 +39,7 @@ var _ = Describe("RRset Controller", func() {
 		resourceNamespace = "default"
 		resourceTTL       = uint32(300)
 		resourceType      = "A"
+		resourceComment   = "Just a comment"
 		zoneIdRef         = zoneName
 
 		testRecord1 = "127.0.0.1"
@@ -97,6 +98,7 @@ var _ = Describe("RRset Controller", func() {
 			},
 		}
 		resource.SetResourceVersion("")
+		comment := resourceComment
 		_, err = controllerutil.CreateOrUpdate(ctx, k8sClient, resource, func() error {
 			resource.Spec = dnsv1alpha1.RRsetSpec{
 				ZoneRef: dnsv1alpha1.ZoneRef{
@@ -105,6 +107,7 @@ var _ = Describe("RRset Controller", func() {
 				Type:    resourceType,
 				TTL:     resourceTTL,
 				Records: resourceRecords,
+				Comment: &comment,
 			}
 			return nil
 		})
@@ -150,6 +153,7 @@ var _ = Describe("RRset Controller", func() {
 
 			Expect(getMockedRecordsForType(resourceName, resourceType)).To(Equal(resourceRecords))
 			Expect(getMockedTTL(resourceName, resourceType)).To(Equal(resourceTTL))
+			Expect(getMockedComment(resourceName, resourceType)).To(Equal(resourceComment))
 			Expect(createdResource.GetOwnerReferences()).NotTo(BeEmpty(), "RRset should have setOwnerReference")
 			Expect(createdResource.GetOwnerReferences()[0].Name).To(Equal(zoneIdRef), "RRset should have setOwnerReference to Zone")
 			Expect(createdResource.GetFinalizers()).To(ContainElement(FINALIZER_NAME), "RRset should contain the finalizer")
@@ -185,7 +189,7 @@ var _ = Describe("RRset Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Getting the updated resource")
-			// Waiting for the resource to be fully created
+			// Waiting for the resource to be fully modified
 			time.Sleep(1 * time.Second)
 			updatedRRset := &dnsv1alpha1.RRset{}
 			Eventually(func() bool {
@@ -238,7 +242,7 @@ var _ = Describe("RRset Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Getting the updated resource")
-			// Waiting for the resource to be fully created
+			// Waiting for the resource to be fully modified
 			time.Sleep(1 * time.Second)
 			updatedRRset := &dnsv1alpha1.RRset{}
 			Eventually(func() bool {
