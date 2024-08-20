@@ -217,22 +217,38 @@ func (m mockRecordsClient) Get(ctx context.Context, domain string, name string, 
 }
 
 func (m mockRecordsClient) Change(ctx context.Context, domain string, name string, recordType powerdns.RRType, ttl uint32, content []string, options ...func(*powerdns.RRset)) error {
-	var recordIdentical, recordAdded, ok bool
+	var isRRsetIdentical, isNewRRset, ok bool
 	var rrset *powerdns.RRset
-	zone := &powerdns.Zone{}
+	var comment, specifiedComment string
+
+	// The specified comment is included inside the opt function (through .WithComments)
+	// So to extract it, we need to apply opt() function on an empty RRSet
+	fakeRrset := &powerdns.RRset{
+		Comments: []powerdns.Comment{},
+	}
+	for _, opt := range options {
+		opt(fakeRrset)
+	}
+	if len(fakeRrset.Comments) > 0 {
+		specifiedComment = *fakeRrset.Comments[0].Content
+	}
 
 	if rrset, ok = records[makeCanonical(name)]; !ok {
 		rrset = &powerdns.RRset{}
-		recordAdded = true
+		isNewRRset = true
 	}
 
-	// TTL & Records comparison
-	if !recordAdded {
+	// TTL, Records & Comment comparison
+	if !isNewRRset {
 		localRecords := []string{}
 		for _, r := range rrset.Records {
 			localRecords = append(localRecords, *r.Content)
 		}
-		recordIdentical = reflect.DeepEqual(localRecords, content) && reflect.DeepEqual(*rrset.TTL, ttl)
+
+		for _, c := range rrset.Comments {
+			comment = *c.Content
+		}
+		isRRsetIdentical = reflect.DeepEqual(localRecords, content) && reflect.DeepEqual(*rrset.TTL, ttl) && reflect.DeepEqual(comment, specifiedComment)
 	}
 
 	rrset.Name = &name
@@ -240,8 +256,9 @@ func (m mockRecordsClient) Change(ctx context.Context, domain string, name strin
 	rrset.TTL = &ttl
 	rrset.ChangeType = powerdns.ChangeTypePtr(powerdns.ChangeTypeReplace)
 	rrset.Records = make([]powerdns.Record, 0)
-	for _, opt := range options {
-		opt(rrset)
+	rrset.Comments = []powerdns.Comment{}
+	if specifiedComment != "" {
+		rrset.Comments = append(rrset.Comments, powerdns.Comment{Content: &specifiedComment})
 	}
 
 	for _, c := range content {
@@ -249,15 +266,16 @@ func (m mockRecordsClient) Change(ctx context.Context, domain string, name strin
 		r := powerdns.Record{Content: &localContent, Disabled: Bool(false), SetPTR: Bool(false)}
 		rrset.Records = append(rrset.Records, r)
 	}
+	records[makeCanonical(name)] = rrset
 
-	if !recordIdentical || recordAdded {
+	zone := &powerdns.Zone{}
+	if !isRRsetIdentical || isNewRRset {
 		if zone, ok = zones[makeCanonical(domain)]; ok {
 			zone.Serial = Uint32(*zone.Serial + uint32(1))
 			zones[makeCanonical(domain)] = zone
 		}
 	}
 
-	records[makeCanonical(name)] = rrset
 	return nil
 }
 
