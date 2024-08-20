@@ -43,7 +43,6 @@ var _ = Describe("RRset Controller", func() {
 
 		testRecord1 = "127.0.0.1"
 		testRecord2 = "127.0.0.2"
-		testRecord3 = "127.0.0.3"
 
 		timeout  = time.Second * 10
 		interval = time.Millisecond * 250
@@ -159,6 +158,8 @@ var _ = Describe("RRset Controller", func() {
 
 	Context("When updating RRset", func() {
 		It("should successfully reconcile the resource", Label("rrset-modification", "records"), func() {
+			// Specific test variables
+			updatedRecords := []string{"127.0.0.3"}
 			// Waiting for the resource to be fully created
 			time.Sleep(500 * time.Millisecond)
 
@@ -177,7 +178,6 @@ var _ = Describe("RRset Controller", func() {
 					Namespace: resourceNamespace,
 				},
 			}
-			updatedRecords := []string{testRecord3}
 			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, resource, func() error {
 				resource.Spec.Records = updatedRecords
 				return nil

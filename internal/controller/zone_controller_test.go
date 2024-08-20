@@ -13,7 +13,6 @@ package controller
 import (
 	"context"
 	"fmt"
-	"slices"
 	"time"
 
 	"github.com/joeig/go-powerdns/v3"
@@ -30,27 +29,13 @@ import (
 var _ = Describe("Zone Controller", func() {
 
 	const (
-		resourceName         = "example1.org"
-		resourceKind         = "Native"
-		modifiedResourceKind = "Master"
+		resourceName = "example1.org"
+		resourceKind = "Native"
 
 		timeout  = time.Second * 10
 		interval = time.Millisecond * 250
 	)
 	resourceNameservers := []string{"ns1.example1.org", "ns2.example1.org"}
-	slices.Sort(resourceNameservers)
-	modifiedResourceNameservers := []string{"ns1.example1.org", "ns2.example1.org", "ns3.example1.org"}
-	slices.Sort(modifiedResourceNameservers)
-
-	recreationResourceName := "example3.org"
-	recreationResourceKind := "Native"
-	recreationResourceNameservers := []string{"ns1.example3.org", "ns2.example3.org"}
-	slices.Sort(recreationResourceNameservers)
-
-	fakeResourceName := "fake.org"
-	fakeResourceKind := "Native"
-	fakeResourceNameservers := []string{"ns1.fake.org", "ns2.fake.org"}
-	slices.Sort(fakeResourceNameservers)
 
 	ctx := context.Background()
 	typeNamespacedName := types.NamespacedName{
@@ -109,6 +94,9 @@ var _ = Describe("Zone Controller", func() {
 
 	Context("When existing resource", func() {
 		It("should successfully modify the nameservers of the zone", Label("zone-modification", "nameservers"), func() {
+			// Specific test variables
+			modifiedResourceNameservers := []string{"ns1.example1.org", "ns2.example1.org", "ns3.example1.org"}
+
 			By("Getting the initial Serial of the resource")
 			zone := &dnsv1alpha1.Zone{}
 			// Waiting for the resource to be fully created
@@ -148,6 +136,9 @@ var _ = Describe("Zone Controller", func() {
 
 	Context("When existing resource", func() {
 		It("should successfully modify the kind of the zone", Label("zone-modification", "kind"), func() {
+			// Specific test variables
+			var modifiedResourceKind = []string{"Master", "Native", "Slave", "Producer", "Consumer"}
+
 			By("Getting the initial Serial of the resource")
 			zone := &dnsv1alpha1.Zone{}
 			// Waiting for the resource to be fully created
@@ -166,7 +157,6 @@ var _ = Describe("Zone Controller", func() {
 			}
 
 			// Update the resource for each kind and ensure the serial is incremented
-			var modifiedResourceKind = []string{"Master", "Native", "Slave", "Producer", "Consumer"}
 			for i, kind := range modifiedResourceKind {
 				_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, resource, func() error {
 					resource.Spec.Kind = kind
@@ -193,6 +183,11 @@ var _ = Describe("Zone Controller", func() {
 
 	Context("When existing resource", func() {
 		It("should successfully recreate an existing zone", Label("zone-recreation"), func() {
+			// Specific test variables
+			recreationResourceName := "example3.org"
+			recreationResourceKind := "Native"
+			recreationResourceNameservers := []string{"ns1.example3.org", "ns2.example3.org"}
+
 			By("Creating a Zone directly in the mock")
 			// Serial initialization
 			now := time.Now().UTC()
@@ -241,6 +236,8 @@ var _ = Describe("Zone Controller", func() {
 		It("should successfully modify a deleted zone", Label("zone-modification-after-deletion"), func() {
 			// Waiting for the resource to be fully created
 			time.Sleep(500 * time.Millisecond)
+			// Specific test variables
+			modifiedResourceNameservers := []string{"ns1.example1.org", "ns2.example1.org", "ns3.example1.org"}
 
 			By("Deleting a Zone directly in the mock")
 			delete(zones, makeCanonical(resourceName))
@@ -275,6 +272,9 @@ var _ = Describe("Zone Controller", func() {
 	Context("When existing resource", func() {
 		It("should successfully delete a deleted zone", Label("zone-deletion-after-deletion"), func() {
 			By("Creating a Zone")
+			fakeResourceName := "fake.org"
+			fakeResourceKind := "Native"
+			fakeResourceNameservers := []string{"ns1.fake.org", "ns2.fake.org"}
 			fakeResource := &dnsv1alpha1.Zone{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: fakeResourceName,
