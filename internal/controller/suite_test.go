@@ -12,12 +12,14 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"reflect"
 	"runtime"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -49,9 +51,67 @@ var (
 )
 
 var (
-	zones   map[string]*powerdns.Zone
-	records map[string]*powerdns.RRset
+	zones   sync.Map
+	records sync.Map
 )
+
+// writeToZonesMap stores a value in the Zones sync.Map
+func writeToZonesMap(key string, value *powerdns.Zone) {
+	result, err := json.Marshal(value)
+	if err != nil {
+		GinkgoLogr.Error(err, "error while marshalling zone")
+	}
+	zones.Store(key, result)
+}
+
+// readFromZonesMap retrieves a value from the Zones sync.Map
+func readFromZonesMap(key string) (*powerdns.Zone, bool) {
+	result := &powerdns.Zone{}
+	value, ok := zones.Load(key)
+	if !ok {
+		return result, false
+	}
+	valueByte, _ := value.([]byte)
+	err := json.Unmarshal(valueByte, result)
+	if err != nil {
+		GinkgoLogr.Error(err, "error while unmarshalling zone")
+	}
+	return result, true
+}
+
+// deleteFromZonesMap removes a key from the Zones sync.Map
+func deleteFromZonesMap(key string) {
+	zones.Delete(key)
+}
+
+// writeToRecordsMap stores a value in the Records sync.Map
+func writeToRecordsMap(key string, value *powerdns.RRset) {
+	result, err := json.Marshal(value)
+	if err != nil {
+		GinkgoLogr.Error(err, "error while marshalling rrset")
+	}
+	records.Store(key, result)
+}
+
+// readFromRecordsMap retrieves a value from the Records sync.Map
+func readFromRecordsMap(key string) (*powerdns.RRset, bool) {
+	result := &powerdns.RRset{}
+	value, ok := records.Load(key)
+	if !ok {
+		return result, false
+	}
+	valueByte, _ := value.([]byte)
+	err := json.Unmarshal(valueByte, result)
+	if err != nil {
+		GinkgoLogr.Error(err, "error while unmarshalling rrset")
+	}
+	return result, true
+}
+
+// deleteFromRecordsMap removes a key from the Records sync.Map
+func deleteFromRecordsMap(key string) {
+	records.Delete(key)
+}
 
 func TestControllers(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -99,8 +159,6 @@ var _ = BeforeSuite(func() {
 
 	// Initialize mockClient
 	m := NewMockClient()
-	zones = map[string]*powerdns.Zone{}
-	records = map[string]*powerdns.RRset{}
 	err = (&RRsetReconciler{
 		Client: k8sManager.GetClient(),
 		Scheme: k8sManager.GetScheme(),
@@ -151,7 +209,8 @@ func NewMockClient() mockClient {
 }
 
 func (m mockZonesClient) Add(ctx context.Context, zone *powerdns.Zone) (*powerdns.Zone, error) {
-	if _, ok := zones[makeCanonical(*zone.Name)]; ok {
+
+	if _, ok := readFromZonesMap(makeCanonical(*zone.Name)); ok {
 		return &powerdns.Zone{}, powerdns.Error{StatusCode: ZONE_CONFLICT_CODE, Status: fmt.Sprintf("%d %s", ZONE_CONFLICT_CODE, ZONE_CONFLICT_MSG), Message: ZONE_CONFLICT_MSG}
 	}
 
@@ -172,29 +231,29 @@ func (m mockZonesClient) Add(ctx context.Context, zone *powerdns.Zone) (*powerdn
 		nsName := ns
 		rrset.Records = append(rrset.Records, powerdns.Record{Content: &nsName, Disabled: Bool(false), SetPTR: Bool(false)})
 	}
-	records[zoneCanonicalName] = &rrset
-	zones[zoneCanonicalName] = zone
+	writeToRecordsMap(zoneCanonicalName, &rrset)
+	writeToZonesMap(zoneCanonicalName, zone)
 	return zone, nil
 }
 
 func (m mockZonesClient) Get(ctx context.Context, domain string) (*powerdns.Zone, error) {
-	if z, ok := zones[makeCanonical(domain)]; ok {
+	if z, ok := readFromZonesMap(makeCanonical(domain)); ok {
 		return z, nil
 	}
 	return &powerdns.Zone{}, powerdns.Error{StatusCode: ZONE_NOT_FOUND_CODE, Status: fmt.Sprintf("%d %s", ZONE_NOT_FOUND_CODE, ZONE_NOT_FOUND_MSG), Message: ZONE_NOT_FOUND_MSG}
 }
 
 func (m mockZonesClient) Delete(ctx context.Context, domain string) error {
-	delete(records, makeCanonical(domain))
-	if _, ok := zones[makeCanonical(domain)]; !ok {
+	deleteFromRecordsMap(makeCanonical(domain))
+	if _, ok := readFromZonesMap(makeCanonical(domain)); !ok {
 		return powerdns.Error{StatusCode: ZONE_NOT_FOUND_CODE, Status: fmt.Sprintf("%d %s", ZONE_NOT_FOUND_CODE, ZONE_NOT_FOUND_MSG), Message: ZONE_NOT_FOUND_MSG}
 	}
-	delete(zones, makeCanonical(domain))
+	deleteFromZonesMap(makeCanonical(domain))
 	return nil
 }
 
 func (m mockZonesClient) Change(ctx context.Context, domain string, zone *powerdns.Zone) error {
-	localZone, ok := zones[makeCanonical(domain)]
+	localZone, ok := readFromZonesMap(makeCanonical(domain))
 	if !ok {
 		return powerdns.Error{StatusCode: ZONE_NOT_FOUND_CODE, Status: fmt.Sprintf("%d %s", ZONE_NOT_FOUND_CODE, ZONE_NOT_FOUND_MSG), Message: ZONE_NOT_FOUND_MSG}
 	}
@@ -204,13 +263,13 @@ func (m mockZonesClient) Change(ctx context.Context, domain string, zone *powerd
 	}
 	zone.Serial = serial
 
-	zones[makeCanonical(domain)] = zone
+	writeToZonesMap(makeCanonical(domain), zone)
 	return nil
 }
 
 func (m mockRecordsClient) Get(ctx context.Context, domain string, name string, recordType *powerdns.RRType) ([]powerdns.RRset, error) {
 	results := []powerdns.RRset{}
-	if record, ok := records[makeCanonical(name)]; ok {
+	if record, ok := readFromRecordsMap(makeCanonical(name)); ok {
 		results = append(results, *record)
 		return results, nil
 	}
@@ -234,7 +293,7 @@ func (m mockRecordsClient) Change(ctx context.Context, domain string, name strin
 		specifiedComment = *fakeRrset.Comments[0].Content
 	}
 
-	if rrset, ok = records[makeCanonical(name)]; !ok {
+	if rrset, ok = readFromRecordsMap(makeCanonical(name)); !ok {
 		rrset = &powerdns.RRset{}
 		isNewRRset = true
 	}
@@ -267,13 +326,12 @@ func (m mockRecordsClient) Change(ctx context.Context, domain string, name strin
 		r := powerdns.Record{Content: &localContent, Disabled: Bool(false), SetPTR: Bool(false)}
 		rrset.Records = append(rrset.Records, r)
 	}
-	records[makeCanonical(name)] = rrset
+	writeToRecordsMap(makeCanonical(name), rrset)
 
-	zone := &powerdns.Zone{}
 	if !isRRsetIdentical || isNewRRset {
-		if zone, ok = zones[makeCanonical(domain)]; ok {
+		if zone, ok := readFromZonesMap(makeCanonical(domain)); ok {
 			zone.Serial = Uint32(*zone.Serial + uint32(1))
-			zones[makeCanonical(domain)] = zone
+			writeToZonesMap(makeCanonical(domain), zone)
 		}
 	}
 
@@ -281,12 +339,12 @@ func (m mockRecordsClient) Change(ctx context.Context, domain string, name strin
 }
 
 func (m mockRecordsClient) Delete(ctx context.Context, domain string, name string, recordType powerdns.RRType) error {
-	delete(records, makeCanonical(name))
+	deleteFromRecordsMap(makeCanonical(name))
 	return nil
 }
 
 func getMockedNameservers(zoneName string) (result []string) {
-	rrset := records[makeCanonical(zoneName)]
+	rrset, _ := readFromRecordsMap(makeCanonical(zoneName))
 	for _, r := range rrset.Records {
 		result = append(result, strings.TrimSuffix(*r.Content, "."))
 	}
@@ -295,7 +353,7 @@ func getMockedNameservers(zoneName string) (result []string) {
 }
 
 func getMockedKind(zoneName string) (result string) {
-	zone := zones[makeCanonical(zoneName)]
+	zone, _ := readFromZonesMap(makeCanonical(zoneName))
 	if zone.Kind != nil {
 		result = string(*zone.Kind)
 	}
@@ -303,7 +361,7 @@ func getMockedKind(zoneName string) (result string) {
 }
 
 func getMockedRecordsForType(rrsetName, rrsetType string) (result []string) {
-	rrset := records[makeCanonical(rrsetName)]
+	rrset, _ := readFromRecordsMap(makeCanonical(rrsetName))
 	if string(*rrset.Type) == rrsetType {
 		for _, r := range rrset.Records {
 			result = append(result, *r.Content)
@@ -314,14 +372,14 @@ func getMockedRecordsForType(rrsetName, rrsetType string) (result []string) {
 }
 
 func getMockedTTL(rrsetName, rrsetType string) (result uint32) {
-	rrset := records[makeCanonical(rrsetName)]
+	rrset, _ := readFromRecordsMap(makeCanonical(rrsetName))
 	if string(*rrset.Type) == rrsetType {
 		result = *rrset.TTL
 	}
 	return
 }
 func getMockedComment(rrsetName, rrsetType string) (result string) {
-	rrset := records[makeCanonical(rrsetName)]
+	rrset, _ := readFromRecordsMap(makeCanonical(rrsetName))
 	if string(*rrset.Type) == rrsetType {
 		result = *rrset.Comments[0].Content
 	}

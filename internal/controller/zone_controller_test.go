@@ -32,7 +32,7 @@ var _ = Describe("Zone Controller", func() {
 		resourceName = "example1.org"
 		resourceKind = "Native"
 
-		timeout  = time.Second * 10
+		timeout  = time.Second * 5
 		interval = time.Millisecond * 250
 	)
 	resourceNameservers := []string{"ns1.example1.org", "ns2.example1.org"}
@@ -42,8 +42,8 @@ var _ = Describe("Zone Controller", func() {
 	}
 
 	BeforeEach(func() {
-		By("creating the zone resource")
 		ctx := context.Background()
+		By("creating the Zone resource")
 		resource := &dnsv1alpha1.Zone{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: resourceName,
@@ -58,8 +58,18 @@ var _ = Describe("Zone Controller", func() {
 			return nil
 		})
 		Expect(err).NotTo(HaveOccurred())
-		// Waiting for the resource to be fully created
-		time.Sleep(500 * time.Millisecond)
+		Eventually(func() bool {
+			err := k8sClient.Get(ctx, typeNamespacedName, resource)
+			return err == nil
+		}, timeout, interval).Should(BeTrue())
+		// Confirm that resource is created in the backend
+		Eventually(func() bool {
+			_, found := readFromZonesMap(makeCanonical(resourceName))
+			return found
+		}, timeout, interval).Should(BeTrue())
+
+		// Wait for all reconciliations loop to be done
+		time.Sleep(1 * time.Second)
 	})
 
 	AfterEach(func() {
@@ -73,14 +83,13 @@ var _ = Describe("Zone Controller", func() {
 
 		By("Verifying the resource has been deleted")
 		// Waiting for the resource to be fully deleted
-		time.Sleep(500 * time.Millisecond)
 		Eventually(func() bool {
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			return errors.IsNotFound(err)
-		}).Should(BeTrue())
+		}, timeout, interval).Should(BeTrue())
 		// Confirm that resource is deleted in the backend
 		Eventually(func() bool {
-			_, found := zones[makeCanonical(resource.Name)]
+			_, found := readFromZonesMap(makeCanonical(resourceName))
 			return found
 		}, timeout, interval).Should(BeFalse())
 	})
@@ -92,7 +101,8 @@ var _ = Describe("Zone Controller", func() {
 			zone := &dnsv1alpha1.Zone{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, zone)
-				return err == nil
+				_, found := readFromZonesMap(makeCanonical(resourceName))
+				return err == nil && found
 			}, timeout, interval).Should(BeTrue())
 			Expect(getMockedKind(resourceName)).To(Equal(resourceKind), "Kind should be equal")
 			Expect(getMockedNameservers(resourceName)).To(Equal(resourceNameservers), "Nameservers should be equal")
@@ -111,9 +121,9 @@ var _ = Describe("Zone Controller", func() {
 			zone := &dnsv1alpha1.Zone{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, zone)
-				return err == nil
+				return err == nil && zone.Status.Serial != nil
 			}, timeout, interval).Should(BeTrue())
-			initialSerial := zone.Status.Serial
+			initialSerial := *zone.Status.Serial
 
 			By("Modifying the resource")
 			resource := &dnsv1alpha1.Zone{
@@ -130,13 +140,11 @@ var _ = Describe("Zone Controller", func() {
 			By("Getting the modified resource")
 			modifiedZone := &dnsv1alpha1.Zone{}
 			// Waiting for the resource to be fully modified
-			time.Sleep(500 * time.Millisecond)
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, modifiedZone)
-				return err == nil
+				return err == nil && *modifiedZone.Status.Serial > initialSerial
 			}, timeout, interval).Should(BeTrue())
-			//
-			expectedSerial := *initialSerial + uint32(1)
+			expectedSerial := initialSerial + uint32(1)
 			Expect(getMockedNameservers(resourceName)).To(Equal(modifiedResourceNameservers), "Nameservers should be equal")
 			Expect(*(modifiedZone.Status.Serial)).To(Equal(expectedSerial), "Serial should be incremented")
 		})
@@ -152,7 +160,7 @@ var _ = Describe("Zone Controller", func() {
 			zone := &dnsv1alpha1.Zone{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, zone)
-				return err == nil
+				return err == nil && zone.Status.Serial != nil
 			}, timeout, interval).Should(BeTrue())
 			initialSerial := zone.Status.Serial
 
@@ -162,7 +170,6 @@ var _ = Describe("Zone Controller", func() {
 					Name: resourceName,
 				},
 			}
-
 			// Update the resource for each kind and ensure the serial is incremented
 			for i, kind := range modifiedResourceKind {
 				_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, resource, func() error {
@@ -174,10 +181,9 @@ var _ = Describe("Zone Controller", func() {
 				By("Getting the modified resource")
 				modifiedZone := &dnsv1alpha1.Zone{}
 				// Waiting for the resource to be fully modified
-				time.Sleep(500 * time.Millisecond)
 				Eventually(func() bool {
 					err := k8sClient.Get(ctx, typeNamespacedName, modifiedZone)
-					return err == nil
+					return err == nil && *modifiedZone.Status.Serial > *initialSerial+uint32(i)
 				}, timeout, interval).Should(BeTrue())
 
 				expectedSerial := *initialSerial + uint32(i+1)
@@ -199,11 +205,11 @@ var _ = Describe("Zone Controller", func() {
 			// Serial initialization
 			now := time.Now().UTC()
 			initialSerial := uint32(now.Year())*1000000 + uint32((now.Month()))*10000 + uint32(now.Day())*100 + 1
-			zones[makeCanonical(recreationResourceName)] = &powerdns.Zone{
+			writeToZonesMap(makeCanonical(recreationResourceName), &powerdns.Zone{
 				Name:   &recreationResourceName,
 				Kind:   powerdns.ZoneKindPtr(powerdns.ZoneKind(recreationResourceKind)),
 				Serial: &initialSerial,
-			}
+			})
 
 			By("Recreating a Zone")
 			resource := &dnsv1alpha1.Zone{
@@ -227,14 +233,22 @@ var _ = Describe("Zone Controller", func() {
 				Name: recreationResourceName,
 			}
 			// Waiting for the resource to be fully modified
-			time.Sleep(500 * time.Millisecond)
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, updatedZone)
-				return err == nil
+				return err == nil && updatedZone.Status.Serial != nil
 			}, timeout, interval).Should(BeTrue())
-			expectedSerial := initialSerial + uint32(1)
+
+			Eventually(func() bool {
+				return getMockedKind(recreationResourceName) != ""
+			}, timeout, interval).Should(BeTrue())
 			Expect(getMockedKind(recreationResourceName)).To(Equal(recreationResourceKind), "Kind should be equal")
+
+			Eventually(func() bool {
+				return len(getMockedNameservers(recreationResourceName)) > 0
+			}, timeout, interval).Should(BeTrue())
 			Expect(getMockedNameservers(recreationResourceName)).To(Equal(recreationResourceNameservers), "Nameservers should be equal")
+
+			expectedSerial := initialSerial + uint32(1)
 			Expect(*(updatedZone.Status.Serial)).To(Equal(expectedSerial), "Serial should be incremented")
 		})
 	})
@@ -242,12 +256,24 @@ var _ = Describe("Zone Controller", func() {
 	Context("When existing resource", func() {
 		It("should successfully modify a deleted zone", Label("zone-modification-after-deletion"), func() {
 			ctx := context.Background()
+
 			// Specific test variables
 			modifiedResourceNameservers := []string{"ns1.example1.org", "ns2.example1.org", "ns3.example1.org"}
 
-			By("Deleting a Zone directly in the mock")
-			delete(zones, makeCanonical(resourceName))
-			delete(records, makeCanonical(resourceName))
+			By("Deleting a Zone & RRset directly in the mock")
+			// Wait all the reconciliation loop to be done before deleting the mock (backend) Zone && RRSet resources
+			// Otherwise, the resource will be recreated in the mock backend by a 2nd reconciliation loop
+			// Ending up with a Conflict error returned from the PowerDNS client Add() func
+			time.Sleep(2 * time.Second)
+			deleteFromZonesMap(makeCanonical(resourceName))
+			deleteFromRecordsMap(makeCanonical(resourceName))
+
+			By("Verifying the Zone & Records has been deleted in the mock")
+			Eventually(func() bool {
+				_, zoneFound := readFromZonesMap(makeCanonical(resourceName))
+				_, rrsetFound := readFromRecordsMap(makeCanonical(resourceName))
+				return !zoneFound && !rrsetFound
+			}, timeout, interval).Should(BeTrue())
 
 			By("Modifying the deleted Zone")
 			resource := &dnsv1alpha1.Zone{
@@ -265,10 +291,11 @@ var _ = Describe("Zone Controller", func() {
 			By("Getting the resource")
 			updatedZone := &dnsv1alpha1.Zone{}
 			// Waiting for the resource to be fully modified
-			time.Sleep(500 * time.Millisecond)
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, updatedZone)
-				return err == nil
+				_, zoneFound := readFromZonesMap(makeCanonical(resourceName))
+				_, rrsetFound := readFromRecordsMap(makeCanonical(resourceName))
+				return err == nil && zoneFound && rrsetFound
 			}, timeout, interval).Should(BeTrue())
 			Expect(getMockedKind(resourceName)).To(Equal(resourceKind), "Kind should be equal")
 			Expect(getMockedNameservers(resourceName)).To(Equal(modifiedResourceNameservers), "Nameservers should be equal")
@@ -298,8 +325,11 @@ var _ = Describe("Zone Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Deleting a Zone directly in the mock")
-			delete(zones, makeCanonical(fakeResourceName))
-			delete(records, makeCanonical(fakeResourceName))
+			// Wait all the reconciliation loop to be done before deleting the mock (backend) Zone && RRSet resources
+			// Otherwise, the resource will be recreated in the mock backend by a 2nd reconciliation loop
+			time.Sleep(2 * time.Second)
+			deleteFromZonesMap(makeCanonical(fakeResourceName))
+			deleteFromRecordsMap(makeCanonical(fakeResourceName))
 
 			By("Deleting the Zone")
 			Eventually(func() bool {
@@ -309,7 +339,6 @@ var _ = Describe("Zone Controller", func() {
 
 			By("Getting the Zone")
 			// Waiting for the resource to be fully deleted
-			time.Sleep(500 * time.Millisecond)
 			fakeTypeNamespacedName := types.NamespacedName{
 				Name: fakeResourceName,
 			}
