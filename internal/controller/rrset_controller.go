@@ -120,6 +120,9 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 	// Set OwnerReference
 	if err := r.ownObject(ctx, zone, rrset); err != nil {
+		if errors.IsConflict(err) {
+			return ctrl.Result{Requeue: true}, nil
+		}
 		return ctrl.Result{}, err
 	}
 
@@ -198,6 +201,7 @@ func (r *RRsetReconciler) createOrUpdateExternalResources(ctx context.Context, z
 	return true, nil
 }
 
+// ownObject set the owner reference on RRset
 func (r *RRsetReconciler) ownObject(ctx context.Context, zone *dnsv1alpha1.Zone, rrset *dnsv1alpha1.RRset) error {
 	err := ctrl.SetControllerReference(zone, rrset, r.Scheme)
 	if err != nil {
