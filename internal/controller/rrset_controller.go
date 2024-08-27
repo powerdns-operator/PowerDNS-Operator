@@ -123,15 +123,15 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{}, err
 	}
 
-	// Updating Status
-	// This update is very important:
+	// This Patch is very important:
 	// When an update on RRSet is applied, a reconcile event is triggered on Zone
 	// But, sometimes, Zone reonciliation finish before RRSet update is applied
 	// In that case, the Serial in Zone Status is false
 	// This update permits triggering a new event after RRSet update applied
+	original := rrset.DeepCopy()
 	rrset.Status.LastUpdateTime = lastUpdateTime
-	if err := r.Status().Update(ctx, rrset); err != nil {
-		log.Error(err, "unable to update RRSet status")
+	if err := r.Status().Patch(ctx, rrset, client.MergeFrom(original)); err != nil {
+		log.Error(err, "unable to patch RRSet status")
 		return ctrl.Result{}, err
 	}
 
