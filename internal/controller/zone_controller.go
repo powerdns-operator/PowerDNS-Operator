@@ -101,6 +101,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		// If Zone does not exist, create it
 		err := r.createExternalResources(ctx, zone)
 		if err != nil {
+			log.Error(err, "Failed to create external resources")
 			return ctrl.Result{}, err
 		}
 	} else {
@@ -184,26 +185,22 @@ func (r *ZoneReconciler) getExternalResources(ctx context.Context, domain string
 			return nil, err
 		}
 	}
-
 	return zoneRes, nil
 }
 
 func (r *ZoneReconciler) deleteExternalResources(ctx context.Context, zone *dnsv1alpha1.Zone) error {
 	log := log.FromContext(ctx)
-
 	err := r.PDNSClient.Zones.Delete(ctx, zone.ObjectMeta.Name)
 	// Zone may have already been deleted and it is not an error
 	if err != nil && err.Error() != ZONE_NOT_FOUND_MSG {
 		log.Error(err, "Failed to delete zone")
 		return err
 	}
-
 	return nil
 }
 
 func (r *ZoneReconciler) updateExternalResources(ctx context.Context, zone *dnsv1alpha1.Zone) error {
 	log := log.FromContext(ctx)
-
 	zoneKind := powerdns.ZoneKind(zone.Spec.Kind)
 	err := r.PDNSClient.Zones.Change(ctx, zone.ObjectMeta.Name, &powerdns.Zone{
 		Name:        &zone.ObjectMeta.Name,
@@ -214,13 +211,11 @@ func (r *ZoneReconciler) updateExternalResources(ctx context.Context, zone *dnsv
 		log.Error(err, "Failed to update zone")
 		return err
 	}
-
 	return nil
 }
 
 func (r *ZoneReconciler) updateNsOnExternalResources(ctx context.Context, zone *dnsv1alpha1.Zone, ttl uint32) error {
 	log := log.FromContext(ctx)
-
 	nameserversCanonical := []string{}
 	for _, n := range zone.Spec.Nameservers {
 		nameserversCanonical = append(nameserversCanonical, fmt.Sprintf("%s.", n))
