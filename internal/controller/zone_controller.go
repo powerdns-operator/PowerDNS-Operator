@@ -17,6 +17,7 @@ import (
 
 	"github.com/joeig/go-powerdns/v3"
 
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -154,14 +155,12 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, err
 	}
 
-	// Get the Zone resource (again)
-	err = r.Get(ctx, req.NamespacedName, zone)
+	err = r.patchStatus(ctx, zone, zoneRes)
 	if err != nil {
-		return ctrl.Result{}, client.IgnoreNotFound(err)
-	}
-
-	err = r.updateStatus(ctx, zone, zoneRes)
-	if err != nil {
+		if errors.IsConflict(err) {
+			log.Info("Object has been modified, forcing a new reconciliation")
+			return ctrl.Result{Requeue: true}, nil
+		}
 		return ctrl.Result{}, err
 	}
 
@@ -263,28 +262,24 @@ func (r *ZoneReconciler) createExternalResources(ctx context.Context, zone *dnsv
 	return nil
 }
 
-func (r *ZoneReconciler) updateStatus(ctx context.Context, zone *dnsv1alpha1.Zone, zoneRes *powerdns.Zone) error {
-	log := log.FromContext(ctx)
+func (r *ZoneReconciler) patchStatus(ctx context.Context, zone *dnsv1alpha1.Zone, zoneRes *powerdns.Zone) error {
+	original := zone.DeepCopy()
 
-	// Update ZoneStatus
-	zone.Status.ID = zoneRes.ID
-	zone.Status.Name = zoneRes.Name
+	var kind string
 	if zoneRes.Kind != nil {
-		kind := string(*zoneRes.Kind)
-		zone.Status.Kind = &kind
+		kind = string(*zoneRes.Kind)
 	}
-	zone.Status.Serial = zoneRes.Serial
-	zone.Status.NotifiedSerial = zoneRes.NotifiedSerial
-	zone.Status.EditedSerial = zoneRes.EditedSerial
-	zone.Status.Masters = zoneRes.Masters
-	zone.Status.DNSsec = zoneRes.DNSsec
-	zone.Status.Catalog = zoneRes.Catalog
-
-	err := r.Status().Update(ctx, zone)
-	if err != nil {
-		log.Error(err, "Failed to update status")
-		return err
+	zone.Status = dnsv1alpha1.ZoneStatus{
+		ID:             zoneRes.ID,
+		Name:           zoneRes.Name,
+		Kind:           &kind,
+		Serial:         zoneRes.Serial,
+		NotifiedSerial: zoneRes.NotifiedSerial,
+		EditedSerial:   zoneRes.EditedSerial,
+		Masters:        zoneRes.Masters,
+		DNSsec:         zoneRes.DNSsec,
+		Catalog:        zoneRes.Catalog,
 	}
 
-	return nil
+	return r.Status().Patch(ctx, zone, client.MergeFrom(original))
 }
