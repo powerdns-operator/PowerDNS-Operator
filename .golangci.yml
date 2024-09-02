@@ -16,6 +16,11 @@ issues:
       linters:
         - dupl
         - lll
+  exclude-dirs:
+    - .git
+    - .github
+    - test
+
 linters:
   disable-all: true
   enable:

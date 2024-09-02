@@ -360,6 +360,7 @@ func getMockedKind(zoneName string) (result string) {
 	return
 }
 
+//nolint:unparam
 func getMockedRecordsForType(rrsetName, rrsetType string) (result []string) {
 	rrset, _ := readFromRecordsMap(makeCanonical(rrsetName))
 	if string(*rrset.Type) == rrsetType {
@@ -371,6 +372,7 @@ func getMockedRecordsForType(rrsetName, rrsetType string) (result []string) {
 	return
 }
 
+//nolint:unparam
 func getMockedTTL(rrsetName, rrsetType string) (result uint32) {
 	rrset, _ := readFromRecordsMap(makeCanonical(rrsetName))
 	if string(*rrset.Type) == rrsetType {
@@ -378,6 +380,8 @@ func getMockedTTL(rrsetName, rrsetType string) (result uint32) {
 	}
 	return
 }
+
+//nolint:unparam
 func getMockedComment(rrsetName, rrsetType string) (result string) {
 	rrset, _ := readFromRecordsMap(makeCanonical(rrsetName))
 	if string(*rrset.Type) == rrsetType {
