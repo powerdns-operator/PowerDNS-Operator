@@ -405,4 +405,60 @@ var _ = Describe("RRset Controller", func() {
 			Expect(getMockedComment(recreationResourceName, recreationResourceType)).To(Equal(recreationResourceComment))
 		})
 	})
+
+	Context("When existing resource", func() {
+		It("should successfully modify a deleted rrset", Label("rrset-modification-after-deletion"), func() {
+			ctx := context.Background()
+
+			// Specific test variables
+			modifiedResourceTTL := uint32(161)
+			modifiedResourceComment := "it is an useless comment"
+			modifiedResourceRecords := []string{"127.0.0.4"}
+
+			By("Deleting a RRset directly in the mock")
+			// Wait all the reconciliation loop to be done before deleting the mock (backend) Zone && RRSet resources
+			// Otherwise, the resource will be recreated in the mock backend by a 2nd reconciliation loop
+			// Ending up with a Conflict error returned from the PowerDNS client Add() func
+			time.Sleep(2 * time.Second)
+			deleteFromRecordsMap(makeCanonical(resourceName))
+
+			By("Verifying the Records has been deleted in the mock")
+			Eventually(func() bool {
+				_, rrsetFound := readFromRecordsMap(makeCanonical(resourceName))
+				return !rrsetFound
+			}, timeout, interval).Should(BeTrue())
+
+			By("Modifying the deleted RRset")
+			resource := &dnsv1alpha1.RRset{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      resourceName,
+					Namespace: resourceNamespace,
+				},
+			}
+			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, resource, func() error {
+				resource.Spec.TTL = modifiedResourceTTL
+				resource.Spec.Comment = &modifiedResourceComment
+				resource.Spec.Records = modifiedResourceRecords
+				return nil
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Getting the resource")
+			updatedRRset := &dnsv1alpha1.RRset{}
+			typeNamespacedName := types.NamespacedName{
+				Name:      resourceName,
+				Namespace: resourceNamespace,
+			}
+			// Waiting for the resource to be fully modified
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, typeNamespacedName, updatedRRset)
+				_, rrsetFound := readFromRecordsMap(makeCanonical(resourceName))
+				return err == nil && rrsetFound
+			}, timeout, interval).Should(BeTrue())
+
+			Expect(getMockedRecordsForType(resourceName, resourceType)).To(Equal(modifiedResourceRecords))
+			Expect(getMockedTTL(resourceName, resourceType)).To(Equal(modifiedResourceTTL))
+			Expect(getMockedComment(resourceName, resourceType)).To(Equal(modifiedResourceComment))
+		})
+	})
 })
