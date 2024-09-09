@@ -14,6 +14,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/joeig/go-powerdns/v3"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -326,6 +327,82 @@ var _ = Describe("RRset Controller", func() {
 			}, timeout, interval).Should(BeTrue())
 			expectedSerial := initialSerial + uint32(1)
 			Expect(*modifiedZone.Status.Serial).To(Equal(expectedSerial), "Serial should be incremented")
+		})
+	})
+
+	Context("When existing resource", func() {
+		It("should successfully recreate an existing rrset", Label("rrset-recreation"), func() {
+			ctx := context.Background()
+			// Specific test variables
+			recreationResourceName := "test2.example2.org"
+			recreationResourceNamespace := "default"
+			recreationResourceTTL := uint32(253)
+			recreationResourceType := "A"
+			recreationResourceComment := "it is an useless comment"
+			recreationZoneRef := zoneName
+			recreationRecord := "127.0.0.3"
+
+			By("Creating a RRset directly in the mock")
+			writeToRecordsMap(makeCanonical(recreationResourceName), &powerdns.RRset{
+				Type: powerdns.RRTypePtr(powerdns.RRType(recreationResourceType)),
+				Name: &recreationResourceName,
+				TTL:  &recreationResourceTTL,
+				Records: []powerdns.Record{
+					{Content: &recreationRecord},
+				},
+				Comments: []powerdns.Comment{
+					{Content: &recreationResourceComment},
+				},
+			})
+
+			By("Recreating a RRset")
+			resource := &dnsv1alpha1.RRset{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      recreationResourceName,
+					Namespace: recreationResourceNamespace,
+				},
+			}
+			resource.SetResourceVersion("")
+			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, resource, func() error {
+				resource.Spec = dnsv1alpha1.RRsetSpec{
+					Type:    recreationResourceType,
+					TTL:     recreationResourceTTL,
+					Records: []string{recreationRecord},
+					Comment: &recreationResourceComment,
+					ZoneRef: dnsv1alpha1.ZoneRef{
+						Name: recreationZoneRef,
+					},
+				}
+				return nil
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Getting the resource")
+			updatedRRset := &dnsv1alpha1.RRset{}
+			typeNamespacedName := types.NamespacedName{
+				Name:      recreationResourceName,
+				Namespace: recreationResourceNamespace,
+			}
+			// Waiting for the resource to be fully modified
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, typeNamespacedName, updatedRRset)
+				return err == nil && updatedRRset.Status.LastUpdateTime != nil
+			}, timeout, interval).Should(BeTrue())
+
+			Eventually(func() bool {
+				return getMockedRecordsForType(recreationResourceName, recreationResourceType) != nil
+			}, timeout, interval).Should(BeTrue())
+			Expect(getMockedRecordsForType(recreationResourceName, recreationResourceType)).To(Equal([]string{recreationRecord}))
+
+			Eventually(func() bool {
+				return getMockedTTL(recreationResourceName, recreationResourceType) > uint32(0)
+			}, timeout, interval).Should(BeTrue())
+			Expect(getMockedTTL(recreationResourceName, recreationResourceType)).To(Equal(recreationResourceTTL))
+
+			Eventually(func() bool {
+				return getMockedComment(recreationResourceName, recreationResourceType) != ""
+			}, timeout, interval).Should(BeTrue())
+			Expect(getMockedComment(recreationResourceName, recreationResourceType)).To(Equal(recreationResourceComment))
 		})
 	})
 })
