@@ -461,4 +461,63 @@ var _ = Describe("RRset Controller", func() {
 			Expect(getMockedComment(resourceName, resourceType)).To(Equal(modifiedResourceComment))
 		})
 	})
+
+	Context("When existing resource", func() {
+		It("should successfully delete a deleted rrset", Label("rrset-deletion-after-deletion"), func() {
+			ctx := context.Background()
+
+			By("Creating a RRset")
+			fakeResourceName := "fake.example2.org"
+			fakeResourceNamespace := "default"
+			fakeResourceTTL := uint32(123)
+			fakeResourceType := "A"
+			fakeResourceComment := "it is a fake comment"
+			fakeZoneRef := zoneName
+			fakeRecords := []string{"127.0.0.11", "127.0.0.12"}
+
+			fakeResource := &dnsv1alpha1.RRset{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      fakeResourceName,
+					Namespace: fakeResourceNamespace,
+				},
+			}
+			fakeResource.SetResourceVersion("")
+			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, fakeResource, func() error {
+				fakeResource.Spec = dnsv1alpha1.RRsetSpec{
+					Type:    fakeResourceType,
+					TTL:     fakeResourceTTL,
+					Records: fakeRecords,
+					Comment: &fakeResourceComment,
+					ZoneRef: dnsv1alpha1.ZoneRef{
+						Name: fakeZoneRef,
+					},
+				}
+				return nil
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Deleting a RRset directly in the mock")
+			// Wait all the reconciliation loop to be done before deleting the mock (backend) Zone && RRSet resources
+			// Otherwise, the resource will be recreated in the mock backend by a 2nd reconciliation loop
+			time.Sleep(2 * time.Second)
+			deleteFromRecordsMap(makeCanonical(fakeResourceName))
+
+			By("Deleting the Zone")
+			Eventually(func() bool {
+				err := k8sClient.Delete(ctx, fakeResource)
+				return err == nil
+			}, timeout, interval).Should(BeTrue())
+
+			By("Getting the RRset")
+			// Waiting for the resource to be fully deleted
+			fakeTypeNamespacedName := types.NamespacedName{
+				Name:      fakeResourceName,
+				Namespace: fakeResourceNamespace,
+			}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, fakeTypeNamespacedName, fakeResource)
+				return errors.IsNotFound(err)
+			}, timeout, interval).Should(BeTrue())
+		})
+	})
 })
