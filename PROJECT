@@ -6,7 +6,7 @@ domain: cav.enablers.ob
 layout:
 - go.kubebuilder.io/v4
 projectName: powerdns-operator
-repo: gitlab.tech.orange/parent-factory/hzf-tools/powerdns-operator
+repo: github.com/orange-opensource/powerdns-operator
 resources:
 - api:
     crdVersion: v1
@@ -14,7 +14,7 @@ resources:
   domain: cav.enablers.ob
   group: dns
   kind: Zone
-  path: gitlab.tech.orange/parent-factory/hzf-tools/powerdns-operator/api/v1alpha1
+  path: github.com/orange-opensource/powerdns-operator/api/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
@@ -23,6 +23,6 @@ resources:
   domain: cav.enablers.ob
   group: dns
   kind: RRset
-  path: gitlab.tech.orange/parent-factory/hzf-tools/powerdns-operator/api/v1alpha1
+  path: github.com/orange-opensource/powerdns-operator/api/v1alpha1
   version: v1alpha1
 version: "3"

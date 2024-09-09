@@ -1,4 +1,4 @@
-module gitlab.tech.orange/parent-factory/hzf-tools/powerdns-operator
+module github.com/orange-opensource/powerdns-operator
 
 go 1.23
 

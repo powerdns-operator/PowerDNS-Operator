@@ -24,7 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	dnsv1alpha1 "gitlab.tech.orange/parent-factory/hzf-tools/powerdns-operator/api/v1alpha1"
+	dnsv1alpha1 "github.com/orange-opensource/powerdns-operator/api/v1alpha1"
 )
 
 // RRsetReconciler reconciles a RRset object
