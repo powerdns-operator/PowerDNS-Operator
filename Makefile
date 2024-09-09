@@ -21,6 +21,30 @@ CONTAINER_TOOL ?= docker
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
+# ====================================================================================
+# Colors
+
+BLUE         := $(shell printf "\033[34m")
+YELLOW       := $(shell printf "\033[33m")
+RED          := $(shell printf "\033[31m")
+GREEN        := $(shell printf "\033[32m")
+CNone        := $(shell printf "\033[0m")
+
+# ====================================================================================
+# Logger
+
+TIME_LONG	= `date +%Y-%m-%d' '%H:%M:%S`
+TIME_SHORT	= `date +%H:%M:%S`
+TIME		= $(TIME_SHORT)
+
+INFO	= echo ${TIME} ${BLUE}[ .. ]${CNone}
+WARN	= echo ${TIME} ${YELLOW}[WARN]${CNone}
+ERR		= echo ${TIME} ${RED}[FAIL]${CNone}
+OK		= echo ${TIME} ${GREEN}[ OK ]${CNone}
+FAIL	= (echo ${TIME} ${RED}[FAIL]${CNone} && false)
+
+# ====================================================================================
+
 .PHONY: all
 all: build
 
@@ -40,6 +64,17 @@ all: build
 .PHONY: help
 help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
+
+##@ Conformance
+.PHONY: reviewable
+reviewable: generate manifests lint ## Ensure a PR is ready for review.
+	@go mod tidy
+
+.PHONY: check-diff
+check-diff: reviewable ## Ensure branch is clean.
+	@$(INFO) checking that branch is clean
+	@test -z "$$(git status --porcelain)" || (echo "$$(git status --porcelain)" && $(FAIL))
+	@$(OK) branch is clean
 
 ##@ Development
 
@@ -114,11 +149,21 @@ docker-buildx: ## Build and push docker image for the manager for cross-platform
 	- $(CONTAINER_TOOL) buildx rm project-v3-builder
 	rm Dockerfile.cross
 
+.PHONY: docker-promote
+docker-promote: ## Promote the docker image to the registry
+	docker manifest inspect --verbose $(IMAGE_NAME):$(SOURCE_TAG) > .tagmanifest
+	for digest in $$(jq -r 'if type=="array" then .[].Descriptor.digest else .Descriptor.digest end' < .tagmanifest); do \
+		docker pull $(IMAGE_NAME)@$$digest; \
+	done
+	docker manifest create $(IMAGE_NAME):$(RELEASE_TAG) \
+		$$(jq -j '"--amend $(IMAGE_NAME)@" + if type=="array" then .[].Descriptor.digest else .Descriptor.digest end + " "' < .tagmanifest)
+	docker manifest push $(IMAGE_NAME):$(RELEASE_TAG)
+
 .PHONY: build-installer
 build-installer: manifests generate kustomize ## Generate a consolidated YAML with CRDs and deployment.
-	mkdir -p dist
-	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
-	$(KUSTOMIZE) build config/default > dist/install.yaml
+	mkdir -p deploy
+	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMAGE_NAME):$(RELEASE_TAG)
+	$(KUSTOMIZE) build config/default > deploy/bundle.yaml
 
 ##@ Deployment
 

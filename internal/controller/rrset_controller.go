@@ -107,6 +107,7 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 				log.Error(err, "Failed to remove finalizer")
 				return ctrl.Result{}, err
 			}
+			//nolint:ineffassign
 			lastUpdateTime = &metav1.Time{Time: time.Now().UTC()}
 		}
 
