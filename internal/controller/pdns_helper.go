@@ -38,9 +38,17 @@ type PdnsClienter struct {
 	Zones   pdnsZonesClienter
 }
 
-// zoneIsIdenticalToExternalZone return True, True if respectively kind and nameservers are identical between Zone and External Resource
+// zoneIsIdenticalToExternalZone return True, True if respectively kind and Catalog are identical
+// and nameservers are identical between Zone and External Resource
 func zoneIsIdenticalToExternalZone(zone *dnsv1alpha1.Zone, externalZone *powerdns.Zone, ns []string) (bool, bool) {
-	return zone.Spec.Kind == string(*externalZone.Kind), reflect.DeepEqual(zone.Spec.Nameservers, ns)
+	var zoneCatalog, externalZoneCatalog string
+	if zone.Spec.Catalog != nil {
+		zoneCatalog = *zone.Spec.Catalog
+	}
+	if externalZone.Catalog != nil {
+		externalZoneCatalog = *externalZone.Catalog
+	}
+	return zone.Spec.Kind == string(*externalZone.Kind) && zoneCatalog == externalZoneCatalog, reflect.DeepEqual(zone.Spec.Nameservers, ns)
 }
 
 // rrsetIsIdenticalToExternalRRset return True if Comments, Name, Type, TTL and Records are identical between RRSet and External Resource

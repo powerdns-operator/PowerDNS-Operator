@@ -23,6 +23,9 @@ type ZoneSpec struct {
 	// +kubebuilder:validation:MinItems=1
 	// +kubebuilder:validation:items:Pattern=`^([a-zA-Z0-9-]+\.)*[a-zA-Z0-9-]+$`
 	Nameservers []string `json:"nameservers"`
+	// The catalog this zone is a member of
+	// +optional
+	Catalog *string `json:"catalog,omitempty"`
 }
 
 // ZoneStatus defines the observed state of Zone

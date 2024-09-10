@@ -21,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	dnsv1alpha1 "github.com/orange-opensource/powerdns-operator/api/v1alpha1"
@@ -29,8 +30,9 @@ import (
 var _ = Describe("Zone Controller", func() {
 
 	const (
-		resourceName = "example1.org"
-		resourceKind = "Native"
+		resourceName    = "example1.org"
+		resourceKind    = "Native"
+		resourceCatalog = "catalog.example1.org."
 
 		timeout  = time.Second * 5
 		interval = time.Millisecond * 250
@@ -54,6 +56,7 @@ var _ = Describe("Zone Controller", func() {
 			resource.Spec = dnsv1alpha1.ZoneSpec{
 				Kind:        resourceKind,
 				Nameservers: resourceNameservers,
+				Catalog:     ptr.To(resourceCatalog),
 			}
 			return nil
 		})
@@ -106,6 +109,7 @@ var _ = Describe("Zone Controller", func() {
 			}, timeout, interval).Should(BeTrue())
 			Expect(getMockedKind(resourceName)).To(Equal(resourceKind), "Kind should be equal")
 			Expect(getMockedNameservers(resourceName)).To(Equal(resourceNameservers), "Nameservers should be equal")
+			Expect(getMockedCatalog(resourceName)).To(Equal(resourceCatalog), "Catalog should be equal")
 			Expect(zone.GetFinalizers()).To(ContainElement(FINALIZER_NAME), "Zone should contain the finalizer")
 			Expect(fmt.Sprintf("%d", *(zone.Status.Serial))).To(Equal(fmt.Sprintf("%s01", time.Now().Format("20060102"))), "Serial should be YYYYMMDD01")
 		})
@@ -188,6 +192,55 @@ var _ = Describe("Zone Controller", func() {
 
 				expectedSerial := *initialSerial + uint32(i+1)
 				Expect(getMockedKind(resourceName)).To(Equal(kind), "Kind should be equal")
+				Expect(*(modifiedZone.Status.Serial)).To(Equal(expectedSerial), "Serial should be incremented")
+			}
+		})
+	})
+
+	Context("When existing resource", func() {
+		It("should successfully modify the catalog of the zone", Label("zone-modification", "catalog"), func() {
+			ctx := context.Background()
+			// Specific test variables
+			// Sending a 'nil' catalog to PowerDNS is considered as a no modification, so
+			// to clear a catalog specification for a zone, you need to specify an empty catalog
+			// So we test all use-cases:
+			// a. from an empty catalog to a specific catalog
+			// b. from a specific catalog to an empty catalog
+			var modifiedResourceCatalog = []string{"", "catalog.other-domain.org.", ""}
+
+			By("Getting the initial Serial of the resource")
+			zone := &dnsv1alpha1.Zone{}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, typeNamespacedName, zone)
+				return err == nil && zone.Status.Serial != nil
+			}, timeout, interval).Should(BeTrue())
+			initialSerial := zone.Status.Serial
+
+			By("Modifying the resource")
+			resource := &dnsv1alpha1.Zone{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: resourceName,
+				},
+			}
+			// Update the resource for each catalog and ensure the serial is incremented
+			for i, c := range modifiedResourceCatalog {
+				catalog := c
+				_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, resource, func() error {
+					resource.Spec.Catalog = &catalog
+					return nil
+				})
+				Expect(err).NotTo(HaveOccurred())
+
+				By("Getting the modified resource")
+				modifiedZone := &dnsv1alpha1.Zone{}
+				// Waiting for the resource to be fully modified
+				Eventually(func() bool {
+					err := k8sClient.Get(ctx, typeNamespacedName, modifiedZone)
+					return err == nil && *modifiedZone.Status.Serial > *initialSerial+uint32(i)
+				}, timeout, interval).Should(BeTrue())
+
+				expectedSerial := *initialSerial + uint32(i+1)
+				Expect(getMockedCatalog(resourceName)).To(Equal(catalog), "Catalog should be equal")
 				Expect(*(modifiedZone.Status.Serial)).To(Equal(expectedSerial), "Serial should be incremented")
 			}
 		})

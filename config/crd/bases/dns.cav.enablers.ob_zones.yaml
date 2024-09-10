@@ -46,6 +46,9 @@ spec:
           spec:
             description: ZoneSpec defines the desired state of Zone
             properties:
+              catalog:
+                description: The catalog this zone is a member of
+                type: string
               kind:
                 description: Kind of the zone, one of "Native", "Master", "Slave",
                   "Producer", "Consumer".

@@ -258,7 +258,7 @@ func (m mockZonesClient) Change(ctx context.Context, domain string, zone *powerd
 		return powerdns.Error{StatusCode: ZONE_NOT_FOUND_CODE, Status: fmt.Sprintf("%d %s", ZONE_NOT_FOUND_CODE, ZONE_NOT_FOUND_MSG), Message: ZONE_NOT_FOUND_MSG}
 	}
 	serial := localZone.Serial
-	if *zone.Kind != *localZone.Kind {
+	if *zone.Kind != *localZone.Kind || *zone.Catalog != *localZone.Catalog {
 		serial = Uint32(*localZone.Serial + uint32(1))
 	}
 	zone.Serial = serial
@@ -386,6 +386,15 @@ func getMockedComment(rrsetName, rrsetType string) (result string) {
 	rrset, _ := readFromRecordsMap(makeCanonical(rrsetName))
 	if string(*rrset.Type) == rrsetType {
 		result = *rrset.Comments[0].Content
+	}
+	return
+}
+
+//nolint:unparam
+func getMockedCatalog(zoneName string) (result string) {
+	zone, _ := readFromZonesMap(makeCanonical(zoneName))
+	if zone.Catalog != nil {
+		result = *zone.Catalog
 	}
 	return
 }
