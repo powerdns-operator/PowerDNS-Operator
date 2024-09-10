@@ -9,11 +9,6 @@ on:
       build-platform:
         required: true
         type: string
-    secrets:
-      GHCR_USERNAME:
-        required: true
-      GHCR_TOKEN:
-        required: true
 
 jobs:
   build-and-push-image:
@@ -35,10 +30,11 @@ jobs:
 
       - name: Log in to the Container registry
         uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        if: github.event_name != 'pull_request'
         with:
           registry: ghcr.io
-          username: ${{ secrets.GHCR_USERNAME }}
-          password: ${{ secrets.GHCR_TOKEN }}
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
@@ -58,7 +54,7 @@ jobs:
         uses: docker/build-push-action@5cd11c3a4ced054e52742c5fd54dca954e0edd85 # v6.7.0
         with:
           context: .
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
           provenance: false
           platforms: ${{ inputs.build-platform }}
           tags: ${{ steps.meta.outputs.tags }}
@@ -66,6 +62,7 @@ jobs:
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@6e7b7d1fd3e4fef0c5fa8cce1229c54b2c9bd0d8 # v0.24.0
+        if: github.event_name != 'pull_request'
         with:
           image-ref: ${{ inputs.image-name }}:${{ steps.meta.outputs.version }}
           format: 'table'
