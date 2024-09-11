@@ -22,6 +22,7 @@ It may work on other versions, but it has not been tested.
 
 - 1.29
 - 1.30
+- 1.31
 
 It may work on other versions, but it has not been tested.
 
