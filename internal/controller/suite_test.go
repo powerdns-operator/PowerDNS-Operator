@@ -29,6 +29,7 @@ import (
 
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
@@ -223,13 +224,13 @@ func (m mockZonesClient) Add(ctx context.Context, zone *powerdns.Zone) (*powerdn
 	zoneCanonicalName := makeCanonical(*zone.Name)
 	rrset := powerdns.RRset{
 		Name:    &zoneCanonicalName,
-		TTL:     Uint32(DEFAULT_TTL_FOR_NS_RECORDS),
-		Type:    RRType(powerdns.RRTypeNS),
+		TTL:     ptr.To(DEFAULT_TTL_FOR_NS_RECORDS),
+		Type:    ptr.To(powerdns.RRTypeNS),
 		Records: []powerdns.Record{},
 	}
 	for _, ns := range zone.Nameservers {
 		nsName := ns
-		rrset.Records = append(rrset.Records, powerdns.Record{Content: &nsName, Disabled: Bool(false), SetPTR: Bool(false)})
+		rrset.Records = append(rrset.Records, powerdns.Record{Content: &nsName, Disabled: ptr.To(false), SetPTR: ptr.To(false)})
 	}
 	writeToRecordsMap(zoneCanonicalName, &rrset)
 	writeToZonesMap(zoneCanonicalName, zone)
@@ -259,7 +260,7 @@ func (m mockZonesClient) Change(ctx context.Context, domain string, zone *powerd
 	}
 	serial := localZone.Serial
 	if *zone.Kind != *localZone.Kind || *zone.Catalog != *localZone.Catalog {
-		serial = Uint32(*localZone.Serial + uint32(1))
+		serial = ptr.To(*localZone.Serial + uint32(1))
 	}
 	zone.Serial = serial
 
@@ -323,14 +324,14 @@ func (m mockRecordsClient) Change(ctx context.Context, domain string, name strin
 
 	for _, c := range content {
 		localContent := c
-		r := powerdns.Record{Content: &localContent, Disabled: Bool(false), SetPTR: Bool(false)}
+		r := powerdns.Record{Content: &localContent, Disabled: ptr.To(false), SetPTR: ptr.To(false)}
 		rrset.Records = append(rrset.Records, r)
 	}
 	writeToRecordsMap(makeCanonical(name), rrset)
 
 	if !isRRsetIdentical || isNewRRset {
 		if zone, ok := readFromZonesMap(makeCanonical(domain)); ok {
-			zone.Serial = Uint32(*zone.Serial + uint32(1))
+			zone.Serial = ptr.To(*zone.Serial + uint32(1))
 			writeToZonesMap(makeCanonical(domain), zone)
 		}
 	}
@@ -354,9 +355,7 @@ func getMockedNameservers(zoneName string) (result []string) {
 
 func getMockedKind(zoneName string) (result string) {
 	zone, _ := readFromZonesMap(makeCanonical(zoneName))
-	if zone.Kind != nil {
-		result = string(*zone.Kind)
-	}
+	result = string(ptr.Deref(zone.Kind, ""))
 	return
 }
 
@@ -393,8 +392,6 @@ func getMockedComment(rrsetName, rrsetType string) (result string) {
 //nolint:unparam
 func getMockedCatalog(zoneName string) (result string) {
 	zone, _ := readFromZonesMap(makeCanonical(zoneName))
-	if zone.Catalog != nil {
-		result = *zone.Catalog
-	}
+	result = ptr.Deref(zone.Catalog, "")
 	return
 }

@@ -19,6 +19,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -29,7 +30,7 @@ import (
 
 const (
 	FINALIZER_NAME             = "dns.cav.enablers.ob/finalizer"
-	DEFAULT_TTL_FOR_NS_RECORDS = 1500
+	DEFAULT_TTL_FOR_NS_RECORDS = uint32(1500)
 
 	ZONE_NOT_FOUND_MSG  = "Not Found"
 	ZONE_NOT_FOUND_CODE = 404
@@ -106,7 +107,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 	} else {
 		// If Zone exists, compare Type and Nameservers and update it if necessary
-		ns, err := r.PDNSClient.Records.Get(ctx, zone.ObjectMeta.Name, zone.ObjectMeta.Name, RRType(powerdns.RRTypeNS))
+		ns, err := r.PDNSClient.Records.Get(ctx, zone.ObjectMeta.Name, zone.ObjectMeta.Name, ptr.To(powerdns.RRTypeNS))
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -132,7 +133,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 		// Nameservers changes
 		if !nsIdentical {
-			ttl := Uint32(DEFAULT_TTL_FOR_NS_RECORDS)
+			ttl := ptr.To(DEFAULT_TTL_FOR_NS_RECORDS)
 			if filteredRRset.TTL != nil {
 				ttl = filteredRRset.TTL
 			}
@@ -202,10 +203,7 @@ func (r *ZoneReconciler) deleteExternalResources(ctx context.Context, zone *dnsv
 func (r *ZoneReconciler) updateExternalResources(ctx context.Context, zone *dnsv1alpha1.Zone) error {
 	log := log.FromContext(ctx)
 	zoneKind := powerdns.ZoneKind(zone.Spec.Kind)
-	catalog := ""
-	if zone.Spec.Catalog != nil {
-		catalog = *zone.Spec.Catalog
-	}
+	catalog := ptr.Deref(zone.Spec.Catalog, "")
 	err := r.PDNSClient.Zones.Change(ctx, zone.ObjectMeta.Name, &powerdns.Zone{
 		Name:        &zone.ObjectMeta.Name,
 		Kind:        &zoneKind,
@@ -246,7 +244,7 @@ func (r *ZoneReconciler) createExternalResources(ctx context.Context, zone *dnsv
 		ID:     &zone.Name,
 		Name:   &zone.Name,
 		Kind:   powerdns.ZoneKindPtr(powerdns.ZoneKind(zone.Spec.Kind)),
-		DNSsec: Bool(false),
+		DNSsec: ptr.To(false),
 		//		SOAEdit:     &soaEdit,
 		//		SOAEditAPI:  &soaEditApi,
 		//		APIRectify:  &apiRectify,
@@ -266,10 +264,7 @@ func (r *ZoneReconciler) createExternalResources(ctx context.Context, zone *dnsv
 func (r *ZoneReconciler) patchStatus(ctx context.Context, zone *dnsv1alpha1.Zone, zoneRes *powerdns.Zone) error {
 	original := zone.DeepCopy()
 
-	var kind string
-	if zoneRes.Kind != nil {
-		kind = string(*zoneRes.Kind)
-	}
+	kind := string(ptr.Deref(zoneRes.Kind, ""))
 	zone.Status = dnsv1alpha1.ZoneStatus{
 		ID:             zoneRes.ID,
 		Name:           zoneRes.Name,

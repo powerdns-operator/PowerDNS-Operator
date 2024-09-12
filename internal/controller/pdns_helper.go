@@ -18,6 +18,7 @@ import (
 
 	"github.com/joeig/go-powerdns/v3"
 	dnsv1alpha1 "github.com/orange-opensource/powerdns-operator/api/v1alpha1"
+	"k8s.io/utils/ptr"
 )
 
 type pdnsRecordsClienter interface {
@@ -41,13 +42,8 @@ type PdnsClienter struct {
 // zoneIsIdenticalToExternalZone return True, True if respectively kind and Catalog are identical
 // and nameservers are identical between Zone and External Resource
 func zoneIsIdenticalToExternalZone(zone *dnsv1alpha1.Zone, externalZone *powerdns.Zone, ns []string) (bool, bool) {
-	var zoneCatalog, externalZoneCatalog string
-	if zone.Spec.Catalog != nil {
-		zoneCatalog = *zone.Spec.Catalog
-	}
-	if externalZone.Catalog != nil {
-		externalZoneCatalog = *externalZone.Catalog
-	}
+	zoneCatalog := ptr.Deref(zone.Spec.Catalog, "")
+	externalZoneCatalog := ptr.Deref(externalZone.Catalog, "")
 	return zone.Spec.Kind == string(*externalZone.Kind) && zoneCatalog == externalZoneCatalog, reflect.DeepEqual(zone.Spec.Nameservers, ns)
 }
 
@@ -75,19 +71,4 @@ func rrsetIsIdenticalToExternalRRset(rrset *dnsv1alpha1.RRset, externalRecord po
 
 func makeCanonical(in string) string {
 	return fmt.Sprintf("%s.", strings.TrimSuffix(in, "."))
-}
-
-// Bool is a helper function that allocates a new bool value to store v and returns a pointer to it.
-func Bool(v bool) *bool {
-	return &v
-}
-
-// RRType is a helper function that allocates a new RRType value to store t and returns a pointer to it.
-func RRType(t powerdns.RRType) *powerdns.RRType {
-	return &t
-}
-
-// Uint32 is a helper function that allocates a new uint32 value to store i and returns a pointer to it.
-func Uint32(i uint32) *uint32 {
-	return &i
 }
