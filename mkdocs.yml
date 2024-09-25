@@ -1,0 +1,59 @@
+site_name: PowerDNS Operator
+site_url: https://antrema.github.io/powerdns-operator/
+# site_url: https://orange-opensource.github.io/powerdns-operator/
+site_description: >-
+  Manage PowerDNS from a Kubernetes cluster simple Custom Resources.
+repo_url: https://github.com/Orange-OpenSource/PowerDNS-Operator
+repo_name: PowerDNS Operator
+copyright: Copyright (c) Orange Business Services SA
+theme:
+  name: material
+  features:
+    - announce.dismiss # ??
+    - content.code.copy
+    - content.tooltips
+    - navigation.indexes
+    - navigation.tabs
+    - navigation.expand
+  palette:
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/link
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/toggle-switch
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      accent: indigo
+      toggle:
+        icon: material/toggle-switch-off
+        name: Switch to system preference
+  font:
+    text: Roboto
+    code: Roboto Mono
+  favicon: assets/favicon.png
+  icon:
+    logo: logo
+markdown_extensions:
+  - attr_list
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - admonition
+  - pymdownx.snippets:
+      base_path: docs/snippets
+nav:
+  - Introduction:
+      - Introduction: index.md
+      - Overview: introduction/overview.md
+      - Getting started: introduction/getting-started.md
+      - FAQ: introduction/faq.md
+      - Stability and Support: introduction/stability-support.md
+  - Guides:
+      - Zones: guides/zones.md
+      - RRsets: guides/rrsets.md

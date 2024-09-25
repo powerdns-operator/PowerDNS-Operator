@@ -1,0 +1,55 @@
+name: Build GitHub Pages
+on:
+  # Runs on pushes targeting the default branch
+  push:
+    branches: ["main"]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+permissions:
+    id-token: write
+    contents: write
+    pages: write
+
+jobs:
+  build_mkdocs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        # This action checks-out your repository under $GITHUB_WORKSPACE, so your workflow can access it.
+        uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
+        with:
+            fetch-depth: 0
+      - name: Install Python
+        uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3 # v5.2.0
+        with:
+          python-version: '3.12'
+      - run: pip install \
+              'mkdocs-material>=9.5.0,<9.6.0'
+      - run: mkdocs gh-deploy --config-file mkdocs.yml --force
+
+  deploy_mkdocs:
+    needs: build_mkdocs
+    environment:
+        name: github-pages
+        url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        # This action checks-out your repository under $GITHUB_WORKSPACE, so your workflow can access it.
+        uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
+        with:
+            ref: gh-pages
+      - name: Setup Pages
+        # A GitHub Action to enable Pages and extract various metadata about a site.
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
+      - name: Upload artifact
+        # A composite Action for packaging and uploading artifact that can be deployed to GitHub Pages.
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
+        with:
+            path: '.'
+      - name: Deploy to GitHub Pages
+        # This action is used to deploy Actions artifacts to GitHub Pages.
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5
