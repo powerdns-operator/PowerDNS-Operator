@@ -185,6 +185,5 @@ func main() {
 }
 
 func PDNSClientInitializer(baseURL string, key string, vhost string) *powerdns.Client {
-	headers := map[string]string{"X-API-Key": key}
-	return powerdns.NewClient(baseURL, vhost, headers, nil)
+	return powerdns.New(baseURL, vhost, powerdns.WithAPIKey(key))
 }
