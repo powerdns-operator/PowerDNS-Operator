@@ -1,0 +1,14 @@
+---
+apiVersion: dns.cav.enablers.ob/v1alpha1
+kind: RRset
+metadata:
+  name: mx.helloworld.com
+spec:
+  type: MX
+  name: "helloworld.com."
+  ttl: 300
+  records:
+    - "10 mailserver1.helloworld.com."
+    - "20 mailserver2.helloworld.com."
+  zoneRef:
+    name: helloworld.com

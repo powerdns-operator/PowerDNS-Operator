@@ -16,9 +16,6 @@ The specification of the `Zone` contains the following fields:
 apiVersion: dns.cav.enablers.ob/v1alpha1
 kind: Zone
 metadata:
-  labels:
-    app.kubernetes.io/name: powerdns-operator
-    app.kubernetes.io/managed-by: kustomize
   name: helloworld.com
 spec:
   nameservers:

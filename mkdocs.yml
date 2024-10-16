@@ -57,3 +57,4 @@ nav:
   - Guides:
       - Zones: guides/zones.md
       - RRsets: guides/rrsets.md
+      - Warnings: guides/warnings.md

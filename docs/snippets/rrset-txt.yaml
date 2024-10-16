@@ -1,0 +1,13 @@
+---
+apiVersion: dns.cav.enablers.ob/v1alpha1
+kind: RRset
+metadata:
+  name: txt.helloworld.com
+spec:
+  type: TXT
+  name: "helloworld.com."
+  ttl: 300
+  records:
+    - "\"Welcome to the helloworld.com domain\""
+  zoneRef:
+    name: helloworld.com

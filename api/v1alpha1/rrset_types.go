@@ -18,6 +18,9 @@ import (
 type RRsetSpec struct {
 	// Type of the record (e.g. "A", "PTR", "MX").
 	Type string `json:"type"`
+	// Name of the record
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Value is immutable"
+	Name string `json:"name"`
 	// DNS TTL of the records, in seconds.
 	TTL uint32 `json:"ttl"`
 	// All records in this Resource Record Set.
@@ -36,15 +39,20 @@ type ZoneRef struct {
 
 // RRsetStatus defines the observed state of RRset
 type RRsetStatus struct {
-	LastUpdateTime *metav1.Time `json:"lastUpdateTime,omitempty"`
+	LastUpdateTime       *metav1.Time `json:"lastUpdateTime,omitempty"`
+	DnsEntryName         *string      `json:"dnsEntryName,omitempty"`
+	SyncStatus           *string      `json:"syncStatus,omitempty"`
+	SyncErrorDescription *string      `json:"syncErrorDescription,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 
 // +kubebuilder:printcolumn:name="Zone",type="string",JSONPath=".spec.zoneRef.name"
+// +kubebuilder:printcolumn:name="Name",type="string",JSONPath=".status.dnsEntryName"
 // +kubebuilder:printcolumn:name="Type",type="string",JSONPath=".spec.type"
 // +kubebuilder:printcolumn:name="TTL",type="integer",JSONPath=".spec.ttl"
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.syncStatus"
 // +kubebuilder:printcolumn:name="Records",type="string",JSONPath=".spec.records"
 // RRset is the Schema for the rrsets API
 type RRset struct {

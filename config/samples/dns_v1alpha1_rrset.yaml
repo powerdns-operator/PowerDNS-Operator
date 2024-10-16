@@ -1,12 +1,14 @@
+---
+# Record of type 'A' in 'helloworld.com' zone
+# test.helloworld.com.      IN    A    1.1.1.1
+# test.helloworld.com.      IN    A    2.2.2.2
 apiVersion: dns.cav.enablers.ob/v1alpha1
 kind: RRset
 metadata:
-  labels:
-    app.kubernetes.io/name: powerdns-operator
-    app.kubernetes.io/managed-by: kustomize
   name: test.helloworld.com
 spec:
   comment: nothing to tell
+  name: test
   type: A
   ttl: 300
   records:
@@ -16,81 +18,212 @@ spec:
     name: helloworld.com
 
 ---
+# FQDN Record of type 'A' in 'helloworld.com' zone
+# test1.helloworld.com.      IN    A    3.3.3.3
 apiVersion: dns.cav.enablers.ob/v1alpha1
 kind: RRset
 metadata:
-  labels:
-    app.kubernetes.io/name: powerdns-operator
-    app.kubernetes.io/managed-by: kustomize
   name: test1.helloworld.com
 spec:
+  comment: nothing to tell
+  name: test1.helloworld.com.
   type: A
   ttl: 300
   records:
-    - 1.1.1.1
+    - 3.3.3.3
   zoneRef:
     name: helloworld.com
 
-# ---
-# apiVersion: dns.cav.enablers.ob/v1alpha1
-# kind: RRset
-# metadata:
-#   labels:
-#     app.kubernetes.io/name: powerdns-operator
-#     app.kubernetes.io/managed-by: kustomize
-#   name: test2.helloworld.com
-# spec:
-#   type: A
-#   ttl: 300
-#   records:
-#     - 1.1.1.1
-#   zoneRef:
-#     name: helloworld.com
+---
+# Record of type 'A' in 'helloworld.com' zone
+# test2.helloworld.com.helloworld.com.      IN    A    3.3.3.3
+apiVersion: dns.cav.enablers.ob/v1alpha1
+kind: RRset
+metadata:
+  name: test2.helloworld.com
+spec:
+  type: A
+  name: test2.helloworld.com
+  ttl: 300
+  records:
+    - 4.4.4.4
+  zoneRef:
+    name: helloworld.com
 
-# ---
-# apiVersion: dns.cav.enablers.ob/v1alpha1
-# kind: RRset
-# metadata:
-#   labels:
-#     app.kubernetes.io/name: powerdns-operator
-#     app.kubernetes.io/managed-by: kustomize
-#   name: test3.helloworld.com
-# spec:
-#   type: A
-#   ttl: 300
-#   records:
-#     - 1.1.1.1
-#   zoneRef:
-#     name: helloworld.com
+---
+# Record of type 'AAAA' in 'helloworld.com' zone
+# test3.helloworld.com.      IN    AAAA    2001:0dc8:86a4:0000:0000:7a2f:2360:2341
+apiVersion: dns.cav.enablers.ob/v1alpha1
+kind: RRset
+metadata:
+  name: test3-ipv6.helloworld.com
+spec:
+  type: AAAA
+  name: test3
+  ttl: 300
+  records:
+    - 2001:0dc8:86a4:0000:0000:7a2f:2360:2341
+  zoneRef:
+    name: helloworld.com
 
-# ---
-# apiVersion: dns.cav.enablers.ob/v1alpha1
-# kind: RRset
-# metadata:
-#   labels:
-#     app.kubernetes.io/name: powerdns-operator
-#     app.kubernetes.io/managed-by: kustomize
-#   name: test4.helloworld.com
-# spec:
-#   type: A
-#   ttl: 300
-#   records:
-#     - 1.1.1.1
-#   zoneRef:
-#     name: helloworld.com
+---
+# Record of type 'CNAME' in 'helloworld.com' zone
+# test4.helloworld.com.      IN    CNAME    test1.helloworld.com.
+apiVersion: dns.cav.enablers.ob/v1alpha1
+kind: RRset
+metadata:
+  name: test4.helloworld.com
+spec:
+  type: CNAME
+  name: test4
+  ttl: 300
+  records:
+    - test1.helloworld.com.
+  zoneRef:
+    name: helloworld.com
 
-# ---
-# apiVersion: dns.cav.enablers.ob/v1alpha1
-# kind: RRset
-# metadata:
-#   labels:
-#     app.kubernetes.io/name: powerdns-operator
-#     app.kubernetes.io/managed-by: kustomize
-#   name: test5.helloworld.com
-# spec:
-#   type: A
-#   ttl: 300
-#   records:
-#     - 1.1.1.1
-#   zoneRef:
-#     name: helloworld.com
+---
+# Record of type 'A' (with wildcard) in 'helloworld.com' zone
+# *.test5.helloworld.com.      IN    A    5.5.5.5
+apiVersion: dns.cav.enablers.ob/v1alpha1
+kind: RRset
+metadata:
+  name: test5.helloworld.com
+spec:
+  type: A
+  name: "*.test5"
+  ttl: 300
+  records:
+    - 5.5.5.5
+  zoneRef:
+    name: helloworld.com
+
+---
+# Record of type 'PTR' in 'helloworld.com' zone
+# 1.1.168.192.in-addr.arpa.      IN    PTR    mailserver.helloworld.com.
+apiVersion: dns.cav.enablers.ob/v1alpha1
+kind: RRset
+metadata:
+  name: 1.1.168.192.in-addr.arpa.helloworld.com
+spec:
+  type: PTR
+  name: "1"
+  ttl: 300
+  records:
+    - mailserver.helloworld.com.
+  zoneRef:
+    name: 1.168.192.in-addr.arpa
+
+---
+# Records of type 'MX' in 'helloworld.com' zone
+# helloworld.com.      IN    MX    10 mailserver1.helloworld.com.
+# helloworld.com.      IN    MX    20 mailserver2.helloworld.com.
+apiVersion: dns.cav.enablers.ob/v1alpha1
+kind: RRset
+metadata:
+  name: mx.helloworld.com
+spec:
+  type: MX
+  name: "helloworld.com."
+  ttl: 300
+  records:
+    - "10 mailserver1.helloworld.com."
+    - "20 mailserver2.helloworld.com."
+  zoneRef:
+    name: helloworld.com
+
+---
+# Record of type 'SRV' in 'helloworld.com' zone
+# _database._tcp.myapp.helloworld.com.      IN    SRV    1  50  25565  test2.helloworld.com.
+apiVersion: dns.cav.enablers.ob/v1alpha1
+kind: RRset
+metadata:
+  name: database.srv.helloworld.com
+spec:
+  type: SRV
+  name: "_database._tcp.myapp"
+  ttl: 300
+  records:
+    - 1 50 25565 test2.helloworld.com.
+  zoneRef:
+    name: helloworld.com
+
+---
+# Record (duplicate) of type 'A' in 'helloworld.com' zone
+# test1.helloworld.com.      IN    A    6.6.6.6
+apiVersion: dns.cav.enablers.ob/v1alpha1
+kind: RRset
+metadata:
+  name: test1failed.helloworld.com
+spec:
+  type: A
+  name: "test1"
+  ttl: 300
+  records:
+    - "6.6.6.6"
+  zoneRef:
+    name: helloworld.com
+
+---
+# Record of type 'TXT' in 'helloworld.com' zone
+# helloworld.com.      IN    TXT    "Welcome to the helloworld.com domain"
+apiVersion: dns.cav.enablers.ob/v1alpha1
+kind: RRset
+metadata:
+  name: txt.helloworld.com
+spec:
+  type: TXT
+  name: "helloworld.com."
+  ttl: 300
+  records:
+    - "\"Welcome to the helloworld.com domain\""
+  zoneRef:
+    name: helloworld.com
+
+---
+# Record (additional) of type 'A' in 'helloworld.com' zone
+# test3.helloworld.com.      IN    A    192.168.1.7
+apiVersion: dns.cav.enablers.ob/v1alpha1
+kind: RRset
+metadata:
+  name: test3-ipv4.helloworld.com
+spec:
+  type: A
+  name: test3
+  ttl: 300
+  records:
+    - 192.168.1.7
+  zoneRef:
+    name: helloworld.com
+
+---
+# Record (errored) of undefined type 'AA' in 'helloworld.com' zone
+# test6.helloworld.com.      IN    A    192.168.1.7
+apiVersion: dns.cav.enablers.ob/v1alpha1
+kind: RRset
+metadata:
+  name: test6.helloworld.com
+spec:
+  type: AA
+  name: test6
+  ttl: 300
+  records:
+    - 192.168.1.7
+  zoneRef:
+    name: helloworld.com
+
+---
+# Record of type 'A' in 'helloworld.com' zone
+# test6.helloworld.com.      IN    A    192.168.1.7
+apiVersion: dns.cav.enablers.ob/v1alpha1
+kind: RRset
+metadata:
+  name: test6-ok.helloworld.com
+spec:
+  type: A
+  name: test6
+  ttl: 300
+  records:
+    - 192.168.1.7
+  zoneRef:
+    name: helloworld.com

@@ -1,0 +1,13 @@
+---
+apiVersion: dns.cav.enablers.ob/v1alpha1
+kind: RRset
+metadata:
+  name: 1.1.168.192.in-addr.arpa.helloworld.com
+spec:
+  type: PTR
+  name: "1"
+  ttl: 300
+  records:
+    - mailserver.helloworld.com.
+  zoneRef:
+    name: 1.168.192.in-addr.arpa

@@ -1,0 +1,13 @@
+---
+apiVersion: dns.cav.enablers.ob/v1alpha1
+kind: RRset
+metadata:
+  name: test4.helloworld.com
+spec:
+  type: CNAME
+  name: test4
+  ttl: 300
+  records:
+    - test1.helloworld.com.
+  zoneRef:
+    name: helloworld.com

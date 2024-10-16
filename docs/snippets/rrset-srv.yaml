@@ -1,0 +1,13 @@
+---
+apiVersion: dns.cav.enablers.ob/v1alpha1
+kind: RRset
+metadata:
+  name: database.srv.helloworld.com
+spec:
+  type: SRV
+  name: "_database._tcp.myapp"
+  ttl: 300
+  records:
+    - 1 50 25565 test2.helloworld.com.
+  zoneRef:
+    name: helloworld.com
