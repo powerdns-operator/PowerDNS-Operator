@@ -16,6 +16,7 @@ import (
 
 	"github.com/joeig/go-powerdns/v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -25,6 +26,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	dnsv1alpha1 "github.com/orange-opensource/powerdns-operator/api/v1alpha1"
+)
+
+const (
+	FAILED_STATUS    = "Failed"
+	SUCCEEDED_STATUS = "Succeeded"
 )
 
 // RRsetReconciler reconciles a RRset object
@@ -47,6 +53,10 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	if err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
+	isInFailedStatus := (rrset.Status.SyncStatus != nil && *rrset.Status.SyncStatus == FAILED_STATUS)
+
+	// initialize syncStatus
+	var syncStatus *string
 
 	// Retrieve lastUpdateTime if defined, otherwise Now()
 	lastUpdateTime := &metav1.Time{Time: time.Now().UTC()}
@@ -94,13 +104,14 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		// The object is being deleted
 		if controllerutil.ContainsFinalizer(rrset, FINALIZER_NAME) {
 			// our finalizer is present, so lets handle any external dependency
-			if err := r.deleteExternalResources(ctx, zone, rrset); err != nil {
-				// if fail to delete the external resource, return with error
-				// so that it can be retried
-				log.Error(err, "Failed to delete external resources")
-				return ctrl.Result{}, err
+			if !isInFailedStatus {
+				if err := r.deleteExternalResources(ctx, zone, rrset); err != nil {
+					// if fail to delete the external resource, return with error
+					// so that it can be retried
+					log.Error(err, "Failed to delete external resources")
+					return ctrl.Result{}, err
+				}
 			}
-
 			// remove our finalizer from the list and update it.
 			controllerutil.RemoveFinalizer(rrset, FINALIZER_NAME)
 			if err := r.Update(ctx, rrset); err != nil {
@@ -115,11 +126,32 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{}, nil
 	}
 
+	// If a RRset already exists with the same DNS name:
+	// * Stop reconciliation
+	// * Append a Failed Status on RRset
+	var existingRRsets dnsv1alpha1.RRsetList
+	if err := r.List(ctx, &existingRRsets, client.MatchingFields{"DNS.Entry.Name": getRRsetName(rrset) + "/" + rrset.Spec.Type}); err != nil {
+		log.Error(err, "unable to find RRsets related to the DNS Name")
+		return ctrl.Result{}, err
+	}
+	if len(existingRRsets.Items) > 1 || isInFailedStatus {
+		original := rrset.DeepCopy()
+		rrset.Status.LastUpdateTime = lastUpdateTime
+		name := getRRsetName(rrset)
+		rrset.Status.DnsEntryName = &name
+		rrset.Status.SyncStatus = ptr.To(FAILED_STATUS)
+		if err := r.Status().Patch(ctx, rrset, client.MergeFrom(original)); err != nil {
+			log.Error(err, "unable to patch RRSet status")
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
 	// Create or Update
 	changed, err := r.createOrUpdateExternalResources(ctx, zone, rrset)
 	if err != nil {
 		log.Error(err, "Failed to create or update external resources")
-		return ctrl.Result{}, err
+		syncStatus = ptr.To(FAILED_STATUS)
 	}
 	if changed {
 		lastUpdateTime = &metav1.Time{Time: time.Now().UTC()}
@@ -141,7 +173,12 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	// In that case, the Serial in Zone Status is false
 	// This update permits triggering a new event after RRSet update applied
 	original := rrset.DeepCopy()
+	if syncStatus == nil {
+		syncStatus = ptr.To(SUCCEEDED_STATUS)
+	}
 	rrset.Status.LastUpdateTime = lastUpdateTime
+	rrset.Status.DnsEntryName = ptr.To(getRRsetName(rrset))
+	rrset.Status.SyncStatus = syncStatus
 	if err := r.Status().Patch(ctx, rrset, client.MergeFrom(original)); err != nil {
 		log.Error(err, "unable to patch RRSet status")
 		return ctrl.Result{}, err
@@ -152,6 +189,17 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *RRsetReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	// We use indexer to ensure that only one RRset exists for DNS entry
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &dnsv1alpha1.RRset{}, "DNS.Entry.Name", func(rawObj client.Object) []string {
+		// grab the RRset object, extract its name...
+		var RRsetName string
+		if rawObj.(*dnsv1alpha1.RRset).Status.SyncStatus == nil || *rawObj.(*dnsv1alpha1.RRset).Status.SyncStatus == SUCCEEDED_STATUS {
+			RRsetName = getRRsetName(rawObj.(*dnsv1alpha1.RRset)) + "/" + rawObj.(*dnsv1alpha1.RRset).Spec.Type
+		}
+		return []string{RRsetName}
+	}); err != nil {
+		return err
+	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&dnsv1alpha1.RRset{}).
 		Complete(r)
@@ -161,7 +209,7 @@ func (r *RRsetReconciler) deleteExternalResources(ctx context.Context, zone *dns
 	log := log.FromContext(ctx)
 
 	// Delete
-	err := r.PDNSClient.Records.Delete(ctx, zone.ObjectMeta.Name, rrset.ObjectMeta.Name, powerdns.RRType(rrset.Spec.Type))
+	err := r.PDNSClient.Records.Delete(ctx, zone.ObjectMeta.Name, getRRsetName(rrset), powerdns.RRType(rrset.Spec.Type))
 	if err != nil {
 		log.Error(err, "Failed to delete record")
 		return err
@@ -172,13 +220,11 @@ func (r *RRsetReconciler) deleteExternalResources(ctx context.Context, zone *dns
 
 // createOrUpdateExternalResources create or update the input resource if necessary, and return True if changed
 func (r *RRsetReconciler) createOrUpdateExternalResources(ctx context.Context, zone *dnsv1alpha1.Zone, rrset *dnsv1alpha1.RRset) (bool, error) {
-	log := log.FromContext(ctx)
-
+	name := getRRsetName(rrset)
 	rrType := powerdns.RRType(rrset.Spec.Type)
 	// Looking for a record with same Name and Type
-	records, err := r.PDNSClient.Records.Get(ctx, zone.ObjectMeta.Name, rrset.ObjectMeta.Name, &rrType)
+	records, err := r.PDNSClient.Records.Get(ctx, zone.ObjectMeta.Name, name, &rrType)
 	if err != nil && !errors.IsNotFound(err) {
-		log.Error(err, "Failed to get external rrsets for the type")
 		return false, err
 	}
 	// An issue exist on GET API Calls, comments for another RRSet are included although we filter
@@ -186,7 +232,7 @@ func (r *RRsetReconciler) createOrUpdateExternalResources(ctx context.Context, z
 	// See https://github.com/PowerDNS/pdns/pull/14045
 	var filteredRecord powerdns.RRset
 	for _, fr := range records {
-		if *fr.Name == makeCanonical(rrset.ObjectMeta.Name) {
+		if *fr.Name == makeCanonical(name) {
 			filteredRecord = fr
 			break
 		}
@@ -201,9 +247,8 @@ func (r *RRsetReconciler) createOrUpdateExternalResources(ctx context.Context, z
 	if rrset.Spec.Comment != nil {
 		comments = powerdns.WithComments(powerdns.Comment{Content: rrset.Spec.Comment, Account: &operatorAccount})
 	}
-	err = r.PDNSClient.Records.Change(ctx, zone.ObjectMeta.Name, rrset.ObjectMeta.Name, rrType, rrset.Spec.TTL, rrset.Spec.Records, comments)
+	err = r.PDNSClient.Records.Change(ctx, zone.ObjectMeta.Name, name, rrType, rrset.Spec.TTL, rrset.Spec.Records, comments)
 	if err != nil {
-		log.Error(err, "Failed to create record")
 		return false, err
 	}
 

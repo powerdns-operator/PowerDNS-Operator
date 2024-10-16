@@ -82,7 +82,7 @@ func main() {
 	flag.StringVar(&apiKey, "pdns-api-key", apiKey, "The API key to authenticate with the PowerDNS API")
 	flag.StringVar(&apiVhost, "pdns-api-vhost", apiVhost, "The vhost of the PowerDNS API")
 	opts := zap.Options{
-		Development: true,
+		Development: false,
 	}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()

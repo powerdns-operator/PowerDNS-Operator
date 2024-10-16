@@ -66,9 +66,17 @@ func rrsetIsIdenticalToExternalRRset(rrset *dnsv1alpha1.RRset, externalRecord po
 	for _, r := range externalRecord.Records {
 		externalRecordsSlice = append(externalRecordsSlice, *r.Content)
 	}
-	return makeCanonical(rrset.ObjectMeta.Name) == *externalRecord.Name && rrset.Spec.Type == string(*externalRecord.Type) && rrset.Spec.TTL == *(externalRecord.TTL) && commentsIdentical && reflect.DeepEqual(rrset.Spec.Records, externalRecordsSlice)
+	name := getRRsetName(rrset)
+	return makeCanonical(name) == *externalRecord.Name && rrset.Spec.Type == string(*externalRecord.Type) && rrset.Spec.TTL == *(externalRecord.TTL) && commentsIdentical && reflect.DeepEqual(rrset.Spec.Records, externalRecordsSlice)
 }
 
 func makeCanonical(in string) string {
 	return fmt.Sprintf("%s.", strings.TrimSuffix(in, "."))
+}
+
+func getRRsetName(rrset *dnsv1alpha1.RRset) string {
+	if !strings.HasSuffix(rrset.Spec.Name, ".") {
+		return makeCanonical(rrset.Spec.Name + "." + rrset.Spec.ZoneRef.Name)
+	}
+	return makeCanonical(rrset.Spec.Name)
 }

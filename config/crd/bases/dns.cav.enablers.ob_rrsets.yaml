@@ -18,12 +18,18 @@ spec:
     - jsonPath: .spec.zoneRef.name
       name: Zone
       type: string
+    - jsonPath: .status.dnsEntryName
+      name: Name
+      type: string
     - jsonPath: .spec.type
       name: Type
       type: string
     - jsonPath: .spec.ttl
       name: TTL
       type: integer
+    - jsonPath: .status.syncStatus
+      name: Status
+      type: string
     - jsonPath: .spec.records
       name: Records
       type: string
@@ -55,6 +61,12 @@ spec:
               comment:
                 description: Comment on RRSet.
                 type: string
+              name:
+                description: Name of the record
+                type: string
+                x-kubernetes-validations:
+                - message: Value is immutable
+                  rule: self == oldSelf
               records:
                 description: All records in this Resource Record Set.
                 items:
@@ -77,6 +89,7 @@ spec:
                 - name
                 type: object
             required:
+            - name
             - records
             - ttl
             - type
@@ -85,8 +98,12 @@ spec:
           status:
             description: RRsetStatus defines the observed state of RRset
             properties:
+              dnsEntryName:
+                type: string
               lastUpdateTime:
                 format: date-time
+                type: string
+              syncStatus:
                 type: string
             type: object
         type: object
