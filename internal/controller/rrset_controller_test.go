@@ -41,7 +41,7 @@ var _ = Describe("RRset Controller", func() {
 		resourceTTL       = uint32(300)
 		resourceType      = "A"
 		resourceComment   = "Just a comment"
-		zoneIdRef         = zoneName
+		zoneRef           = zoneName
 
 		testRecord1 = "127.0.0.1"
 		testRecord2 = "127.0.0.2"
@@ -108,7 +108,7 @@ var _ = Describe("RRset Controller", func() {
 		_, err = controllerutil.CreateOrUpdate(ctx, k8sClient, resource, func() error {
 			resource.Spec = dnsv1alpha1.RRsetSpec{
 				ZoneRef: dnsv1alpha1.ZoneRef{
-					Name: zoneIdRef,
+					Name: zoneRef,
 				},
 				Type:    resourceType,
 				TTL:     resourceTTL,
@@ -178,7 +178,7 @@ var _ = Describe("RRset Controller", func() {
 			Expect(getMockedTTL(resourceName, resourceType)).To(Equal(resourceTTL))
 			Expect(getMockedComment(resourceName, resourceType)).To(Equal(resourceComment))
 			Expect(createdResource.GetOwnerReferences()).NotTo(BeEmpty(), "RRset should have setOwnerReference")
-			Expect(createdResource.GetOwnerReferences()[0].Name).To(Equal(zoneIdRef), "RRset should have setOwnerReference to Zone")
+			Expect(createdResource.GetOwnerReferences()[0].Name).To(Equal(zoneRef), "RRset should have setOwnerReference to Zone")
 			Expect(createdResource.GetFinalizers()).To(ContainElement(FINALIZER_NAME), "RRset should contain the finalizer")
 		})
 	})

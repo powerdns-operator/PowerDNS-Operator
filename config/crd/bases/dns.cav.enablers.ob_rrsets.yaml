@@ -15,7 +15,7 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .spec.zoneIdRef.name
+    - jsonPath: .spec.zoneRef.name
       name: Zone
       type: string
     - jsonPath: .spec.type

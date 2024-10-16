@@ -42,7 +42,7 @@ type RRsetStatus struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 
-// +kubebuilder:printcolumn:name="Zone",type="string",JSONPath=".spec.zoneIdRef.name"
+// +kubebuilder:printcolumn:name="Zone",type="string",JSONPath=".spec.zoneRef.name"
 // +kubebuilder:printcolumn:name="Type",type="string",JSONPath=".spec.type"
 // +kubebuilder:printcolumn:name="TTL",type="integer",JSONPath=".spec.ttl"
 // +kubebuilder:printcolumn:name="Records",type="string",JSONPath=".spec.records"
