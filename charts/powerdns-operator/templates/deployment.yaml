@@ -1,0 +1,112 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "powerdns-operator.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "powerdns-operator.labels" . | nindent 4 }}
+    app.kubernetes.io/component: controller
+    {{- with .Values.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with .Values.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "powerdns-operator.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "powerdns-operator.labels" . | nindent 8 }}
+        app.kubernetes.io/component: controller
+        {{- with .Values.labels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- if .Values.podLabels }}
+        {{- toYaml .Values.podLabels | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- if .Values.dnsConfig }}
+      dnsConfig: {{ toYaml .Values.dnsConfig | nindent 8 }}
+      {{- end }}
+      dnsPolicy: {{ .Values.dnsPolicy }}
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets: {{ toYaml .Values.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector | default .Values.global.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity | default .Values.global.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations | default .Values.global.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints | default .Values.global.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName | quote }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      {{- if and (.enabled) (gt (keys . | len) 1) }}
+      securityContext:
+        {{- include "powerdns-operator.renderSecurityContext" (dict "securityContext" . "context" $) | nindent 8 }}
+      {{- end }}
+      {{- end }}
+      serviceAccountName: {{ include "powerdns-operator.serviceAccountName" . }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      hostNetwork: {{ .Values.hostNetwork }}
+      containers:
+      - name: {{ .Chart.Name }}
+        args:
+        - --leader-elect
+        - --health-probe-bind-address=:8081
+        - --metrics-bind-address=:{{ .Values.metrics.service.port }}
+        ports:
+          - containerPort: {{ .Values.metrics.service.port }}
+            protocol: TCP
+            name: http-metrics
+        command:
+        - /manager
+        {{- if or (.Values.credentials.existingSecret) (.Values.credentials.name) }}
+        envFrom:
+        {{- if .Values.credentials.existingSecret }}
+        - secretRef:
+            name: {{ .Values.credentials.existingSecret }}
+        {{- end }}
+        {{- if .Values.credentials.name }}
+        - secretRef:
+            name: {{ .Values.credentials.name }}
+        {{- end }}
+        {{- end }}
+        image: {{ include "powerdns-operator.image" (dict "chartAppVersion" .Chart.AppVersion "image" .Values.image) | trim }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        {{- if .Values.livenessProbe }}
+        livenessProbe: {{ toYaml .Values.livenessProbe | nindent 12 }}
+        {{- end }}
+        {{- if .Values.readinessProbe }}
+        readinessProbe: {{ toYaml .Values.readinessProbe | nindent 12 }}
+        {{- end }}
+        {{- with .Values.resources }}
+        resources:
+          {{- toYaml . | nindent 12 }}
+        {{- end }}
+        {{- with .Values.securityContext }}
+        {{- if and (.enabled) (gt (keys . | len) 1) }}
+        securityContext:
+          {{- include "powerdns-operator.renderSecurityContext" (dict "securityContext" . "context" $) | nindent 12 }}
+        {{- end }}
+        {{- end }}

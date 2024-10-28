@@ -1,0 +1,4 @@
+The powerdns operator has been deployed successfully in namespace {{ .Release.Namespace }}!
+
+More information on the different resources and how to configure them
+can be found in our Github: {{ .Chart.Home }}

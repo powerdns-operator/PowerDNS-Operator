@@ -1,0 +1,15 @@
+suite: test rbac
+templates:
+  - rbac.yaml
+tests:
+  - it: should match snapshot of default values
+    asserts:
+      - matchSnapshot: {}
+  - it: Should contain both ClusterRole and ClusterRoleBinding documents
+    asserts:
+      - containsDocument:
+          kind: ClusterRoleBinding
+          apiVersion: rbac.authorization.k8s.io/v1
+          any: true
+      - hasDocuments:
+          count: 8

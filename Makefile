@@ -1,7 +1,21 @@
 # Image URL to use all building/pushing image targets
 IMG ?= controller:latest
+
+## Tool Versions
+KUSTOMIZE_VERSION ?= v5.4.3
+CONTROLLER_TOOLS_VERSION ?= v0.16.2
+ENVTEST_VERSION ?= release-0.19
+GOLANGCI_LINT_VERSION ?= v1.61.0
+
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.31.0
+
+# Helm
+HELM_UNITTEST_VERSION = 3.16.1-0.6.2
+HELM_DOCS_VERSION = v1.14.2
+HELM_DIR ?= charts/powerdns-operator
+
+OUTPUT_DIR ?= bin
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -67,7 +81,7 @@ help: ## Display this help.
 
 ##@ Conformance
 .PHONY: reviewable
-reviewable: generate manifests lint ## Ensure a PR is ready for review.
+reviewable: generate manifests helm-docs lint ## Ensure a PR is ready for review.
 	@go mod tidy
 
 .PHONY: check-diff
@@ -81,6 +95,7 @@ check-diff: reviewable ## Ensure branch is clean.
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=charts/powerdns-operator/crds
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
@@ -189,16 +204,26 @@ undeploy: kustomize ## Undeploy controller from the K8s cluster specified in ~/.
 	$(KUSTOMIZE) build config/default | $(KUBECTL) delete --ignore-not-found=$(ignore-not-found) -f -
 
 
-##@ Packaging
-HELMIFY ?= $(LOCALBIN)/helmify
+##@ Helm
+helm-docs:
+	@cd $(HELM_DIR); \
+	docker run --rm -v $(shell pwd)/$(HELM_DIR):/helm-docs -u $(shell id -u) jnorwood/helm-docs:$(HELM_DOCS_VERSION)
 
-.PHONY: helmify
-helmify: $(HELMIFY) ## Download helmify locally if necessary.
-$(HELMIFY): $(LOCALBIN)
-	test -s $(LOCALBIN)/helmify || GOBIN=$(LOCALBIN) go install github.com/arttor/helmify/cmd/helmify@latest
+HELM_VERSION ?= $(shell helm show chart $(HELM_DIR) | grep '^version:' | sed 's/version: //g')
 
-helm: manifests kustomize helmify
-	$(KUSTOMIZE) build config/default | $(HELMIFY) -crd-dir -image-pull-secrets
+helm-build:
+	@$(INFO) helm package
+	@helm package $(HELM_DIR) --dependency-update --destination $(OUTPUT_DIR)/chart
+	@mv $(OUTPUT_DIR)/chart/powerdns-operator-$(HELM_VERSION).tgz $(OUTPUT_DIR)/chart/powerdns-operator.tgz
+	@$(OK) helm package
+
+helm-test:
+	@cd $(HELM_DIR); \
+	docker run --rm -v $(shell pwd)/$(HELM_DIR):/apps -u $(shell id -u) helmunittest/helm-unittest:$(HELM_UNITTEST_VERSION) .
+
+helm-test-update:
+	@cd $(HELM_DIR); \
+	docker run --rm -v $(shell pwd)/$(HELM_DIR):/apps -u $(shell id -u) helmunittest/helm-unittest:$(HELM_UNITTEST_VERSION) -u .
 
 ##@ Dependencies
 
@@ -213,12 +238,6 @@ KUSTOMIZE ?= $(LOCALBIN)/kustomize-$(KUSTOMIZE_VERSION)
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen-$(CONTROLLER_TOOLS_VERSION)
 ENVTEST ?= $(LOCALBIN)/setup-envtest-$(ENVTEST_VERSION)
 GOLANGCI_LINT = $(LOCALBIN)/golangci-lint-$(GOLANGCI_LINT_VERSION)
-
-## Tool Versions
-KUSTOMIZE_VERSION ?= v5.4.3
-CONTROLLER_TOOLS_VERSION ?= v0.16.2
-ENVTEST_VERSION ?= release-0.19
-GOLANGCI_LINT_VERSION ?= v1.61.0
 
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.

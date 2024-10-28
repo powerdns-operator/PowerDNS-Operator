@@ -1,0 +1,46 @@
+suite: test metrics service
+templates:
+  - service.yaml
+tests:
+  - it: should match snapshot of default values
+    asserts:
+      - matchSnapshot: {}
+  - it: should render right if values given
+    set:
+      metrics:
+        service:
+          ipFamilyPolicy: DualStack
+          ipFamilies:
+            - IPv4
+            - IPv6
+    asserts:
+      - equal:
+          path: spec.ipFamilyPolicy
+          value: DualStack
+      - equal:
+          path: spec.ipFamilies
+          value:
+            - IPv4
+            - IPv6
+  - it: should contains right http-metrics port
+    set:
+      metrics:
+        service:
+          port: 4321
+    asserts:
+      - contains:
+          path: spec.ports
+          content:
+            name: http-metrics
+            port: 4321
+            protocol: TCP
+            targetPort: http-metrics
+      - equal:
+          path: spec.type
+          value: ClusterIP
+  - it: should contain document
+    asserts:
+      - containsDocument:
+          kind: Service
+          apiVersion: v1
+        documentIndex: 0

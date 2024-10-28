@@ -1,0 +1,150 @@
+global:
+  nodeSelector: {}
+  tolerations: []
+  topologySpreadConstraints: []
+  affinity: {}
+  compatibility:
+    openshift:
+      # -- Manages the securityContext properties to make them compatible with OpenShift.
+      # Possible values:
+      # auto - Apply configurations if it is detected that OpenShift is the target platform.
+      # force - Always apply configurations.
+      # disabled - No modification applied.
+      adaptSecurityContext: auto
+
+replicaCount: 1 # we do not support more than 1 replica
+
+commonLabels: {}
+
+credentials:
+  # -- Specifies whether to use an existing secret.
+  existingSecret: ""
+  # -- Specifies the secret name to create if `existingSecret` is empty.
+  name: ""
+  data:
+    # -- Specifies the PowerDNS API URL
+    # PDNS_API_URL: "https://powerdns.example.local:8081"
+    PDNS_API_URL: "http://powerdns.powerdns.svc:8081"
+    # -- Specifies the PowerDNS API key used to authenticate
+    PDNS_API_KEY: "secret"
+    # -- Specifies the PowerDNS VHOST
+    PDNS_API_VHOST: "localhost"
+
+rbac:
+  create: true
+
+nodeSelector: {}
+tolerations: []
+topologySpreadConstraints: []
+affinity: {}
+
+serviceAccount:
+  # -- Specifies whether a service account should be created.
+  create: true
+  # -- The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template.
+  name: ""
+  # -- Extra Labels to add to the service account.
+  extraLabels: {}
+  # -- Annotations to add to the service account.
+  annotations: {}
+
+image:
+  repository: "ghcr.io/orange-opensource/powerdns-operator"
+  pullPolicy: "IfNotPresent"
+  tag: ""
+
+# -- Extra Labels to add to the controller deployment.
+labels: {}
+
+# -- Annotations to add to the controller deployment.
+annotations: {}
+
+# -- Optional array of imagePullSecrets containing private registry credentials
+## Ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+imagePullSecrets: []
+# - name: secretName
+
+# -- Extra labels to add to the pod.
+podLabels: {}
+
+# -- Extra annotations to add to the pod.
+podAnnotations: {}
+
+# -- Specifies `dnsOptions` to deployment
+dnsConfig: {}
+
+# -- Specifies `dnsPolicy` to deployment
+dnsPolicy: ClusterFirst
+
+# -- Pod priority class name.
+priorityClassName: ""
+
+terminationGracePeriodSeconds: 10
+
+nameOverride: ""
+fullnameOverride: ""
+namespaceOverride: ""
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 128Mi
+  requests:
+    cpu: 10m
+    memory: 64Mi
+
+# -- Run the controller on the host network
+hostNetwork: false
+
+podSecurityContext:
+  enabled: true
+  runAsNonRoot: true
+
+securityContext:
+  enabled: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 8081
+  initialDelaySeconds: 15
+  periodSeconds: 20
+
+readinessProbe:
+  httpGet:
+    path: /readyz
+    port: 8081
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+metrics:
+  service:
+    enabled: true
+    annotations: {}
+    port: 8080
+    # -- Set the ip family policy to configure dual-stack see [Configure dual-stack](https://kubernetes.io/docs/concepts/services-networking/dual-stack/#services)
+    ipFamilyPolicy: ""
+    # -- Sets the families that should be supported and the order in which they should be applied to ClusterIP as well. Can be IPv4 and/or IPv6.
+    ipFamilies: []
+  serviceMonitor:
+    enabled: true
+    namespace: ""
+    labels: {}
+    annotations: {}
+    additionalLabels: {}
+    scrapeInterval: 15s
+    scrapeTimeout: 10s
+    scheme: http
+    metricRelabelings: []
+    relabelings: []
+    tlsConfig: {}

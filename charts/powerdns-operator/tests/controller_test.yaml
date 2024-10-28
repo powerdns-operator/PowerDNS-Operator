@@ -1,0 +1,247 @@
+suite: test controller deployment
+templates:
+  - deployment.yaml
+tests:
+  - it: should match snapshot of default values
+    asserts:
+      - matchSnapshot: {}
+  - it: should set imagePullPolicy to Always
+    set:
+      image.pullPolicy: Always
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].imagePullPolicy
+          value: Always
+  - it: should imagePullPolicy to be default value IfNotPresent
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].imagePullPolicy
+          value: IfNotPresent
+  - it: should override securityContext
+    set:
+      podSecurityContext:
+        runAsUser: 2000
+      securityContext:
+        runAsUser: 3000
+    asserts:
+      - equal:
+          path: spec.template.spec.securityContext
+          value:
+            runAsNonRoot: true
+            runAsUser: 2000
+      - equal:
+          path: spec.template.spec.containers[0].securityContext
+          value:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 3000
+            seccompProfile:
+              type: RuntimeDefault
+  - it: should override hostNetwork
+    set:
+      hostNetwork: true
+    asserts:
+      - equal:
+          path: spec.template.spec.hostNetwork
+          value: true
+  - it: should override metrics port
+    set:
+      metrics.service.port: 8888
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].args[2]
+          value: "--metrics-bind-address=:8888"
+  - it: should override image version
+    set:
+      image.repository: ghcr.io/orange-opensource/powerdns-operator
+      image.tag: 0.2.0
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/orange-opensource/powerdns-operator:v0.2.0
+  - it: should override resources
+    set:
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 256Mi
+        requests:
+          cpu: 20m
+          memory: 128Mi
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources
+          value:
+            limits:
+              cpu: 1000m
+              memory: 256Mi
+            requests:
+              cpu: 20m
+              memory: 128Mi
+  - it: should override readinessProbe
+    set:
+      readinessProbe:
+        httpGet:
+          path: /fake-readyz
+          port: 8082
+        initialDelaySeconds: 10
+        periodSeconds: 15
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe
+          value:
+            httpGet:
+              path: /fake-readyz
+              port: 8082
+            initialDelaySeconds: 10
+            periodSeconds: 15
+  - it: should override livenessProbe
+    set:
+      livenessProbe:
+        httpGet:
+          path: /fake-readyz
+          port: 8082
+        initialDelaySeconds: 10
+        periodSeconds: 15
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe
+          value:
+            httpGet:
+              path: /fake-readyz
+              port: 8082
+            initialDelaySeconds: 10
+            periodSeconds: 15
+  - it: should override credentials (existing-secret)
+    set:
+      credentials:
+        existingSecret: "existing-secret"
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].envFrom[0].secretRef.name
+          value: existing-secret
+  - it: should override credentials (new-secret)
+    set:
+      credentials:
+        existingSecret: ""
+        name: new-secret
+        data:
+          key1: value1
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].envFrom[0].secretRef.name
+          value: new-secret
+  - it: should override serviceAccountName
+    set:
+      serviceAccount:
+        name: new-service-account
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: new-service-account
+  - it: should override terminationGracePeriodSeconds
+    set:
+      terminationGracePeriodSeconds: 20
+    asserts:
+      - equal:
+          path: spec.template.spec.terminationGracePeriodSeconds
+          value: 20
+  - it: should override priorityClassName
+    set:
+      priorityClassName: high-priority
+    asserts:
+      - equal:
+          path: spec.template.spec.priorityClassName
+          value: high-priority
+  - it: should override topologySpreadConstraints
+    set:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              control-plane: controller-manager
+              app.kubernetes.io/name: powerdns-operator
+    asserts:
+      - equal:
+          path: spec.template.spec.topologySpreadConstraints
+          value:
+            - maxSkew: 1
+              topologyKey: kubernetes.io/hostname
+              whenUnsatisfiable: DoNotSchedule
+              labelSelector:
+                matchLabels:
+                  control-plane: controller-manager
+                  app.kubernetes.io/name: powerdns-operator
+  - it: should override tolerations
+    set:
+      tolerations:
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
+    asserts:
+      - equal:
+          path: spec.template.spec.tolerations
+          value:
+            - key: node-role.kubernetes.io/master
+              operator: Exists
+              effect: NoSchedule
+  - it: should override affinity
+    set:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/e2e-az-name
+                    operator: In
+                    values:
+                      - e2e-az1
+                      - e2e-az2
+    asserts:
+      - equal:
+          path: spec.template.spec.affinity
+          value:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: kubernetes.io/e2e-az-name
+                        operator: In
+                        values:
+                          - e2e-az1
+                          - e2e-az2
+  - it: should override nodeSelector
+    set:
+      nodeSelector:
+        disktype: ssd
+    asserts:
+      - equal:
+          path: spec.template.spec.nodeSelector
+          value:
+            disktype: ssd
+  - it: should override dnsPolicy
+    set:
+      dnsPolicy: ClusterFirstWithHostNet
+    asserts:
+      - equal:
+          path: spec.template.spec.dnsPolicy
+          value: ClusterFirstWithHostNet
+  - it: should override dnsConfig
+    set:
+      dnsConfig:
+        nameservers:
+          - 1.1.1.1
+          - 8.8.8.8
+    asserts:
+      - equal:
+          path: spec.template.spec.dnsConfig
+          value:
+            nameservers:
+              - 1.1.1.1
+              - 8.8.8.8

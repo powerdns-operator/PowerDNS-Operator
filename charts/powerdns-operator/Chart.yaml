@@ -1,0 +1,36 @@
+apiVersion: v2
+name: powerdns-operator
+description: Manage PowerDNS resources with Kubernetes
+type: application
+version: 0.1.0
+appVersion: 0.1.0
+kubeVersion: '>= 1.21.0-0'
+keywords:
+  - powerdns-operator
+  - powerdns
+  - dns
+home: https://orange-opensource.github.io/PowerDNS-Operator
+icon: https://github.com/Orange-OpenSource/PowerDNS-Operator/blob/main/docs/assets/favicon.png?raw=true
+maintainers:
+- name: antrema
+- name: mydoomfr
+sources:
+  - https://github.com/Orange-OpenSource/PowerDNS-Operator
+annotations:
+  artifacthub.io/crds: |
+    - kind: Zone
+      version: v1alpha1
+      name: zone.dns.cav.enablers.ob
+      displayName: Zone
+      description: |
+        A Zone is a collection of records that are managed together. Zones can
+        be used to represent a domain, a subdomain, or a set of records that are
+        managed together.
+    - kind: RRset
+      version: v1alpha1
+      name: rrset.dns.cav.enablers.ob
+      displayName: RRset
+      description: |
+        An RRset is a collection of records that share the same name and type.
+        RRsets can be used to represent a collection of records that are managed
+        together.

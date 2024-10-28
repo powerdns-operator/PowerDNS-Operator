@@ -1,0 +1,115 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.16.2
+  name: rrsets.dns.cav.enablers.ob
+spec:
+  group: dns.cav.enablers.ob
+  names:
+    kind: RRset
+    listKind: RRsetList
+    plural: rrsets
+    singular: rrset
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.zoneRef.name
+      name: Zone
+      type: string
+    - jsonPath: .status.dnsEntryName
+      name: Name
+      type: string
+    - jsonPath: .spec.type
+      name: Type
+      type: string
+    - jsonPath: .spec.ttl
+      name: TTL
+      type: integer
+    - jsonPath: .status.syncStatus
+      name: Status
+      type: string
+    - jsonPath: .spec.records
+      name: Records
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: RRset is the Schema for the rrsets API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: RRsetSpec defines the desired state of RRset
+            properties:
+              comment:
+                description: Comment on RRSet.
+                type: string
+              name:
+                description: Name of the record
+                type: string
+                x-kubernetes-validations:
+                - message: Value is immutable
+                  rule: self == oldSelf
+              records:
+                description: All records in this Resource Record Set.
+                items:
+                  type: string
+                type: array
+              ttl:
+                description: DNS TTL of the records, in seconds.
+                format: int32
+                type: integer
+              type:
+                description: Type of the record (e.g. "A", "PTR", "MX").
+                type: string
+              zoneRef:
+                description: ZoneRef reference the zone the RRSet depends on.
+                properties:
+                  name:
+                    description: Name of the zone.
+                    type: string
+                required:
+                - name
+                type: object
+            required:
+            - name
+            - records
+            - ttl
+            - type
+            - zoneRef
+            type: object
+          status:
+            description: RRsetStatus defines the observed state of RRset
+            properties:
+              dnsEntryName:
+                type: string
+              lastUpdateTime:
+                format: date-time
+                type: string
+              syncErrorDescription:
+                type: string
+              syncStatus:
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

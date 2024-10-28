@@ -1,0 +1,28 @@
+{{- if .Values.metrics.service.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "powerdns-operator.fullname" . }}-metrics
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "powerdns-operator.labels" . | nindent 4 }}
+  {{- with .Values.metrics.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: ClusterIP
+  {{- if .Values.metrics.service.ipFamilyPolicy }}
+  ipFamilyPolicy: {{ .Values.metrics.service.ipFamilyPolicy }}
+  {{- end }}
+  {{- if .Values.metrics.service.ipFamilies }}
+  ipFamilies: {{ .Values.metrics.service.ipFamilies | toYaml | nindent 2 }}
+  {{- end }}
+  ports:
+  - name: http-metrics
+    port: {{ .Values.metrics.service.port }}
+    protocol: TCP
+    targetPort: http-metrics
+  selector:
+    {{- include "powerdns-operator.selectorLabels" . | nindent 4 }}
+{{- end }}
