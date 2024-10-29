@@ -1178,4 +1178,63 @@ var _ = Describe("RRset Controller", func() {
 			Expect(createdResource.GetFinalizers()).To(ContainElement(FINALIZER_NAME), "RRset should contain the finalizer")
 		})
 	})
+
+	Context("When creating a wrong RRset", func() {
+		It("should reconcile the resource with Failed status", Label("wrong-rrset", "unquoted-txt"), func() {
+			ctx := context.Background()
+			// Specific test variables
+			unquotedResourceName := "unquoted"
+			unquotedResourceDNSName := "unquoted-txt"
+			unquotedResourceType := "TXT"
+			unquotedResourceRecords := []string{"An unquoted record"}
+			unquotedResourceComment := "This is an unquoted-TXT Record"
+
+			By("Creating the RRset resource")
+			unquotedResource := &dnsv1alpha1.RRset{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      unquotedResourceName,
+					Namespace: resourceNamespace,
+				},
+			}
+			unquotedResource.SetResourceVersion("")
+			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, unquotedResource, func() error {
+				unquotedResource.Spec = dnsv1alpha1.RRsetSpec{
+					ZoneRef: dnsv1alpha1.ZoneRef{
+						Name: zoneName,
+					},
+					Type:    unquotedResourceType,
+					Name:    unquotedResourceDNSName,
+					TTL:     resourceTTL,
+					Records: unquotedResourceRecords,
+					Comment: &unquotedResourceComment,
+				}
+				return nil
+			})
+			unquotedRRsetLookupKey := types.NamespacedName{
+				Name:      unquotedResourceName,
+				Namespace: resourceNamespace,
+			}
+
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, unquotedRRsetLookupKey, unquotedResource)
+				return err == nil && unquotedResource.Status.SyncStatus != nil
+			}, timeout, interval).Should(BeTrue())
+
+			DnsFqdn := getRRsetName(unquotedResource)
+
+			By("Getting the created resource")
+			createdResource := &dnsv1alpha1.RRset{}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, unquotedRRsetLookupKey, createdResource)
+				return err == nil
+			}, timeout, interval).Should(BeTrue())
+
+			Expect(getMockedRecordsForType(DnsFqdn, unquotedResourceType)).To(Equal([]string{}), "RRset should not have been created in backend")
+			Expect(*createdResource.Status.SyncStatus).To(Equal(FAILED_STATUS), "RRset status should be 'Failed'")
+			Expect(createdResource.GetOwnerReferences()).NotTo(BeEmpty(), "RRset should have setOwnerReference")
+			Expect(createdResource.GetOwnerReferences()[0].Name).To(Equal(zoneRef), "RRset should have setOwnerReference to Zone")
+			Expect(createdResource.GetFinalizers()).To(ContainElement(FINALIZER_NAME), "RRset should contain the finalizer")
+		})
+	})
 })

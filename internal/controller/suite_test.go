@@ -296,6 +296,15 @@ func (m mockRecordsClient) Change(ctx context.Context, domain string, name strin
 		}
 	}
 
+	// Preliminary test - Linked to 'wrong-rrset && unquoted-txt' test
+	if string(recordType) == "TXT" && content[0] == strings.TrimSuffix(content[0], "\"") && content[0] == strings.TrimPrefix(content[0], "\"") {
+		return &powerdns.Error{
+			StatusCode: 422,
+			Status:     "422 Unprocessable Entity",
+			Message:    "Record " + name + "/TXT '" + strings.Join(content, ",") + "': Parsing record content (try 'pdnsutil check-zone'): Data field in DNS should start with quote(\") at position 0 of '" + strings.Join(content, ",") + "'",
+		}
+	}
+
 	var isRRsetIdentical, isNewRRset, ok bool
 	var rrset *powerdns.RRset
 	var comment, specifiedComment string
