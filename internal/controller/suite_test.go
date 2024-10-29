@@ -287,6 +287,15 @@ func (m mockRecordsClient) Change(ctx context.Context, domain string, name strin
 		}
 	}
 
+	// Preliminary test - Linked to 'wrong-rrset && wrong-format' test
+	if string(recordType) == "SRV" && content[0] == strings.TrimSuffix(content[0], ".") {
+		return &powerdns.Error{
+			StatusCode: 422,
+			Status:     "422 Unprocessable Entity",
+			Message:    "Record " + name + "/SRV '" + strings.Join(content, ",") + "': Not in expected format (parsed as '" + strings.Join(content, ",") + ".')",
+		}
+	}
+
 	var isRRsetIdentical, isNewRRset, ok bool
 	var rrset *powerdns.RRset
 	var comment, specifiedComment string
