@@ -24,6 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	dnsv1alpha1 "github.com/orange-opensource/powerdns-operator/api/v1alpha1"
 )
@@ -38,6 +39,11 @@ type RRsetReconciler struct {
 	client.Client
 	Scheme     *runtime.Scheme
 	PDNSClient PdnsClienter
+}
+
+func init() {
+	// Register custom metrics with the global prometheus registry
+	metrics.Registry.MustRegister(rrsetsStatusesMetric)
 }
 
 // +kubebuilder:rbac:groups=dns.cav.enablers.ob,resources=rrsets,verbs=get;list;watch;create;update;patch;delete
@@ -77,6 +83,8 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 					log.Error(err, "Failed to remove finalizer")
 					return ctrl.Result{}, err
 				}
+				// Remove resource metrics
+				removeRrsetMetrics(rrset.Name, rrset.Namespace)
 			}
 			// Race condition when creating Zone+RRset at the same time
 			// RRset is not created because Zone is not created yet
@@ -119,6 +127,9 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 				log.Error(err, "Failed to remove finalizer")
 				return ctrl.Result{}, err
 			}
+			// Remove resource metrics
+			removeRrsetMetrics(rrset.Name, rrset.Namespace)
+
 			//nolint:ineffassign
 			lastUpdateTime = &metav1.Time{Time: time.Now().UTC()}
 		}
@@ -129,6 +140,9 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 	// We cannot exit previously (at the early moments of reconcile), because we have to allow deletion process
 	if isInFailedStatus {
+		// Update resource metrics
+		updateRrsetsMetrics(getRRsetName(rrset), rrset.Spec.Type, *rrset.Status.SyncStatus, rrset.Name, rrset.Namespace)
+
 		return ctrl.Result{}, nil
 	}
 
@@ -151,6 +165,10 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			log.Error(err, "unable to patch RRSet status")
 			return ctrl.Result{}, err
 		}
+
+		// Update resource metrics
+		updateRrsetsMetrics(getRRsetName(rrset), rrset.Spec.Type, *rrset.Status.SyncStatus, rrset.Name, rrset.Namespace)
+
 		return ctrl.Result{}, nil
 	}
 
@@ -194,6 +212,9 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		log.Error(err, "unable to patch RRSet status")
 		return ctrl.Result{}, err
 	}
+
+	// Metrics calculation
+	updateRrsetsMetrics(getRRsetName(rrset), rrset.Spec.Type, *rrset.Status.SyncStatus, rrset.Name, rrset.Namespace)
 
 	return ctrl.Result{}, nil
 }
