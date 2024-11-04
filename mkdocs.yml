@@ -1,6 +1,5 @@
 site_name: PowerDNS Operator
-site_url: https://antrema.github.io/powerdns-operator/
-# site_url: https://orange-opensource.github.io/powerdns-operator/
+site_url: https://orange-opensource.github.io/powerdns-operator/
 site_description: >-
   Manage PowerDNS from a Kubernetes cluster simple Custom Resources.
 repo_url: https://github.com/Orange-OpenSource/PowerDNS-Operator
