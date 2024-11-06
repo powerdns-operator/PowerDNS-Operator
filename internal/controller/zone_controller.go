@@ -203,12 +203,18 @@ func (r *ZoneReconciler) deleteExternalResources(ctx context.Context, zone *dnsv
 func (r *ZoneReconciler) updateExternalResources(ctx context.Context, zone *dnsv1alpha1.Zone) error {
 	log := log.FromContext(ctx)
 	zoneKind := powerdns.ZoneKind(zone.Spec.Kind)
-	catalog := ptr.Deref(zone.Spec.Catalog, "")
+
+	// Make Catalog canonical
+	var catalog *string
+	if zone.Spec.Catalog != nil {
+		catalog = ptr.To(makeCanonical(ptr.Deref(zone.Spec.Catalog, "")))
+	}
+
 	err := r.PDNSClient.Zones.Change(ctx, zone.ObjectMeta.Name, &powerdns.Zone{
 		Name:        &zone.ObjectMeta.Name,
 		Kind:        &zoneKind,
 		Nameservers: zone.Spec.Nameservers,
-		Catalog:     &catalog,
+		Catalog:     catalog,
 	})
 	if err != nil {
 		log.Error(err, "Failed to update zone")
@@ -240,6 +246,12 @@ func (r *ZoneReconciler) createExternalResources(ctx context.Context, zone *dnsv
 		zone.Spec.Nameservers[i] = makeCanonical(ns)
 	}
 
+	// Make Catalog canonical
+	var catalog *string
+	if zone.Spec.Catalog != nil {
+		catalog = ptr.To(makeCanonical(ptr.Deref(zone.Spec.Catalog, "")))
+	}
+
 	z := powerdns.Zone{
 		ID:     &zone.Name,
 		Name:   &zone.Name,
@@ -249,7 +261,7 @@ func (r *ZoneReconciler) createExternalResources(ctx context.Context, zone *dnsv
 		//		SOAEditAPI:  &soaEditApi,
 		//		APIRectify:  &apiRectify,
 		Nameservers: zone.Spec.Nameservers,
-		Catalog:     zone.Spec.Catalog,
+		Catalog:     catalog,
 	}
 
 	_, err := r.PDNSClient.Zones.Add(ctx, &z)

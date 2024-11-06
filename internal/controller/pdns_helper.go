@@ -42,7 +42,7 @@ type PdnsClienter struct {
 // zoneIsIdenticalToExternalZone return True, True if respectively kind and Catalog are identical
 // and nameservers are identical between Zone and External Resource
 func zoneIsIdenticalToExternalZone(zone *dnsv1alpha1.Zone, externalZone *powerdns.Zone, ns []string) (bool, bool) {
-	zoneCatalog := ptr.Deref(zone.Spec.Catalog, "")
+	zoneCatalog := makeCanonical(ptr.Deref(zone.Spec.Catalog, ""))
 	externalZoneCatalog := ptr.Deref(externalZone.Catalog, "")
 	return zone.Spec.Kind == string(*externalZone.Kind) && zoneCatalog == externalZoneCatalog, reflect.DeepEqual(zone.Spec.Nameservers, ns)
 }
@@ -71,7 +71,11 @@ func rrsetIsIdenticalToExternalRRset(rrset *dnsv1alpha1.RRset, externalRecord po
 }
 
 func makeCanonical(in string) string {
-	return fmt.Sprintf("%s.", strings.TrimSuffix(in, "."))
+	var result string
+	if in != "" {
+		result = fmt.Sprintf("%s.", strings.TrimSuffix(in, "."))
+	}
+	return result
 }
 
 func getRRsetName(rrset *dnsv1alpha1.RRset) string {
