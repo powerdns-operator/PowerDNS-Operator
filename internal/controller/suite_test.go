@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"runtime"
 	"slices"
 	"strings"
@@ -216,8 +217,16 @@ func (m mockZonesClient) Add(ctx context.Context, zone *powerdns.Zone) (*powerdn
 	}
 
 	// Serial initialization
-	now := time.Now().UTC()
-	serial := uint32(now.Year())*1000000 + uint32((now.Month()))*10000 + uint32(now.Day())*100 + 1
+	var serial uint32
+	switch *zone.SOAEditAPI {
+	case "EPOCH":
+		serial = uint32(time.Now().UTC().Unix())
+	case "INCREASE":
+		serial = uint32(1)
+	default:
+		now := time.Now().UTC()
+		serial = uint32(now.Year())*1000000 + uint32((now.Month()))*10000 + uint32(now.Day())*100 + 1
+	}
 	zone.Serial = &serial
 
 	// RRset type NS creation
@@ -259,8 +268,21 @@ func (m mockZonesClient) Change(ctx context.Context, domain string, zone *powerd
 		return powerdns.Error{StatusCode: ZONE_NOT_FOUND_CODE, Status: fmt.Sprintf("%d %s", ZONE_NOT_FOUND_CODE, ZONE_NOT_FOUND_MSG), Message: ZONE_NOT_FOUND_MSG}
 	}
 	serial := localZone.Serial
-	if *zone.Kind != *localZone.Kind || *zone.Catalog != *localZone.Catalog {
-		serial = ptr.To(*localZone.Serial + uint32(1))
+	if *zone.Kind != *localZone.Kind || *zone.Catalog != *localZone.Catalog || *zone.SOAEditAPI != *localZone.SOAEditAPI {
+		switch *zone.SOAEditAPI {
+		case "EPOCH":
+			serial = ptr.To(uint32(time.Now().UTC().Unix()))
+		case "INCREASE":
+			serial = ptr.To(*localZone.Serial + uint32(1))
+		default:
+			match, _ := regexp.MatchString("[0-9]{10}", fmt.Sprintf("%d", *localZone.Serial))
+			if match {
+				serial = ptr.To(*localZone.Serial + uint32(1))
+				break
+			}
+			now := time.Now().UTC()
+			serial = ptr.To(uint32(now.Year())*1000000 + uint32((now.Month()))*10000 + uint32(now.Day())*100 + 1)
+		}
 	}
 	zone.Serial = serial
 
@@ -420,5 +442,11 @@ func getMockedComment(rrsetName, rrsetType string) (result string) {
 func getMockedCatalog(zoneName string) (result string) {
 	zone, _ := readFromZonesMap(makeCanonical(zoneName))
 	result = ptr.Deref(zone.Catalog, "")
+	return
+}
+
+func getMockedSOAEditAPI(zoneName string) (result string) {
+	zone, _ := readFromZonesMap(makeCanonical(zoneName))
+	result = ptr.Deref(zone.SOAEditAPI, "")
 	return
 }

@@ -106,7 +106,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			return ctrl.Result{}, err
 		}
 	} else {
-		// If Zone exists, compare Type and Nameservers and update it if necessary
+		// If Zone exists, compare content and update it if necessary
 		ns, err := r.PDNSClient.Records.Get(ctx, zone.ObjectMeta.Name, zone.ObjectMeta.Name, ptr.To(powerdns.RRTypeNS))
 		if err != nil {
 			return ctrl.Result{}, err
@@ -215,6 +215,7 @@ func (r *ZoneReconciler) updateExternalResources(ctx context.Context, zone *dnsv
 		Kind:        &zoneKind,
 		Nameservers: zone.Spec.Nameservers,
 		Catalog:     catalog,
+		SOAEditAPI:  zone.Spec.SOAEditAPI,
 	})
 	if err != nil {
 		log.Error(err, "Failed to update zone")
@@ -253,13 +254,11 @@ func (r *ZoneReconciler) createExternalResources(ctx context.Context, zone *dnsv
 	}
 
 	z := powerdns.Zone{
-		ID:     &zone.Name,
-		Name:   &zone.Name,
-		Kind:   powerdns.ZoneKindPtr(powerdns.ZoneKind(zone.Spec.Kind)),
-		DNSsec: ptr.To(false),
-		//		SOAEdit:     &soaEdit,
-		//		SOAEditAPI:  &soaEditApi,
-		//		APIRectify:  &apiRectify,
+		ID:          &zone.Name,
+		Name:        &zone.Name,
+		Kind:        powerdns.ZoneKindPtr(powerdns.ZoneKind(zone.Spec.Kind)),
+		DNSsec:      ptr.To(false),
+		SOAEditAPI:  zone.Spec.SOAEditAPI,
 		Nameservers: zone.Spec.Nameservers,
 		Catalog:     catalog,
 	}

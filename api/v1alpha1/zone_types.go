@@ -26,6 +26,11 @@ type ZoneSpec struct {
 	// The catalog this zone is a member of
 	// +optional
 	Catalog *string `json:"catalog,omitempty"`
+	// The SOA-EDIT-API metadata item, one of "DEFAULT", "INCREASE", "EPOCH", defaults to "DEFAULT"
+	// +kubebuilder:validation:Enum:=DEFAULT;INCREASE;EPOCH
+	// +kubebuilder:default:="DEFAULT"
+	// +optional
+	SOAEditAPI *string `json:"soa_edit_api,omitempty"`
 }
 
 // ZoneStatus defines the observed state of Zone

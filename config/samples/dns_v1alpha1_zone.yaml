@@ -21,3 +21,30 @@ spec:
     - ns1.helloworld.com
     - ns2.helloworld.com
   kind: Native
+
+---
+# Specific Catalog
+apiVersion: dns.cav.enablers.ob/v1alpha1
+kind: Zone
+metadata:
+  name: example1.com
+spec:
+  catalog: catalog.test
+  nameservers:
+    - ns1.example1.com
+    - ns2.example1.com
+  kind: Master
+
+---
+# Specific SOA_EDIT_API
+apiVersion: dns.cav.enablers.ob/v1alpha1
+kind: Zone
+metadata:
+  name: example2.com
+spec:
+  catalog: catalog.test
+  nameservers:
+    - ns1.example2.com
+    - ns2.example2.com
+  kind: Master
+  soa_edit_api: EPOCH

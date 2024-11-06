@@ -66,6 +66,15 @@ spec:
                   type: string
                 minItems: 1
                 type: array
+              soa_edit_api:
+                default: DEFAULT
+                description: The SOA-EDIT-API metadata item, one of "DEFAULT", "INCREASE",
+                  "EPOCH", defaults to "DEFAULT"
+                enum:
+                - DEFAULT
+                - INCREASE
+                - EPOCH
+                type: string
             required:
             - kind
             - nameservers

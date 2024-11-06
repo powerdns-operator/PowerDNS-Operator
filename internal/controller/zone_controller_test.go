@@ -247,6 +247,45 @@ var _ = Describe("Zone Controller", func() {
 	})
 
 	Context("When existing resource", func() {
+		It("should successfully modify the catalog of the zone", Label("zone-modification", "soa-edit-api"), func() {
+			ctx := context.Background()
+			// Specific test variables
+			var modifiedResourceSOAEditAPI = "EPOCH"
+
+			By("Getting the initial Serial of the resource")
+			zone := &dnsv1alpha1.Zone{}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, typeNamespacedName, zone)
+				return err == nil && zone.Status.Serial != nil
+			}, timeout, interval).Should(BeTrue())
+			initialSerial := *zone.Status.Serial
+
+			By("Modifying the resource")
+			resource := &dnsv1alpha1.Zone{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: resourceName,
+				},
+			}
+			epochSerial := uint32(time.Now().UTC().Unix())
+			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, resource, func() error {
+				resource.Spec.SOAEditAPI = &modifiedResourceSOAEditAPI
+				return nil
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Getting the modified resource")
+			modifiedZone := &dnsv1alpha1.Zone{}
+			// Waiting for the resource to be fully modified
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, typeNamespacedName, modifiedZone)
+				return err == nil && *modifiedZone.Status.Serial != initialSerial
+			}, timeout, interval).Should(BeTrue())
+			Expect(getMockedSOAEditAPI(resourceName)).To(Equal(modifiedResourceSOAEditAPI), "SOA-Edit-API should have changed")
+			Expect(*(modifiedZone.Status.Serial)).To(Equal(epochSerial), "Serial should have changed")
+		})
+	})
+
+	Context("When existing resource", func() {
 		It("should successfully recreate an existing zone", Label("zone-recreation"), func() {
 			ctx := context.Background()
 			// Specific test variables
@@ -259,9 +298,10 @@ var _ = Describe("Zone Controller", func() {
 			now := time.Now().UTC()
 			initialSerial := uint32(now.Year())*1000000 + uint32((now.Month()))*10000 + uint32(now.Day())*100 + 1
 			writeToZonesMap(makeCanonical(recreationResourceName), &powerdns.Zone{
-				Name:   &recreationResourceName,
-				Kind:   powerdns.ZoneKindPtr(powerdns.ZoneKind(recreationResourceKind)),
-				Serial: &initialSerial,
+				Name:       &recreationResourceName,
+				Kind:       powerdns.ZoneKindPtr(powerdns.ZoneKind(recreationResourceKind)),
+				Serial:     &initialSerial,
+				SOAEditAPI: ptr.To("DEFAULT"),
 			})
 
 			By("Recreating a Zone")
