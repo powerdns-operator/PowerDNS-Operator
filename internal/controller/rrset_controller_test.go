@@ -601,7 +601,7 @@ var _ = Describe("RRset Controller", func() {
 			createdResource := &dnsv1alpha1.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, additionalRRsetLookupKey, createdResource)
-				return err == nil
+				return err == nil && countMetrics() != ic
 			}, timeout, interval).Should(BeTrue())
 
 			Expect(countMetrics()-ic).To(Equal(1), "One more metric should have been created")
@@ -668,7 +668,7 @@ var _ = Describe("RRset Controller", func() {
 			createdResource := &dnsv1alpha1.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, additionalRRsetLookupKey, createdResource)
-				return err == nil
+				return err == nil && countMetrics() != ic
 			}, timeout, interval).Should(BeTrue())
 
 			Expect(countMetrics()-ic).To(Equal(1), "One more metric should have been created")
@@ -734,7 +734,7 @@ var _ = Describe("RRset Controller", func() {
 			createdResource := &dnsv1alpha1.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, additionalRRsetLookupKey, createdResource)
-				return err == nil
+				return err == nil && countMetrics() != ic
 			}, timeout, interval).Should(BeTrue())
 
 			Expect(countMetrics()-ic).To(Equal(1), "One more metric should have been created")
@@ -799,7 +799,7 @@ var _ = Describe("RRset Controller", func() {
 			createdResource := &dnsv1alpha1.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, additionalRRsetLookupKey, createdResource)
-				return err == nil
+				return err == nil && countMetrics() != ic
 			}, timeout, interval).Should(BeTrue())
 
 			Expect(countMetrics()-ic).To(Equal(1), "One more metric should have been created")
@@ -865,7 +865,7 @@ var _ = Describe("RRset Controller", func() {
 			createdResource := &dnsv1alpha1.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, additionalRRsetLookupKey, createdResource)
-				return err == nil
+				return err == nil && countMetrics() != ic
 			}, timeout, interval).Should(BeTrue())
 
 			Expect(countMetrics()-ic).To(Equal(1), "One more metric should have been created")
@@ -931,7 +931,7 @@ var _ = Describe("RRset Controller", func() {
 			createdResource := &dnsv1alpha1.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, additionalRRsetLookupKey, createdResource)
-				return err == nil
+				return err == nil && countMetrics() != ic
 			}, timeout, interval).Should(BeTrue())
 
 			Expect(countMetrics()-ic).To(Equal(1), "One more metric should have been created")
@@ -997,7 +997,7 @@ var _ = Describe("RRset Controller", func() {
 			createdResource := &dnsv1alpha1.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, additionalRRsetLookupKey, createdResource)
-				return err == nil
+				return err == nil && countMetrics() != ic
 			}, timeout, interval).Should(BeTrue())
 
 			Expect(countMetrics()-ic).To(Equal(1), "One more metric should have been created")
@@ -1092,7 +1092,7 @@ var _ = Describe("RRset Controller", func() {
 			createdResource := &dnsv1alpha1.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, additionalRRsetLookupKey, createdResource)
-				return err == nil
+				return err == nil && countMetrics() != ic
 			}, timeout, interval).Should(BeTrue())
 
 			Expect(countMetrics()-ic).To(Equal(1), "One more metric should have been created")
@@ -1155,7 +1155,7 @@ var _ = Describe("RRset Controller", func() {
 			createdResource := &dnsv1alpha1.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, badTypeRRsetLookupKey, createdResource)
-				return err == nil
+				return err == nil && countMetrics() != ic
 			}, timeout, interval).Should(BeTrue())
 
 			Expect(countMetrics()-ic).To(Equal(1), "One more metric should have been created")
@@ -1217,7 +1217,7 @@ var _ = Describe("RRset Controller", func() {
 			createdResource := &dnsv1alpha1.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, badFormatRRsetLookupKey, createdResource)
-				return err == nil
+				return err == nil && countMetrics() != ic
 			}, timeout, interval).Should(BeTrue())
 
 			Expect(countMetrics()-ic).To(Equal(1), "One more metric should have been created")
@@ -1279,7 +1279,7 @@ var _ = Describe("RRset Controller", func() {
 			createdResource := &dnsv1alpha1.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, unquotedRRsetLookupKey, createdResource)
-				return err == nil
+				return err == nil && countMetrics() != ic
 			}, timeout, interval).Should(BeTrue())
 
 			Expect(countMetrics()-ic).To(Equal(1), "One more metric should have been created")
