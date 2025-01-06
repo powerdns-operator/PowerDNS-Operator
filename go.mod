@@ -4,7 +4,7 @@ go 1.23.0
 
 require (
 	github.com/joeig/go-powerdns/v3 v3.14.1
-	github.com/onsi/ginkgo/v2 v2.22.1
+	github.com/onsi/ginkgo/v2 v2.22.2
 	github.com/onsi/gomega v1.36.2
 	github.com/prometheus/client_golang v1.20.5
 	k8s.io/apimachinery v0.32.0
