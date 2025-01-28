@@ -308,7 +308,7 @@ var _ = Describe("RRset Controller", func() {
 			}, timeout, interval).Should(BeTrue())
 			initialSerial := *zone.Status.Serial
 
-			By("Updating RRset TTL")
+			By("Updating RRset Comment")
 			resource := &dnsv1alpha1.RRset{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      resourceName,
