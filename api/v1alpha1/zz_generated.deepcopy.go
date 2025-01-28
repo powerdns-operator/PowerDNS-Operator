@@ -15,6 +15,7 @@
 package v1alpha1
 
 import (
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -120,9 +121,16 @@ func (in *RRsetStatus) DeepCopyInto(out *RRsetStatus) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.SyncErrorDescription != nil {
-		in, out := &in.SyncErrorDescription, &out.SyncErrorDescription
-		*out = new(string)
+	if in.Conditions != nil {
+		in, out := &in.Conditions, &out.Conditions
+		*out = make([]v1.Condition, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.ObservedGeneration != nil {
+		in, out := &in.ObservedGeneration, &out.ObservedGeneration
+		*out = new(int64)
 		**out = **in
 	}
 }

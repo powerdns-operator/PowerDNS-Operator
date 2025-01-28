@@ -21,6 +21,11 @@ import (
 	"k8s.io/utils/ptr"
 )
 
+const (
+	FAILED_STATUS    = "Failed"
+	SUCCEEDED_STATUS = "Succeeded"
+)
+
 type pdnsRecordsClienter interface {
 	Delete(ctx context.Context, domain string, name string, recordType powerdns.RRType) error
 	Change(ctx context.Context, domain string, name string, recordType powerdns.RRType, ttl uint32, content []string, options ...func(*powerdns.RRset)) error
