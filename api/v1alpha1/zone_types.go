@@ -61,7 +61,10 @@ type ZoneStatus struct {
 	DNSsec *bool `json:"dnssec,omitempty"`
 	// The catalog this zone is a member of.
 	// +optional
-	Catalog *string `json:"catalog,omitempty"`
+	Catalog            *string            `json:"catalog,omitempty"`
+	SyncStatus         *string            `json:"syncStatus,omitempty"`
+	Conditions         []metav1.Condition `json:"conditions,omitempty"`
+	ObservedGeneration *int64             `json:"observedGeneration,omitempty"`
 
 	//TODO: add RRsets
 	// RRsets         []RRset  `json:"rrsets,omitempty"`
@@ -73,6 +76,7 @@ type ZoneStatus struct {
 
 // +kubebuilder:printcolumn:name="Serial",type="integer",JSONPath=".status.serial"
 // +kubebuilder:printcolumn:name="ID",type="string",JSONPath=".status.id"
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.syncStatus"
 // Zone is the Schema for the zones API
 type Zone struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -93,4 +97,12 @@ type ZoneList struct {
 
 func init() {
 	SchemeBuilder.Register(&Zone{}, &ZoneList{})
+}
+
+// IsInExpectedStatus returns true if Status.SyncStatus and Status.ObservedGeneration are, at least, at expected value
+func (z *Zone) IsInExpectedStatus(expectedMinimumObservedGeneration int64, expectedSyncStatus string) bool {
+	return z.Status.ObservedGeneration != nil &&
+		*z.Status.ObservedGeneration >= expectedMinimumObservedGeneration &&
+		z.Status.SyncStatus != nil &&
+		*z.Status.SyncStatus == expectedSyncStatus
 }

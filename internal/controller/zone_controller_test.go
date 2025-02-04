@@ -104,8 +104,7 @@ var _ = Describe("Zone Controller", func() {
 			zone := &dnsv1alpha1.Zone{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, zone)
-				_, found := readFromZonesMap(makeCanonical(resourceName))
-				return err == nil && found
+				return err == nil && zone.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS)
 			}, timeout, interval).Should(BeTrue())
 			Expect(getMockedKind(resourceName)).To(Equal(resourceKind), "Kind should be equal")
 			Expect(getMockedNameservers(resourceName)).To(Equal(resourceNameservers), "Nameservers should be equal")
@@ -146,7 +145,7 @@ var _ = Describe("Zone Controller", func() {
 			// Waiting for the resource to be fully modified
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, modifiedZone)
-				return err == nil && *modifiedZone.Status.Serial > initialSerial
+				return err == nil && modifiedZone.IsInExpectedStatus(MODIFIED_GENERATION, SUCCEEDED_STATUS)
 			}, timeout, interval).Should(BeTrue())
 			expectedSerial := initialSerial + uint32(1)
 			Expect(getMockedNameservers(resourceName)).To(Equal(modifiedResourceNameservers), "Nameservers should be equal")
@@ -258,7 +257,6 @@ var _ = Describe("Zone Controller", func() {
 				err := k8sClient.Get(ctx, typeNamespacedName, zone)
 				return err == nil && zone.Status.Serial != nil
 			}, timeout, interval).Should(BeTrue())
-			initialSerial := *zone.Status.Serial
 
 			By("Modifying the resource")
 			resource := &dnsv1alpha1.Zone{
@@ -278,7 +276,7 @@ var _ = Describe("Zone Controller", func() {
 			// Waiting for the resource to be fully modified
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, modifiedZone)
-				return err == nil && *modifiedZone.Status.Serial != initialSerial
+				return err == nil && modifiedZone.IsInExpectedStatus(MODIFIED_GENERATION, SUCCEEDED_STATUS)
 			}, timeout, interval).Should(BeTrue())
 			Expect(getMockedSOAEditAPI(resourceName)).To(Equal(modifiedResourceSOAEditAPI), "SOA-Edit-API should have changed")
 			Expect(*(modifiedZone.Status.Serial)).To(Equal(epochSerial), "Serial should have changed")
@@ -328,7 +326,7 @@ var _ = Describe("Zone Controller", func() {
 			// Waiting for the resource to be fully modified
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, updatedZone)
-				return err == nil && updatedZone.Status.Serial != nil
+				return err == nil && updatedZone.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS)
 			}, timeout, interval).Should(BeTrue())
 
 			Eventually(func() bool {
