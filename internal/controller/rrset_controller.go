@@ -19,7 +19,9 @@ import (
 	"k8s.io/utils/ptr"
 
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
+
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -30,8 +32,13 @@ import (
 )
 
 const (
-	FAILED_STATUS    = "Failed"
-	SUCCEEDED_STATUS = "Succeeded"
+	RrsetReasonZoneNotAvailable      = "ZoneNotAvailable"
+	RrsetReasonSynchronizationFailed = "SynchronizationFailed"
+	RrsetReasonDuplicated            = "RrsetDuplicated"
+	RrsetReasonSynced                = "RrsetSynced"
+	RrsetMessageDuplicated           = "Already existing RRset with the same FQDN"
+	RrsetMessageSyncSucceeded        = "RRset synced with PowerDNS instance"
+	RrsetMessageNonExistentZone      = "non-existent zone:"
 )
 
 // RRsetReconciler reconciles a RRset object
@@ -53,17 +60,34 @@ func init() {
 func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 	log.Info("Reconcile RRset", "Zone.RRset.Name", req.Name)
+	// Init
+	isModified := false
 	// RRset
 	rrset := &dnsv1alpha1.RRset{}
 	err := r.Get(ctx, req.NamespacedName, rrset)
 	if err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
+
+	// When updating a RRset, if 'Status' is not changed, 'LastTransitionTime' will not be updated
+	// So we delete condition to force new 'LastTransitionTime'
+	var original *dnsv1alpha1.RRset
+	original = rrset.DeepCopy()
+	if rrset.Status.ObservedGeneration != nil && *rrset.Status.ObservedGeneration != rrset.GetGeneration() {
+		isModified = true
+		meta.RemoveStatusCondition(&rrset.Status.Conditions, "Available")
+		if err := r.Status().Patch(ctx, rrset, client.MergeFrom(original)); err != nil {
+			log.Error(err, "unable to patch RRSet status")
+			return ctrl.Result{}, err
+		}
+	}
 	isInFailedStatus := (rrset.Status.SyncStatus != nil && *rrset.Status.SyncStatus == FAILED_STATUS)
 
 	// initialize syncStatus
 	var syncStatus *string
-	var syncErrorDescription *string
+	conditionStatus := metav1.ConditionTrue
+	conditionReason := RrsetReasonSynced
+	conditionMessage := RrsetMessageSyncSucceeded
 
 	// Retrieve lastUpdateTime if defined, otherwise Now()
 	lastUpdateTime := &metav1.Time{Time: time.Now().UTC()}
@@ -86,6 +110,19 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 				// Remove resource metrics
 				removeRrsetMetrics(rrset.Name, rrset.Namespace)
 			}
+			original = rrset.DeepCopy()
+			meta.SetStatusCondition(&rrset.Status.Conditions, metav1.Condition{
+				Type:               "Available",
+				Status:             metav1.ConditionFalse,
+				LastTransitionTime: metav1.NewTime(time.Now().UTC()),
+				Reason:             RrsetReasonZoneNotAvailable,
+				Message:            RrsetMessageNonExistentZone + err.Error(),
+			})
+			if err := r.Status().Patch(ctx, rrset, client.MergeFrom(original)); err != nil {
+				log.Error(err, "unable to patch RRSet status")
+				return ctrl.Result{}, err
+			}
+
 			// Race condition when creating Zone+RRset at the same time
 			// RRset is not created because Zone is not created yet
 			// Requeue after few seconds
@@ -139,10 +176,9 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	}
 
 	// We cannot exit previously (at the early moments of reconcile), because we have to allow deletion process
-	if isInFailedStatus {
+	if isInFailedStatus && !isModified {
 		// Update resource metrics
 		updateRrsetsMetrics(getRRsetName(rrset), rrset.Spec.Type, *rrset.Status.SyncStatus, rrset.Name, rrset.Namespace)
-
 		return ctrl.Result{}, nil
 	}
 
@@ -160,7 +196,13 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		name := getRRsetName(rrset)
 		rrset.Status.DnsEntryName = &name
 		rrset.Status.SyncStatus = ptr.To(FAILED_STATUS)
-		rrset.Status.SyncErrorDescription = ptr.To("Already existing RRset with the same FQDN")
+		meta.SetStatusCondition(&rrset.Status.Conditions, metav1.Condition{
+			Type:               "Available",
+			Status:             metav1.ConditionFalse,
+			LastTransitionTime: *lastUpdateTime,
+			Reason:             RrsetReasonDuplicated,
+			Message:            RrsetMessageDuplicated,
+		})
 		if err := r.Status().Patch(ctx, rrset, client.MergeFrom(original)); err != nil {
 			log.Error(err, "unable to patch RRSet status")
 			return ctrl.Result{}, err
@@ -177,7 +219,9 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	if err != nil {
 		log.Error(err, "Failed to create or update external resources")
 		syncStatus = ptr.To(FAILED_STATUS)
-		syncErrorDescription = ptr.To(err.Error())
+		conditionStatus = metav1.ConditionFalse
+		conditionReason = RrsetReasonSynchronizationFailed
+		conditionMessage = err.Error()
 	}
 	if changed {
 		lastUpdateTime = &metav1.Time{Time: time.Now().UTC()}
@@ -198,16 +242,21 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	// But, sometimes, Zone reonciliation finish before RRSet update is applied
 	// In that case, the Serial in Zone Status is false
 	// This update permits triggering a new event after RRSet update applied
-	original := rrset.DeepCopy()
+	original = rrset.DeepCopy()
 	if syncStatus == nil {
 		syncStatus = ptr.To(SUCCEEDED_STATUS)
 	}
 	rrset.Status.LastUpdateTime = lastUpdateTime
 	rrset.Status.DnsEntryName = ptr.To(getRRsetName(rrset))
 	rrset.Status.SyncStatus = syncStatus
-	if syncErrorDescription != nil {
-		rrset.Status.SyncErrorDescription = syncErrorDescription
-	}
+	rrset.Status.ObservedGeneration = ptr.To(rrset.GetGeneration())
+	meta.SetStatusCondition(&rrset.Status.Conditions, metav1.Condition{
+		Type:               "Available",
+		LastTransitionTime: *lastUpdateTime,
+		Status:             conditionStatus,
+		Reason:             conditionReason,
+		Message:            conditionMessage,
+	})
 	if err := r.Status().Patch(ctx, rrset, client.MergeFrom(original)); err != nil {
 		log.Error(err, "unable to patch RRSet status")
 		return ctrl.Result{}, err

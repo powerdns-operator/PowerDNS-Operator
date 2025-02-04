@@ -14,10 +14,13 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/joeig/go-powerdns/v3"
 
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -36,6 +39,13 @@ const (
 	ZONE_NOT_FOUND_CODE = 404
 	ZONE_CONFLICT_MSG   = "Conflict"
 	ZONE_CONFLICT_CODE  = 409
+)
+
+const (
+	ZoneReasonSynced                  = "ZoneSynced"
+	ZoneMessageSyncSucceeded          = "Zone synced with PowerDNS instance"
+	ZoneReasonSynchronizationFailed   = "SynchronizationFailed"
+	ZoneReasonNSSynchronizationFailed = "NSSynchronizationFailed"
 )
 
 // ZoneReconciler reconciles a Zone object
@@ -59,6 +69,12 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	if err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
+
+	// initialize variables
+	var syncStatus *string
+	conditionStatus := metav1.ConditionTrue
+	conditionReason := ZoneReasonSynced
+	conditionMessage := ZoneMessageSyncSucceeded
 
 	// examine DeletionTimestamp to determine if object is under deletion
 	if zone.ObjectMeta.DeletionTimestamp.IsZero() {
@@ -103,7 +119,10 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		err := r.createExternalResources(ctx, zone)
 		if err != nil {
 			log.Error(err, "Failed to create external resources")
-			return ctrl.Result{}, err
+			syncStatus = ptr.To(FAILED_STATUS)
+			conditionStatus = metav1.ConditionFalse
+			conditionReason = ZoneReasonSynchronizationFailed
+			conditionMessage = err.Error()
 		}
 	} else {
 		// If Zone exists, compare content and update it if necessary
@@ -139,16 +158,26 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			}
 			err := r.updateNsOnExternalResources(ctx, zone, *ttl)
 			if err != nil {
-				return ctrl.Result{}, err
+				syncStatus = ptr.To(FAILED_STATUS)
+				conditionStatus = metav1.ConditionFalse
+				conditionReason = ZoneReasonNSSynchronizationFailed
+				conditionMessage = err.Error()
 			}
 		}
 		// Other changes
 		if !zoneIdentical {
 			err := r.updateExternalResources(ctx, zone)
 			if err != nil {
-				return ctrl.Result{}, err
+				syncStatus = ptr.To(FAILED_STATUS)
+				conditionStatus = metav1.ConditionFalse
+				conditionReason = ZoneReasonSynchronizationFailed
+				conditionMessage = err.Error()
 			}
 		}
+	}
+
+	if syncStatus == nil {
+		syncStatus = ptr.To(SUCCEEDED_STATUS)
 	}
 
 	// Update ZoneStatus
@@ -157,7 +186,13 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, err
 	}
 
-	err = r.patchStatus(ctx, zone, zoneRes)
+	err = r.patchStatus(ctx, zone, zoneRes, syncStatus, metav1.Condition{
+		Type:               "Available",
+		LastTransitionTime: metav1.NewTime(time.Now().UTC()),
+		Status:             conditionStatus,
+		Reason:             conditionReason,
+		Message:            conditionMessage,
+	})
 	if err != nil {
 		if errors.IsConflict(err) {
 			log.Info("Object has been modified, forcing a new reconciliation")
@@ -272,21 +307,23 @@ func (r *ZoneReconciler) createExternalResources(ctx context.Context, zone *dnsv
 	return nil
 }
 
-func (r *ZoneReconciler) patchStatus(ctx context.Context, zone *dnsv1alpha1.Zone, zoneRes *powerdns.Zone) error {
+func (r *ZoneReconciler) patchStatus(ctx context.Context, zone *dnsv1alpha1.Zone, zoneRes *powerdns.Zone, status *string, condition metav1.Condition) error {
 	original := zone.DeepCopy()
 
 	kind := string(ptr.Deref(zoneRes.Kind, ""))
 	zone.Status = dnsv1alpha1.ZoneStatus{
-		ID:             zoneRes.ID,
-		Name:           zoneRes.Name,
-		Kind:           &kind,
-		Serial:         zoneRes.Serial,
-		NotifiedSerial: zoneRes.NotifiedSerial,
-		EditedSerial:   zoneRes.EditedSerial,
-		Masters:        zoneRes.Masters,
-		DNSsec:         zoneRes.DNSsec,
-		Catalog:        zoneRes.Catalog,
+		ID:                 zoneRes.ID,
+		Name:               zoneRes.Name,
+		Kind:               &kind,
+		Serial:             zoneRes.Serial,
+		NotifiedSerial:     zoneRes.NotifiedSerial,
+		EditedSerial:       zoneRes.EditedSerial,
+		Masters:            zoneRes.Masters,
+		DNSsec:             zoneRes.DNSsec,
+		SyncStatus:         status,
+		Catalog:            zoneRes.Catalog,
+		ObservedGeneration: ptr.To(zone.GetGeneration()),
 	}
-
+	meta.SetStatusCondition(&zone.Status.Conditions, condition)
 	return r.Status().Patch(ctx, zone, client.MergeFrom(original))
 }

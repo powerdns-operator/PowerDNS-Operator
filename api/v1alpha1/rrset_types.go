@@ -39,10 +39,11 @@ type ZoneRef struct {
 
 // RRsetStatus defines the observed state of RRset
 type RRsetStatus struct {
-	LastUpdateTime       *metav1.Time `json:"lastUpdateTime,omitempty"`
-	DnsEntryName         *string      `json:"dnsEntryName,omitempty"`
-	SyncStatus           *string      `json:"syncStatus,omitempty"`
-	SyncErrorDescription *string      `json:"syncErrorDescription,omitempty"`
+	LastUpdateTime     *metav1.Time       `json:"lastUpdateTime,omitempty"`
+	DnsEntryName       *string            `json:"dnsEntryName,omitempty"`
+	SyncStatus         *string            `json:"syncStatus,omitempty"`
+	Conditions         []metav1.Condition `json:"conditions,omitempty"`
+	ObservedGeneration *int64             `json:"observedGeneration,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -74,4 +75,12 @@ type RRsetList struct {
 
 func init() {
 	SchemeBuilder.Register(&RRset{}, &RRsetList{})
+}
+
+// IsInExpectedStatus returns true if Status.SyncStatus and Status.ObservedGeneration are, at least, at expected value
+func (r *RRset) IsInExpectedStatus(expectedMinimumObservedGeneration int64, expectedSyncStatus string) bool {
+	return r.Status.ObservedGeneration != nil &&
+		*r.Status.ObservedGeneration >= expectedMinimumObservedGeneration &&
+		r.Status.SyncStatus != nil &&
+		*r.Status.SyncStatus == expectedSyncStatus
 }

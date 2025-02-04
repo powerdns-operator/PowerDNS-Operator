@@ -57,6 +57,11 @@ var (
 	records sync.Map
 )
 
+const (
+	FIRST_GENERATION    = 1
+	MODIFIED_GENERATION = 2
+)
+
 // writeToZonesMap stores a value in the Zones sync.Map
 func writeToZonesMap(key string, value *powerdns.Zone) {
 	result, err := json.Marshal(value)
