@@ -3,7 +3,7 @@ module github.com/orange-opensource/powerdns-operator
 go 1.23.0
 
 require (
-	github.com/joeig/go-powerdns/v3 v3.14.1
+	github.com/joeig/go-powerdns/v3 v3.14.3
 	github.com/onsi/ginkgo/v2 v2.22.2
 	github.com/onsi/gomega v1.36.2
 	github.com/prometheus/client_golang v1.21.0
