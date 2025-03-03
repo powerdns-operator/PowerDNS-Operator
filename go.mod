@@ -1,6 +1,6 @@
 module github.com/orange-opensource/powerdns-operator
 
-go 1.23.0
+go 1.24.0
 
 require (
 	github.com/joeig/go-powerdns/v3 v3.14.3
