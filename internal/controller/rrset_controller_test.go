@@ -31,7 +31,7 @@ var _ = Describe("RRset Controller", func() {
 	const (
 		// Zone
 		zoneName = "example2.org"
-		zoneKind = "Native"
+		zoneKind = NATIVE_KIND_ZONE
 		zoneNS1  = "ns1.example2.org"
 		zoneNS2  = "ns2.example2.org"
 
