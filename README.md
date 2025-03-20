@@ -59,8 +59,6 @@ kubectl apply -f https://raw.githubusercontent.com/orange-opensource/powerdns-op
 
 ### Usage
 
-**Keep in mind that `Zone` are cluster-wide and `RRSet` are namespace scoped.**
-
 Zone is a critical resource and may be managed by a dedicated team, while RRSet may be managed by the application team.
 
 In either case, you can apply your own RBAC rules to restrict access to the resources.
@@ -73,10 +71,11 @@ First, create a Zone resource.
 
 ```yaml
 ---
-apiVersion: dns.cav.enablers.ob/v1alpha1
+apiVersion: dns.cav.enablers.ob/v1alpha2
 kind: Zone
 metadata:
   name: example.com
+  namespace: default
 spec:
   kind: Native
   nameservers:
@@ -129,12 +128,12 @@ Check the results
 ```sh
 kubectl get zones,rrsets -o wide
 
-NAME                                   SERIAL       ID
-zone.dns.cav.enablers.ob/example.com   2024081304   example.com.
+NAMESPACE     NAME                                   SERIAL       ID              STATUS
+default       zone.dns.cav.enablers.ob/example.com   2024081304   example.com.    Succeeded
 
-NAME                                          ZONE           TYPE    TTL   RECORDS
-rrset.dns.cav.enablers.ob/a.example.com       example.com.   A       300   ["1.1.1.1","8.8.8.8"]
-rrset.dns.cav.enablers.ob/cname.example.com   example.com.   CNAME   300   ["a.example.com"]
+NAMESPACE     NAME                                          ZONE           NAME                TYPE    TTL  STATUS     RECORDS
+default       rrset.dns.cav.enablers.ob/a.example.com       example.com.   a.example.com.      A       300  Succeeded  ["1.1.1.1","8.8.8.8"]
+default       rrset.dns.cav.enablers.ob/cname.example.com   example.com.   cname.example.com.  CNAME   300  Succeeded  ["a.example.com"]
 ```
 
 Test the DNS resolution

@@ -8,7 +8,7 @@
  * see the "LICENSE" file for more details
  */
 
-package v1alpha1
+package v1alpha2
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -67,9 +67,10 @@ type ZoneStatus struct {
 	ObservedGeneration *int64             `json:"observedGeneration,omitempty"`
 }
 
-// +kubebuilder:object:root=true
-// +kubebuilder:subresource:status
-// +kubebuilder:unservedversion
+//+kubebuilder:object:root=true
+//+kubebuilder:storageversion
+//+kubebuilder:subresource:status
+//+kubebuilder:resource:scope=Namespaced
 
 // +kubebuilder:printcolumn:name="Serial",type="integer",JSONPath=".status.serial"
 // +kubebuilder:printcolumn:name="ID",type="string",JSONPath=".status.id"
@@ -83,7 +84,7 @@ type Zone struct {
 	Status ZoneStatus `json:"status,omitempty"`
 }
 
-// +kubebuilder:object:root=true
+//+kubebuilder:object:root=true
 
 // ZoneList contains a list of Zone
 type ZoneList struct {

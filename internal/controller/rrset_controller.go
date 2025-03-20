@@ -27,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	dnsv1alpha1 "github.com/orange-opensource/powerdns-operator/api/v1alpha1"
+	dnsv1alpha2 "github.com/orange-opensource/powerdns-operator/api/v1alpha2"
 )
 
 const (
@@ -86,7 +87,7 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	}
 
 	// Zone
-	zone := &dnsv1alpha1.Zone{}
+	zone := &dnsv1alpha2.Zone{}
 	err = r.Get(ctx, client.ObjectKey{Namespace: rrset.Namespace, Name: rrset.Spec.ZoneRef.Name}, zone)
 	if err != nil {
 		if errors.IsNotFound(err) {

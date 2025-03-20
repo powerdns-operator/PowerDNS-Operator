@@ -14,10 +14,11 @@ The specification of the `Zone` contains the following fields:
 ## Example
 
 ```yaml
-apiVersion: dns.cav.enablers.ob/v1alpha1
+apiVersion: dns.cav.enablers.ob/v1alpha2
 kind: Zone
 metadata:
   name: helloworld.com
+  namespace: default
 spec:
   nameservers:
     - ns1.helloworld.com

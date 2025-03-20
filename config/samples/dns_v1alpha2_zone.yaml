@@ -1,9 +1,10 @@
 ---
 # Direct zone
-apiVersion: dns.cav.enablers.ob/v1alpha1
+apiVersion: dns.cav.enablers.ob/v1alpha2
 kind: Zone
 metadata:
   name: helloworld.com
+  namespace: default
 spec:
   nameservers:
     - ns1.helloworld.com
@@ -12,7 +13,7 @@ spec:
 
 ---
 # Reverse Zone
-apiVersion: dns.cav.enablers.ob/v1alpha1
+apiVersion: dns.cav.enablers.ob/v1alpha2
 kind: Zone
 metadata:
   name: 1.168.192.in-addr.arpa
@@ -24,10 +25,11 @@ spec:
 
 ---
 # Specific Catalog
-apiVersion: dns.cav.enablers.ob/v1alpha1
+apiVersion: dns.cav.enablers.ob/v1alpha2
 kind: Zone
 metadata:
   name: example1.com
+  namespace: example1
 spec:
   catalog: catalog.test
   nameservers:
@@ -37,10 +39,11 @@ spec:
 
 ---
 # Specific SOA_EDIT_API
-apiVersion: dns.cav.enablers.ob/v1alpha1
+apiVersion: dns.cav.enablers.ob/v1alpha2
 kind: Zone
 metadata:
   name: example2.com
+  namespace: example2
 spec:
   catalog: catalog.test
   nameservers:
@@ -48,3 +51,17 @@ spec:
     - ns2.example2.com
   kind: Master
   soa_edit_api: EPOCH
+
+---
+# Specific Catalog
+apiVersion: dns.cav.enablers.ob/v1alpha2
+kind: Zone
+metadata:
+  name: example1.com
+  namespace: example3
+spec:
+  catalog: catalog.test
+  nameservers:
+    - ns1.example1.com
+    - ns2.example1.com
+  kind: Master

@@ -32,6 +32,8 @@ import (
 	"github.com/orange-opensource/powerdns-operator/internal/controller"
 
 	powerdns "github.com/joeig/go-powerdns/v3"
+
+	dnsv1alpha2 "github.com/orange-opensource/powerdns-operator/api/v1alpha2"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -44,6 +46,7 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(dnsv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(dnsv1alpha2.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 

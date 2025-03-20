@@ -18,6 +18,7 @@ import (
 
 	"github.com/joeig/go-powerdns/v3"
 	dnsv1alpha1 "github.com/orange-opensource/powerdns-operator/api/v1alpha1"
+	dnsv1alpha2 "github.com/orange-opensource/powerdns-operator/api/v1alpha2"
 	"k8s.io/utils/ptr"
 )
 
@@ -46,7 +47,7 @@ type PdnsClienter struct {
 
 // zoneIsIdenticalToExternalZone return True, True if respectively kind, soa_edit_api and catalog are identical
 // and nameservers are identical between Zone and External Resource
-func zoneIsIdenticalToExternalZone(zone *dnsv1alpha1.Zone, externalZone *powerdns.Zone, ns []string) (bool, bool) {
+func zoneIsIdenticalToExternalZone(zone *dnsv1alpha2.Zone, externalZone *powerdns.Zone, ns []string) (bool, bool) {
 	zoneCatalog := makeCanonical(ptr.Deref(zone.Spec.Catalog, ""))
 	externalZoneCatalog := ptr.Deref(externalZone.Catalog, "")
 	zoneSOAEditAPI := ptr.Deref(zone.Spec.SOAEditAPI, "")

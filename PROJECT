@@ -10,7 +10,6 @@ repo: github.com/orange-opensource/powerdns-operator
 resources:
 - api:
     crdVersion: v1
-  controller: true
   domain: cav.enablers.ob
   group: dns
   kind: Zone
@@ -25,4 +24,13 @@ resources:
   kind: RRset
   path: github.com/orange-opensource/powerdns-operator/api/v1alpha1
   version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: cav.enablers.ob
+  group: dns
+  kind: Zone
+  path: github.com/orange-opensource/powerdns-operator/api/v1alpha2
+  version: v1alpha2
 version: "3"

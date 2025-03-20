@@ -24,20 +24,22 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	dnsv1alpha1 "github.com/orange-opensource/powerdns-operator/api/v1alpha1"
+	dnsv1alpha2 "github.com/orange-opensource/powerdns-operator/api/v1alpha2"
 )
 
 var _ = Describe("RRset Controller", func() {
 
 	const (
 		// Zone
-		zoneName = "example2.org"
-		zoneKind = NATIVE_KIND_ZONE
-		zoneNS1  = "ns1.example2.org"
-		zoneNS2  = "ns2.example2.org"
+		zoneName      = "example2.org"
+		zoneNamespace = "example2"
+		zoneKind      = NATIVE_KIND_ZONE
+		zoneNS1       = "ns1.example2.org"
+		zoneNS2       = "ns2.example2.org"
 
 		// RRset
 		resourceName      = "test.example2.org"
-		resourceNamespace = "default"
+		resourceNamespace = zoneNamespace
 		resourceDNSName   = "test"
 		resourceTTL       = uint32(300)
 		resourceType      = "A"
@@ -56,7 +58,8 @@ var _ = Describe("RRset Controller", func() {
 
 	// Zone
 	zoneLookupKey := types.NamespacedName{
-		Name: zoneName,
+		Name:      zoneName,
+		Namespace: zoneNamespace,
 	}
 
 	// RRset
@@ -68,14 +71,15 @@ var _ = Describe("RRset Controller", func() {
 	BeforeEach(func() {
 		ctx := context.Background()
 		By("Creating the Zone resource")
-		zone := &dnsv1alpha1.Zone{
+		zone := &dnsv1alpha2.Zone{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: zoneName,
+				Name:      zoneName,
+				Namespace: zoneNamespace,
 			},
 		}
 		zone.SetResourceVersion("")
 		_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, zone, func() error {
-			zone.Spec = dnsv1alpha1.ZoneSpec{
+			zone.Spec = dnsv1alpha2.ZoneSpec{
 				Kind:        zoneKind,
 				Nameservers: []string{zoneNS1, zoneNS2},
 			}
@@ -149,7 +153,7 @@ var _ = Describe("RRset Controller", func() {
 		}, timeout, interval).Should(BeTrue())
 
 		By("Cleaning up the specific resource instance Zone")
-		zone := &dnsv1alpha1.Zone{}
+		zone := &dnsv1alpha2.Zone{}
 		err = k8sClient.Get(ctx, zoneLookupKey, zone)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(k8sClient.Delete(ctx, zone)).To(Succeed())
@@ -196,7 +200,7 @@ var _ = Describe("RRset Controller", func() {
 			updatedRecords := []string{"127.0.0.3"}
 
 			By("Getting the initial Serial of the zone")
-			zone := &dnsv1alpha1.Zone{}
+			zone := &dnsv1alpha2.Zone{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, zoneLookupKey, zone)
 				return err == nil && zone.Status.Serial != nil
@@ -229,7 +233,7 @@ var _ = Describe("RRset Controller", func() {
 			Expect(getMockedComment(resourceName, resourceType)).To(Equal(resourceComment))
 
 			By("Getting the modified zone")
-			modifiedZone := &dnsv1alpha1.Zone{}
+			modifiedZone := &dnsv1alpha2.Zone{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, zoneLookupKey, modifiedZone)
 				return err == nil && *modifiedZone.Status.Serial != *initialSerial
@@ -248,7 +252,7 @@ var _ = Describe("RRset Controller", func() {
 			modifiedResourceTTL := uint32(150)
 
 			By("Getting the initial Serial of the zone")
-			zone := &dnsv1alpha1.Zone{}
+			zone := &dnsv1alpha2.Zone{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, zoneLookupKey, zone)
 				_, found := readFromZonesMap(makeCanonical(zone.Name))
@@ -282,7 +286,7 @@ var _ = Describe("RRset Controller", func() {
 			Expect(getMockedComment(resourceName, resourceType)).To(Equal(resourceComment))
 
 			By("Getting the modified zone")
-			modifiedZone := &dnsv1alpha1.Zone{}
+			modifiedZone := &dnsv1alpha2.Zone{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, zoneLookupKey, modifiedZone)
 				return err == nil && *modifiedZone.Status.Serial > initialSerial
@@ -300,7 +304,7 @@ var _ = Describe("RRset Controller", func() {
 			modifiedResourceComment := "Just another comment"
 
 			By("Getting the initial Serial of the zone")
-			zone := &dnsv1alpha1.Zone{}
+			zone := &dnsv1alpha2.Zone{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, zoneLookupKey, zone)
 				return err == nil && zone.Status.Serial != nil
@@ -333,7 +337,7 @@ var _ = Describe("RRset Controller", func() {
 			Expect(getMockedComment(resourceName, resourceType)).To(Equal(modifiedResourceComment))
 
 			By("Getting the modified zone")
-			modifiedZone := &dnsv1alpha1.Zone{}
+			modifiedZone := &dnsv1alpha2.Zone{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, zoneLookupKey, modifiedZone)
 				return err == nil && *modifiedZone.Status.Serial > initialSerial
@@ -349,7 +353,7 @@ var _ = Describe("RRset Controller", func() {
 			ctx := context.Background()
 			// Specific test variables
 			recreationResourceName := "test2.example2.org"
-			recreationResourceNamespace := "default"
+			recreationResourceNamespace := zoneNamespace
 			recreationResourceDNSName := "test2"
 			recreationResourceTTL := uint32(253)
 			recreationResourceType := "A"
@@ -1015,20 +1019,23 @@ var _ = Describe("RRset Controller", func() {
 			ctx := context.Background()
 			// Specific test variables
 			reverseZoneName := "123.168.192.in-addr.arpa"
+			reverseZoneNamespace := zoneNamespace
 			additionalResourceName := "ptr"
+			additionalResourceNamespace := zoneNamespace
 			additionalResourceType := "1"
 			additionalResourceRecords := []string{"mail1.example2.org"}
 			additionalResourceComment := "This is a PTR Record"
 
 			By("Creating the Reverse Zone resource")
-			reverseZone := &dnsv1alpha1.Zone{
+			reverseZone := &dnsv1alpha2.Zone{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: reverseZoneName,
+					Name:      reverseZoneName,
+					Namespace: reverseZoneNamespace,
 				},
 			}
 			reverseZone.SetResourceVersion("")
 			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, reverseZone, func() error {
-				reverseZone.Spec = dnsv1alpha1.ZoneSpec{
+				reverseZone.Spec = dnsv1alpha2.ZoneSpec{
 					Kind:        zoneKind,
 					Nameservers: []string{zoneNS1, zoneNS2},
 				}
@@ -1036,7 +1043,8 @@ var _ = Describe("RRset Controller", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 			additionalReverseZoneLookupKey := types.NamespacedName{
-				Name: reverseZoneName,
+				Name:      reverseZoneName,
+				Namespace: reverseZoneNamespace,
 			}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, additionalReverseZoneLookupKey, reverseZone)
@@ -1052,7 +1060,7 @@ var _ = Describe("RRset Controller", func() {
 			additionalResource := &dnsv1alpha1.RRset{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      additionalResourceName,
-					Namespace: resourceNamespace,
+					Namespace: additionalResourceNamespace,
 				},
 			}
 			additionalResource.SetResourceVersion("")
@@ -1071,7 +1079,7 @@ var _ = Describe("RRset Controller", func() {
 			})
 			additionalRRsetLookupKey := types.NamespacedName{
 				Name:      additionalResourceName,
-				Namespace: resourceNamespace,
+				Namespace: additionalResourceNamespace,
 			}
 
 			Expect(err).NotTo(HaveOccurred())
