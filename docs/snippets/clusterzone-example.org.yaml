@@ -1,0 +1,10 @@
+---
+apiVersion: dns.cav.enablers.ob/v1alpha2
+kind: ClusterZone
+metadata:
+  name: example.org
+spec:
+  nameservers:
+    - ns1.example.org
+    - ns2.example.org
+  kind: Native

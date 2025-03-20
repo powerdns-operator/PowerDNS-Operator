@@ -17,7 +17,8 @@ The specification of the `ZoneRef` contains the following fields:
 
 | Field | Type | Required | Description |
 | ----- | ---- |:--------:| ----------- |
-| name | string | Y | Name of the `Zone` |
+| name | string | Y | Name of the `ClusterZone`/`Zone` |
+| kind | string | Y | Kind of zone (Zone/ClusterZone) |
 
 ## Example
 
@@ -40,4 +41,4 @@ spec:
     kind: "Zone"
 ```
 
-> Note: The name can be canonical or not. If not, the name of the `Zone` will be appended
+> Note: The name can be canonical or not. If not, the name of the `ClusterZone`/`Zone` will be appended
