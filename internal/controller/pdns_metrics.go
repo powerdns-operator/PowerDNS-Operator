@@ -21,6 +21,13 @@ var (
 		},
 		[]string{"status", "name", "namespace"},
 	)
+	clusterZonesStatusesMetric = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "clusterzones_status",
+			Help: "Statuses of ClusterZones processed",
+		},
+		[]string{"status", "name"},
+	)
 )
 
 func updateRrsetsMetrics(fqdn, rrsetType, rrsetStatus, name, namespace string) {
@@ -41,20 +48,37 @@ func removeRrsetMetrics(name, namespace string) {
 	)
 }
 
-func updateZonesMetrics(zone dnsv1alpha2.Zone) {
-	zonesStatusesMetric.With(map[string]string{
-		"status":    *zone.Status.SyncStatus,
-		"name":      zone.GetName(),
-		"namespace": zone.GetNamespace(),
-	}).Set(1)
+func updateZonesMetrics(gz dnsv1alpha2.GenericZone) {
+	switch gz.(type) {
+	case *dnsv1alpha2.Zone:
+		zonesStatusesMetric.With(map[string]string{
+			"status":    *gz.GetStatus().SyncStatus,
+			"name":      gz.GetName(),
+			"namespace": gz.GetNamespace(),
+		}).Set(1)
+	case *dnsv1alpha2.ClusterZone:
+		clusterZonesStatusesMetric.With(map[string]string{
+			"status": *gz.GetStatus().SyncStatus,
+			"name":   gz.GetName(),
+		}).Set(1)
+	}
 }
-func removeZonesMetrics(zone dnsv1alpha2.Zone) {
-	zonesStatusesMetric.DeletePartialMatch(
-		map[string]string{
-			"namespace": zone.GetNamespace(),
-			"name":      zone.GetName(),
-		},
-	)
+func removeZonesMetrics(gz dnsv1alpha2.GenericZone) {
+	switch gz.(type) {
+	case *dnsv1alpha2.Zone:
+		zonesStatusesMetric.DeletePartialMatch(
+			map[string]string{
+				"namespace": gz.GetNamespace(),
+				"name":      gz.GetName(),
+			},
+		)
+	case *dnsv1alpha2.ClusterZone:
+		clusterZonesStatusesMetric.DeletePartialMatch(
+			map[string]string{
+				"name": gz.GetName(),
+			},
+		)
+	}
 }
 
 //nolint:unparam

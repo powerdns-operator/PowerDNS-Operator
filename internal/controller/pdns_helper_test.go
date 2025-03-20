@@ -36,7 +36,7 @@ func TestZoneIsIdenticalToExternalZone(t *testing.T) {
 
 	var testCases = []struct {
 		description          string
-		zone                 *dnsv1alpha2.Zone
+		genericZone          dnsv1alpha2.GenericZone
 		externalZone         *powerdns.Zone
 		nameservers          []string
 		zonesIdentical       bool
@@ -171,7 +171,7 @@ func TestZoneIsIdenticalToExternalZone(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
-			zone, ns := zoneIsIdenticalToExternalZone(tc.zone, tc.externalZone, tc.nameservers)
+			zone, ns := zoneIsIdenticalToExternalZone(tc.genericZone, tc.externalZone, tc.nameservers)
 			if !cmp.Equal(zone, tc.zonesIdentical) {
 				t.Errorf("ZONE: got %v, want %v", zone, tc.zonesIdentical)
 			}

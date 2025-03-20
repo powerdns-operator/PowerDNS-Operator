@@ -1,0 +1,23 @@
+# permissions for end users to view clusterzones.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: powerdns-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: clusterzone-viewer-role
+rules:
+- apiGroups:
+  - dns.cav.enablers.ob
+  resources:
+  - clusterzones
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - dns.cav.enablers.ob
+  resources:
+  - clusterzones/status
+  verbs:
+  - get

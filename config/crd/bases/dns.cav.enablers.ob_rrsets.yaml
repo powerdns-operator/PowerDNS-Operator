@@ -239,9 +239,10 @@ spec:
                 description: ZoneRef reference the zone the RRSet depends on.
                 properties:
                   kind:
-                    description: Kind of the Zone resource
+                    description: Kind of the Zone resource (Zone or ClusterZone)
                     enum:
                     - Zone
+                    - ClusterZone
                     type: string
                   name:
                     description: Name of the zone.

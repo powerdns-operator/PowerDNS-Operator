@@ -16,7 +16,7 @@ spec:
     - 2.2.2.2
   zoneRef:
     name: helloworld.com
-    kind: "Zone"
+    kind: ClusterZone
 
 ---
 # FQDN Record of type 'A' in 'helloworld.com' zone
@@ -34,7 +34,7 @@ spec:
     - 3.3.3.3
   zoneRef:
     name: helloworld.com
-    kind: "Zone"
+    kind: ClusterZone
 
 ---
 # Record of type 'A' in 'helloworld.com' zone
@@ -51,7 +51,7 @@ spec:
     - 4.4.4.4
   zoneRef:
     name: helloworld.com
-    kind: "Zone"
+    kind: ClusterZone
 
 ---
 # Record of type 'AAAA' in 'helloworld.com' zone
@@ -68,7 +68,7 @@ spec:
     - 2001:0dc8:86a4:0000:0000:7a2f:2360:2341
   zoneRef:
     name: helloworld.com
-    kind: "Zone"
+    kind: ClusterZone
 
 ---
 # Record of type 'CNAME' in 'helloworld.com' zone
@@ -85,7 +85,7 @@ spec:
     - test1.helloworld.com.
   zoneRef:
     name: helloworld.com
-    kind: "Zone"
+    kind: ClusterZone
 
 ---
 # Record of type 'A' (with wildcard) in 'helloworld.com' zone
@@ -102,7 +102,7 @@ spec:
     - 5.5.5.5
   zoneRef:
     name: helloworld.com
-    kind: "Zone"
+    kind: ClusterZone
 
 ---
 # Record of type 'PTR' in 'helloworld.com' zone
@@ -119,7 +119,7 @@ spec:
     - mailserver.helloworld.com.
   zoneRef:
     name: 1.168.192.in-addr.arpa
-    kind: "Zone"
+    kind: ClusterZone
 
 ---
 # Records of type 'MX' in 'helloworld.com' zone
@@ -138,7 +138,7 @@ spec:
     - "20 mailserver2.helloworld.com."
   zoneRef:
     name: helloworld.com
-    kind: "Zone"
+    kind: ClusterZone
 
 ---
 # Record of type 'SRV' in 'helloworld.com' zone
@@ -155,7 +155,7 @@ spec:
     - 1 50 25565 test2.helloworld.com.
   zoneRef:
     name: helloworld.com
-    kind: "Zone"
+    kind: ClusterZone
 
 ---
 # Record (duplicate) of type 'A' in 'helloworld.com' zone
@@ -172,7 +172,7 @@ spec:
     - "6.6.6.6"
   zoneRef:
     name: helloworld.com
-    kind: "Zone"
+    kind: ClusterZone
 
 ---
 # Record of type 'TXT' in 'helloworld.com' zone
@@ -189,7 +189,7 @@ spec:
     - "\"Welcome to the helloworld.com domain\""
   zoneRef:
     name: helloworld.com
-    kind: "Zone"
+    kind: ClusterZone
 
 ---
 # Record (additional) of type 'A' in 'helloworld.com' zone
@@ -206,7 +206,7 @@ spec:
     - 192.168.1.7
   zoneRef:
     name: helloworld.com
-    kind: "Zone"
+    kind: ClusterZone
 
 ---
 # Record (errored) of undefined type 'AA' in 'helloworld.com' zone
@@ -223,7 +223,7 @@ spec:
     - 192.168.1.7
   zoneRef:
     name: helloworld.com
-    kind: "Zone"
+    kind: ClusterZone
 
 ---
 # Record of type 'A' in 'helloworld.com' zone
@@ -240,4 +240,4 @@ spec:
     - 192.168.1.7
   zoneRef:
     name: helloworld.com
-    kind: "Zone"
+    kind: ClusterZone

@@ -103,7 +103,13 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	}
 
 	// Zone
-	zone := &dnsv1alpha2.Zone{}
+	var zone dnsv1alpha2.GenericZone
+	switch rrset.Spec.ZoneRef.Kind {
+	case "Zone":
+		zone = &dnsv1alpha2.Zone{}
+	case "ClusterZone":
+		zone = &dnsv1alpha2.ClusterZone{}
+	}
 	err = r.Get(ctx, client.ObjectKey{Namespace: rrset.Namespace, Name: rrset.Spec.ZoneRef.Name}, zone)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -154,8 +160,8 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			return ctrl.Result{}, err
 		}
 	}
-	// If a Zone exists but is in Failed Status
-	zoneIsInFailedStatus := (zone.Status.SyncStatus != nil && *zone.Status.SyncStatus == FAILED_STATUS)
+	// If a Zone/ClusterZone exists but is in Failed Status
+	zoneIsInFailedStatus := (zone.GetStatus().SyncStatus != nil && *zone.GetStatus().SyncStatus == FAILED_STATUS)
 	if zoneIsInFailedStatus {
 		original = rrset.DeepCopy()
 		rrset.Status.SyncStatus = ptr.To(FAILED_STATUS)

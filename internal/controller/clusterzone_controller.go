@@ -24,28 +24,8 @@ import (
 	dnsv1alpha2 "github.com/orange-opensource/powerdns-operator/api/v1alpha2"
 )
 
-const (
-	RESOURCES_FINALIZER_NAME   = "dns.cav.enablers.ob/external-resources"
-	METRICS_FINALIZER_NAME     = "dns.cav.enablers.ob/metrics"
-	DEFAULT_TTL_FOR_NS_RECORDS = uint32(1500)
-
-	ZONE_NOT_FOUND_MSG  = "Not Found"
-	ZONE_NOT_FOUND_CODE = 404
-	ZONE_CONFLICT_MSG   = "Conflict"
-	ZONE_CONFLICT_CODE  = 409
-)
-
-const (
-	ZoneReasonSynced                  = "ZoneSynced"
-	ZoneMessageSyncSucceeded          = "Zone synced with PowerDNS instance"
-	ZoneReasonSynchronizationFailed   = "SynchronizationFailed"
-	ZoneReasonNSSynchronizationFailed = "NSSynchronizationFailed"
-	ZoneReasonDuplicated              = "ZoneDuplicated"
-	ZoneMessageDuplicated             = "Already existing Zone with the same FQDN"
-)
-
-// ZoneReconciler reconciles a Zone object
-type ZoneReconciler struct {
+// ClusterZoneReconciler reconciles a ClusterZone object
+type ClusterZoneReconciler struct {
 	client.Client
 	Scheme     *runtime.Scheme
 	PDNSClient PdnsClienter
@@ -53,25 +33,25 @@ type ZoneReconciler struct {
 
 func init() {
 	// Register custom metrics with the global prometheus registry
-	metrics.Registry.MustRegister(zonesStatusesMetric)
+	metrics.Registry.MustRegister(clusterZonesStatusesMetric)
 }
 
-//+kubebuilder:rbac:groups=dns.cav.enablers.ob,resources=zones,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=dns.cav.enablers.ob,resources=zones/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=dns.cav.enablers.ob,resources=zones/finalizers,verbs=update
+//+kubebuilder:rbac:groups=dns.cav.enablers.ob,resources=clusterzones,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=dns.cav.enablers.ob,resources=clusterzones/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=dns.cav.enablers.ob,resources=clusterzones/finalizers,verbs=update
 
-func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *ClusterZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
-	log.Info("Reconcile Zone", "Zone.Name", req.Name)
+	log.Info("Reconcile ClusterZone", "ClusterZone.Name", req.Name)
 
-	// Get Zone
-	zone := &dnsv1alpha2.Zone{}
+	// Get ClusterZone
+	zone := &dnsv1alpha2.ClusterZone{}
 	err := r.Get(ctx, req.NamespacedName, zone)
 	if err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	// Initialize variable to represent Zone situation
+	// Initialize variable to represent RRset situation
 	isModified := zone.Status.ObservedGeneration != nil && *zone.Status.ObservedGeneration != zone.GetGeneration()
 	isDeleted := !zone.ObjectMeta.DeletionTimestamp.IsZero()
 
@@ -88,15 +68,14 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			}
 		}
 	}
-
-	// When updating a Zone, if 'Status' is not changed, 'LastTransitionTime' will not be updated
+	// When updating a ClusterZone, if 'Status' is not changed, 'LastTransitionTime' will not be updated
 	// So we delete condition to force new 'LastTransitionTime'
 	original := zone.DeepCopy()
 	if !isDeleted && isModified {
 		isModified = true
 		meta.RemoveStatusCondition(&zone.Status.Conditions, "Available")
 		if err := r.Status().Patch(ctx, zone, client.MergeFrom(original)); err != nil {
-			log.Error(err, "unable to patch Zone status")
+			log.Error(err, "unable to patch ClusterZone status")
 			return ctrl.Result{}, err
 		}
 	}
@@ -105,20 +84,20 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *ZoneReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *ClusterZoneReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// We use indexer to ensure that only one Zone/ClusterZone exists for one DNS entry
-	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &dnsv1alpha2.Zone{}, "Zone.Entry.Name", func(rawObj client.Object) []string {
-		// grab the Zone object, extract its name...
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &dnsv1alpha2.ClusterZone{}, "ClusterZone.Entry.Name", func(rawObj client.Object) []string {
+		// grab the ClusterZone object, extract its name...
 		var ZoneName string
-		if rawObj.(*dnsv1alpha2.Zone).Status.SyncStatus == nil || *rawObj.(*dnsv1alpha2.Zone).Status.SyncStatus == SUCCEEDED_STATUS {
-			ZoneName = (rawObj.(*dnsv1alpha2.Zone)).Name
+		if rawObj.(*dnsv1alpha2.ClusterZone).Status.SyncStatus == nil || *rawObj.(*dnsv1alpha2.ClusterZone).Status.SyncStatus == SUCCEEDED_STATUS {
+			ZoneName = (rawObj.(*dnsv1alpha2.ClusterZone)).Name
 		}
 		return []string{ZoneName}
 	}); err != nil {
 		return err
 	}
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&dnsv1alpha2.Zone{}).
+		For(&dnsv1alpha2.ClusterZone{}).
 		Owns(&dnsv1alpha2.RRset{}).
 		Complete(r)
 }

@@ -1,29 +1,4 @@
 ---
-# Direct zone
-apiVersion: dns.cav.enablers.ob/v1alpha2
-kind: Zone
-metadata:
-  name: helloworld.com
-  namespace: default
-spec:
-  nameservers:
-    - ns1.helloworld.com
-    - ns2.helloworld.com
-  kind: Native
-
----
-# Reverse Zone
-apiVersion: dns.cav.enablers.ob/v1alpha2
-kind: Zone
-metadata:
-  name: 1.168.192.in-addr.arpa
-spec:
-  nameservers:
-    - ns1.helloworld.com
-    - ns2.helloworld.com
-  kind: Native
-
----
 # Specific Catalog
 apiVersion: dns.cav.enablers.ob/v1alpha2
 kind: Zone
@@ -53,15 +28,33 @@ spec:
   soa_edit_api: EPOCH
 
 ---
-# Specific Catalog
+# Fake Zone
 apiVersion: dns.cav.enablers.ob/v1alpha2
 kind: Zone
 metadata:
-  name: example1.com
+  annotations:
+    fake-zone: "Same name as Zone/example2.com/NS:example2"
+  name: example2.com
   namespace: example3
 spec:
   catalog: catalog.test
   nameservers:
-    - ns1.example1.com
-    - ns2.example1.com
+    - ns3.example2.com
+    - ns4.example2.com
   kind: Master
+  soa_edit_api: EPOCH
+
+---
+# Fake Zone
+apiVersion: dns.cav.enablers.ob/v1alpha2
+kind: Zone
+metadata:
+  annotations:
+    fake-zone: "Same name as ClusterZone/helloworld.com"
+  name: helloworld.com
+  namespace: example3
+spec:
+  nameservers:
+    - ns3.helloworld.com
+    - ns4.helloworld.com
+  kind: Native

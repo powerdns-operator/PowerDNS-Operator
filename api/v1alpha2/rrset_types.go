@@ -35,8 +35,8 @@ type RRsetSpec struct {
 type ZoneRef struct {
 	// Name of the zone.
 	Name string `json:"name"`
-	// Kind of the Zone resource
-	// +kubebuilder:validation:Enum:=Zone
+	// Kind of the Zone resource (Zone or ClusterZone)
+	// +kubebuilder:validation:Enum:=Zone;ClusterZone
 	Kind string `json:"kind"`
 }
 

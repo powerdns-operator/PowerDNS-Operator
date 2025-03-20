@@ -491,5 +491,43 @@ var _ = Describe("Zone Controller", func() {
 				}, timeout, interval).Should(BeTrue())
 			})
 		})
+		Context("When creating a ClusterZone with an existing Zone with same FQDN", func() {
+			It("should reconcile the resource with Failed status", Label("clusterzone-creation", "existing-zone"), func() {
+				ctx := context.Background()
+				// Specific test variables
+				recreationResourceName := "example1.org"
+				recreationResourceKind := NATIVE_KIND_ZONE
+				recreationResourceCatalog := "catalog.example1.org."
+				recreationResourceNameservers := []string{"ns1.example1.org", "ns2.example1.org"}
+
+				By("Creating a Zone")
+				resource := &dnsv1alpha2.ClusterZone{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: recreationResourceName,
+					},
+				}
+				resource.SetResourceVersion("")
+				_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, resource, func() error {
+					resource.Spec = dnsv1alpha2.ZoneSpec{
+						Kind:        recreationResourceKind,
+						Nameservers: recreationResourceNameservers,
+						Catalog:     ptr.To(recreationResourceCatalog),
+					}
+					return nil
+				})
+				Expect(err).NotTo(HaveOccurred())
+
+				By("Getting the resource")
+				updatedZone := &dnsv1alpha2.ClusterZone{}
+				typeNamespacedName := types.NamespacedName{
+					Name: recreationResourceName,
+				}
+				// Waiting for the resource to be fully modified
+				Eventually(func() bool {
+					err := k8sClient.Get(ctx, typeNamespacedName, updatedZone)
+					return err == nil && updatedZone.IsInExpectedStatus(FIRST_GENERATION, FAILED_STATUS)
+				}, timeout, interval).Should(BeTrue())
+			})
+		})
 	})
 })

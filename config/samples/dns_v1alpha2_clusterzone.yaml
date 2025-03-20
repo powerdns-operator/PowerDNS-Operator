@@ -1,0 +1,23 @@
+---
+# Direct zone
+apiVersion: dns.cav.enablers.ob/v1alpha2
+kind: ClusterZone
+metadata:
+  name: helloworld.com
+spec:
+  nameservers:
+    - ns1.helloworld.com
+    - ns2.helloworld.com
+  kind: Native
+
+---
+# Reverse Zone
+apiVersion: dns.cav.enablers.ob/v1alpha2
+kind: ClusterZone
+metadata:
+  name: 1.168.192.in-addr.arpa
+spec:
+  nameservers:
+    - ns1.helloworld.com
+    - ns2.helloworld.com
+  kind: Native

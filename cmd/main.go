@@ -167,6 +167,17 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "RRset")
 		os.Exit(1)
 	}
+	if err = (&controller.ClusterZoneReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+		PDNSClient: controller.PdnsClienter{
+			Records: pdnsClient.Records,
+			Zones:   pdnsClient.Zones,
+		},
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ClusterZone")
+		os.Exit(1)
+	}
 	//+kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {

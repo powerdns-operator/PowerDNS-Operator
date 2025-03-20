@@ -59,15 +59,32 @@ kubectl apply -f https://raw.githubusercontent.com/orange-opensource/powerdns-op
 
 ### Usage
 
-Zone is a critical resource and may be managed by a dedicated team, while RRSet may be managed by the application team.
+ClusterZone and Zone are critical resources and may be managed by a dedicated team, but Zone and RRSet may be managed by the application team.
 
 In either case, you can apply your own RBAC rules to restrict access to the resources.
 
 To create a PowerDNS resource, you can use the following examples.
 
+#### ClusterZone
+
+First, create a ClusterZone resource.
+
+```yaml
+---
+apiVersion: dns.cav.enablers.ob/v1alpha2
+kind: ClusterZone
+metadata:
+  name: example.org
+spec:
+  kind: Native
+  nameservers:
+    - ns1.example.org
+    - ns2.example.org
+```
+
 #### Zone
 
-First, create a Zone resource.
+Second, create a Zone resource.
 
 ```yaml
 ---
@@ -128,7 +145,10 @@ The operator will manage the lifecycle of the resources and update the PowerDNS 
 Check the results
 
 ```sh
-kubectl get zones,rrsets -o wide
+kubectl get clusterzones,zones,rrsets -o wide
+
+NAMESPACE     NAME                                          SERIAL       ID              STATUS
+              clusterzone.dns.cav.enablers.ob/example.org   2025032001   example.org.    Succeeded
 
 NAMESPACE     NAME                                   SERIAL       ID              STATUS
 default       zone.dns.cav.enablers.ob/example.com   2024081304   example.com.    Succeeded

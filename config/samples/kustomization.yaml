@@ -2,4 +2,5 @@
 resources:
 - dns_v1alpha2_zone.yaml
 - dns_v1alpha2_rrset.yaml
+- dns_v1alpha2_clusterzone.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples

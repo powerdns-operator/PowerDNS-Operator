@@ -47,12 +47,12 @@ type PdnsClienter struct {
 
 // zoneIsIdenticalToExternalZone return True, True if respectively kind, soa_edit_api and catalog are identical
 // and nameservers are identical between Zone and External Resource
-func zoneIsIdenticalToExternalZone(zone *dnsv1alpha2.Zone, externalZone *powerdns.Zone, ns []string) (bool, bool) {
-	zoneCatalog := makeCanonical(ptr.Deref(zone.Spec.Catalog, ""))
+func zoneIsIdenticalToExternalZone(zone dnsv1alpha2.GenericZone, externalZone *powerdns.Zone, ns []string) (bool, bool) {
+	zoneCatalog := makeCanonical(ptr.Deref(zone.GetSpec().Catalog, ""))
 	externalZoneCatalog := ptr.Deref(externalZone.Catalog, "")
-	zoneSOAEditAPI := ptr.Deref(zone.Spec.SOAEditAPI, "")
+	zoneSOAEditAPI := ptr.Deref(zone.GetSpec().SOAEditAPI, "")
 	externalZoneSOAEditAPI := ptr.Deref(externalZone.SOAEditAPI, "")
-	return zone.Spec.Kind == string(*externalZone.Kind) && zoneCatalog == externalZoneCatalog && zoneSOAEditAPI == externalZoneSOAEditAPI, reflect.DeepEqual(zone.Spec.Nameservers, ns)
+	return zone.GetSpec().Kind == string(*externalZone.Kind) && zoneCatalog == externalZoneCatalog && zoneSOAEditAPI == externalZoneSOAEditAPI, reflect.DeepEqual(zone.GetSpec().Nameservers, ns)
 }
 
 // rrsetIsIdenticalToExternalRRset return True if Comments, Name, Type, TTL and Records are identical between RRSet and External Resource
