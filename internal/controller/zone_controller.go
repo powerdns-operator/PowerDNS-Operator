@@ -17,13 +17,16 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	dnsv1alpha2 "github.com/orange-opensource/powerdns-operator/api/v1alpha2"
 )
 
 const (
-	FINALIZER_NAME             = "dns.cav.enablers.ob/finalizer"
+	RESOURCES_FINALIZER_NAME   = "dns.cav.enablers.ob/external-resources"
+	METRICS_FINALIZER_NAME     = "dns.cav.enablers.ob/metrics"
 	DEFAULT_TTL_FOR_NS_RECORDS = uint32(1500)
 
 	ZONE_NOT_FOUND_MSG  = "Not Found"
@@ -48,6 +51,11 @@ type ZoneReconciler struct {
 	PDNSClient PdnsClienter
 }
 
+func init() {
+	// Register custom metrics with the global prometheus registry
+	metrics.Registry.MustRegister(zonesStatusesMetric)
+}
+
 //+kubebuilder:rbac:groups=dns.cav.enablers.ob,resources=zones,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=dns.cav.enablers.ob,resources=zones/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=dns.cav.enablers.ob,resources=zones/finalizers,verbs=update
@@ -66,6 +74,20 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	// Initialize variable to represent Zone situation
 	isModified := zone.Status.ObservedGeneration != nil && *zone.Status.ObservedGeneration != zone.GetGeneration()
 	isDeleted := !zone.ObjectMeta.DeletionTimestamp.IsZero()
+
+	// Position metrics finalizer as soon as possible
+	if !isDeleted {
+		// The object is not being deleted, so if it does not have our finalizer,
+		// then lets add the finalizer and update the object. This is equivalent
+		// to registering our finalizer.
+		if !controllerutil.ContainsFinalizer(zone, METRICS_FINALIZER_NAME) {
+			controllerutil.AddFinalizer(zone, METRICS_FINALIZER_NAME)
+			if err := r.Update(ctx, zone); err != nil {
+				log.Error(err, "Failed to add finalizer")
+				return ctrl.Result{}, err
+			}
+		}
+	}
 
 	// When updating a Zone, if 'Status' is not changed, 'LastTransitionTime' will not be updated
 	// So we delete condition to force new 'LastTransitionTime'

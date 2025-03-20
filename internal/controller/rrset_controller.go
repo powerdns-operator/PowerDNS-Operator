@@ -76,6 +76,21 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		lastUpdateTime = rrset.Status.LastUpdateTime
 	}
 
+	// Position metrics finalizer as soon as possible
+	if !isDeleted {
+		// The object is not being deleted, so if it does not have our finalizer,
+		// then lets add the finalizer and update the object. This is equivalent
+		// to registering our finalizer.
+		if !controllerutil.ContainsFinalizer(rrset, METRICS_FINALIZER_NAME) {
+			controllerutil.AddFinalizer(rrset, METRICS_FINALIZER_NAME)
+			lastUpdateTime = &metav1.Time{Time: time.Now().UTC()}
+			if err := r.Update(ctx, rrset); err != nil {
+				log.Error(err, "Failed to add finalizer")
+				return ctrl.Result{}, err
+			}
+		}
+	}
+
 	// When updating a RRset, if 'Status' is not changed, 'LastTransitionTime' will not be updated
 	// So we delete condition to force new 'LastTransitionTime'
 	original := rrset.DeepCopy()
@@ -93,26 +108,41 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Zone not found, remove finalizer and requeue
-			if controllerutil.ContainsFinalizer(rrset, FINALIZER_NAME) {
-				controllerutil.RemoveFinalizer(rrset, FINALIZER_NAME)
+			actionOnFinalizer := false
+			if controllerutil.ContainsFinalizer(rrset, RESOURCES_FINALIZER_NAME) {
+				controllerutil.RemoveFinalizer(rrset, RESOURCES_FINALIZER_NAME)
+				actionOnFinalizer = true
+			}
+			if isDeleted && controllerutil.ContainsFinalizer(rrset, METRICS_FINALIZER_NAME) {
+				controllerutil.RemoveFinalizer(rrset, METRICS_FINALIZER_NAME)
+				// Remove resource metrics
+				removeRrsetMetrics(rrset.Name, rrset.Namespace)
+				actionOnFinalizer = true
+			}
+			if actionOnFinalizer {
 				if err := r.Update(ctx, rrset); err != nil {
 					log.Error(err, "Failed to remove finalizer")
 					return ctrl.Result{}, err
 				}
-				// Remove resource metrics
-				removeRrsetMetrics(rrset.Name, rrset.Namespace)
 			}
-			original = rrset.DeepCopy()
-			meta.SetStatusCondition(&rrset.Status.Conditions, metav1.Condition{
-				Type:               "Available",
-				Status:             metav1.ConditionFalse,
-				LastTransitionTime: metav1.NewTime(time.Now().UTC()),
-				Reason:             RrsetReasonZoneNotAvailable,
-				Message:            RrsetMessageNonExistentZone + err.Error(),
-			})
-			if err := r.Status().Patch(ctx, rrset, client.MergeFrom(original)); err != nil {
-				log.Error(err, "unable to patch RRSet status")
-				return ctrl.Result{}, err
+
+			// If RRset is under deletion, no need to update its status
+			if !isDeleted {
+				original = rrset.DeepCopy()
+				rrset.Status.SyncStatus = ptr.To(PENDING_STATUS)
+				rrset.Status.ObservedGeneration = &rrset.Generation
+				meta.SetStatusCondition(&rrset.Status.Conditions, metav1.Condition{
+					Type:               "Available",
+					Status:             metav1.ConditionFalse,
+					LastTransitionTime: metav1.NewTime(time.Now().UTC()),
+					Reason:             RrsetReasonZoneNotAvailable,
+					Message:            RrsetMessageNonExistentZone + err.Error(),
+				})
+				if err := r.Status().Patch(ctx, rrset, client.MergeFrom(original)); err != nil {
+					log.Error(err, "unable to patch RRSet status")
+					return ctrl.Result{}, err
+				}
+				updateRrsetsMetrics(getRRsetName(rrset), rrset.Spec.Type, *rrset.Status.SyncStatus, rrset.Name, rrset.Namespace)
 			}
 
 			// Race condition when creating Zone+RRset at the same time
@@ -144,6 +174,18 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 		// Update metrics
 		updateRrsetsMetrics(getRRsetName(rrset), rrset.Spec.Type, *rrset.Status.SyncStatus, rrset.Name, rrset.Namespace)
+
+		if isDeleted {
+			if controllerutil.ContainsFinalizer(rrset, METRICS_FINALIZER_NAME) {
+				controllerutil.RemoveFinalizer(rrset, METRICS_FINALIZER_NAME)
+				// Remove resource metrics
+				removeRrsetMetrics(rrset.Name, rrset.Namespace)
+				if err := r.Update(ctx, rrset); err != nil {
+					log.Error(err, "Failed to remove finalizer")
+					return ctrl.Result{}, err
+				}
+			}
+		}
 
 		return ctrl.Result{}, nil
 	}

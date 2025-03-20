@@ -23,6 +23,7 @@ import (
 
 const (
 	FAILED_STATUS    = "Failed"
+	PENDING_STATUS   = "Pending"
 	SUCCEEDED_STATUS = "Succeeded"
 )
 

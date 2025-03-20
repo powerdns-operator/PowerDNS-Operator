@@ -36,15 +36,16 @@ func zoneReconcile(ctx context.Context, zone *dnsv1alpha2.Zone, isModified bool,
 		// The object is not being deleted, so if it does not have our finalizer,
 		// then lets add the finalizer and update the object. This is equivalent
 		// to registering our finalizer.
-		if !controllerutil.ContainsFinalizer(zone, FINALIZER_NAME) {
-			controllerutil.AddFinalizer(zone, FINALIZER_NAME)
+		if !controllerutil.ContainsFinalizer(zone, RESOURCES_FINALIZER_NAME) {
+			controllerutil.AddFinalizer(zone, RESOURCES_FINALIZER_NAME)
 			if err := cl.Update(ctx, zone); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
 	} else {
 		// The object is being deleted
-		if controllerutil.ContainsFinalizer(zone, FINALIZER_NAME) {
+		finalizerRemoved := false
+		if controllerutil.ContainsFinalizer(zone, RESOURCES_FINALIZER_NAME) {
 			// our finalizer is present, so lets handle any external dependency
 			if err := deleteZoneExternalResources(ctx, zone, PDNSClient, log); err != nil {
 				// if fail to delete the external resource, return with error
@@ -52,7 +53,16 @@ func zoneReconcile(ctx context.Context, zone *dnsv1alpha2.Zone, isModified bool,
 				return ctrl.Result{}, err
 			}
 			// remove our finalizer from the list and update it.
-			controllerutil.RemoveFinalizer(zone, FINALIZER_NAME)
+			controllerutil.RemoveFinalizer(zone, RESOURCES_FINALIZER_NAME)
+			finalizerRemoved = true
+		}
+		if controllerutil.ContainsFinalizer(zone, METRICS_FINALIZER_NAME) {
+			// Remove resource metrics and finalizer
+			removeZonesMetrics(*zone)
+			controllerutil.RemoveFinalizer(zone, METRICS_FINALIZER_NAME)
+			finalizerRemoved = true
+		}
+		if finalizerRemoved {
 			if err := cl.Update(ctx, zone); err != nil {
 				return ctrl.Result{}, err
 			}
@@ -64,6 +74,8 @@ func zoneReconcile(ctx context.Context, zone *dnsv1alpha2.Zone, isModified bool,
 
 	// We cannot exit previously (at the early moments of reconcile), because we have to allow deletion process
 	if isInFailedStatus && !isModified {
+		// Update resource metrics
+		updateZonesMetrics(*zone)
 		return ctrl.Result{}, nil
 	}
 
@@ -95,6 +107,9 @@ func zoneReconcile(ctx context.Context, zone *dnsv1alpha2.Zone, isModified bool,
 			log.Error(err, "unable to patch RRSet status")
 			return ctrl.Result{}, err
 		}
+
+		// Update resource metrics
+		updateZonesMetrics(*zone)
 
 		return ctrl.Result{}, nil
 	}
@@ -135,6 +150,9 @@ func zoneReconcile(ctx context.Context, zone *dnsv1alpha2.Zone, isModified bool,
 		return ctrl.Result{}, err
 	}
 
+	// Update resource metrics
+	updateZonesMetrics(*zone)
+
 	return ctrl.Result{}, nil
 }
 
@@ -152,8 +170,8 @@ func rrsetReconcile(ctx context.Context, rrset *dnsv1alpha2.RRset, zone *dnsv1al
 		// The object is not being deleted, so if it does not have our finalizer,
 		// then lets add the finalizer and update the object. This is equivalent
 		// to registering our finalizer.
-		if !controllerutil.ContainsFinalizer(rrset, FINALIZER_NAME) {
-			controllerutil.AddFinalizer(rrset, FINALIZER_NAME)
+		if !controllerutil.ContainsFinalizer(rrset, RESOURCES_FINALIZER_NAME) {
+			controllerutil.AddFinalizer(rrset, RESOURCES_FINALIZER_NAME)
 			lastUpdateTime = &metav1.Time{Time: time.Now().UTC()}
 			if err := cl.Update(ctx, rrset); err != nil {
 				log.Error(err, "Failed to add finalizer")
@@ -162,28 +180,33 @@ func rrsetReconcile(ctx context.Context, rrset *dnsv1alpha2.RRset, zone *dnsv1al
 		}
 	} else {
 		// The object is being deleted
-		if controllerutil.ContainsFinalizer(rrset, FINALIZER_NAME) {
+		finalizerRemoved := false
+		if controllerutil.ContainsFinalizer(rrset, RESOURCES_FINALIZER_NAME) {
 			// our finalizer is present, so lets handle any external dependency
-			if !isInFailedStatus {
-				if err := deleteRrsetExternalResources(ctx, zone, rrset, PDNSClient, log); err != nil {
-					// if fail to delete the external resource, return with error
-					// so that it can be retried
-					log.Error(err, "Failed to delete external resources")
-					return ctrl.Result{}, err
-				}
+			if err := deleteRrsetExternalResources(ctx, zone, rrset, PDNSClient, log); err != nil {
+				// if fail to delete the external resource, return with error
+				// so that it can be retried
+				log.Error(err, "Failed to delete external resources")
+				return ctrl.Result{}, err
 			}
-			// remove our finalizer from the list and update it.
-			controllerutil.RemoveFinalizer(rrset, FINALIZER_NAME)
+			// remove our finalizer from the list.
+			controllerutil.RemoveFinalizer(rrset, RESOURCES_FINALIZER_NAME)
+			finalizerRemoved = true
+		}
+		if controllerutil.ContainsFinalizer(rrset, METRICS_FINALIZER_NAME) {
+			// Remove resource metrics and finalizer
+			removeRrsetMetrics(rrset.Name, rrset.Namespace)
+			controllerutil.RemoveFinalizer(rrset, METRICS_FINALIZER_NAME)
+			finalizerRemoved = true
+		}
+		if finalizerRemoved {
 			if err := cl.Update(ctx, rrset); err != nil {
 				log.Error(err, "Failed to remove finalizer")
 				return ctrl.Result{}, err
 			}
-			// Remove resource metrics
-			removeRrsetMetrics(rrset.Name, rrset.Namespace)
-
-			//nolint:ineffassign
-			lastUpdateTime = &metav1.Time{Time: time.Now().UTC()}
 		}
+		//nolint:ineffassign
+		lastUpdateTime = &metav1.Time{Time: time.Now().UTC()}
 
 		// Stop reconciliation as the item is being deleted
 		return ctrl.Result{}, nil
@@ -210,6 +233,7 @@ func rrsetReconcile(ctx context.Context, rrset *dnsv1alpha2.RRset, zone *dnsv1al
 		name := getRRsetName(rrset)
 		rrset.Status.DnsEntryName = &name
 		rrset.Status.SyncStatus = ptr.To(FAILED_STATUS)
+		rrset.Status.ObservedGeneration = &rrset.Generation
 		meta.SetStatusCondition(&rrset.Status.Conditions, metav1.Condition{
 			Type:               "Available",
 			Status:             metav1.ConditionFalse,

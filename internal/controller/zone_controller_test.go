@@ -112,7 +112,7 @@ var _ = Describe("Zone Controller", func() {
 			Expect(getMockedKind(resourceName)).To(Equal(resourceKind), "Kind should be equal")
 			Expect(getMockedNameservers(resourceName)).To(Equal(resourceNameservers), "Nameservers should be equal")
 			Expect(getMockedCatalog(resourceName)).To(Equal(resourceCatalog), "Catalog should be equal")
-			Expect(zone.GetFinalizers()).To(ContainElement(FINALIZER_NAME), "Zone should contain the finalizer")
+			Expect(zone.GetFinalizers()).To(ContainElement(RESOURCES_FINALIZER_NAME), "Zone should contain the finalizer")
 			Expect(fmt.Sprintf("%d", *(zone.Status.Serial))).To(Equal(fmt.Sprintf("%s01", time.Now().UTC().Format("20060102"))), "Serial should be YYYYMMDD01")
 		})
 	})
