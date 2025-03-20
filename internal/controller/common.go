@@ -17,7 +17,6 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/joeig/go-powerdns/v3"
-	dnsv1alpha1 "github.com/orange-opensource/powerdns-operator/api/v1alpha1"
 	dnsv1alpha2 "github.com/orange-opensource/powerdns-operator/api/v1alpha2"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -139,7 +138,7 @@ func zoneReconcile(ctx context.Context, zone *dnsv1alpha2.Zone, isModified bool,
 	return ctrl.Result{}, nil
 }
 
-func rrsetReconcile(ctx context.Context, rrset *dnsv1alpha1.RRset, zone *dnsv1alpha2.Zone, isModified bool, isDeleted bool, lastUpdateTime *metav1.Time, scheme *runtime.Scheme, cl client.Client, PDNSClient PdnsClienter, log logr.Logger) (ctrl.Result, error) {
+func rrsetReconcile(ctx context.Context, rrset *dnsv1alpha2.RRset, zone *dnsv1alpha2.Zone, isModified bool, isDeleted bool, lastUpdateTime *metav1.Time, scheme *runtime.Scheme, cl client.Client, PDNSClient PdnsClienter, log logr.Logger) (ctrl.Result, error) {
 	isInFailedStatus := (rrset.Status.SyncStatus != nil && *rrset.Status.SyncStatus == FAILED_STATUS)
 
 	// initialize syncStatus
@@ -200,7 +199,7 @@ func rrsetReconcile(ctx context.Context, rrset *dnsv1alpha1.RRset, zone *dnsv1al
 	// If a RRset already exists with the same DNS name:
 	// * Stop reconciliation
 	// * Append a Failed Status on RRset
-	var existingRRsets dnsv1alpha1.RRsetList
+	var existingRRsets dnsv1alpha2.RRsetList
 	if err := cl.List(ctx, &existingRRsets, client.MatchingFields{"DNS.Entry.Name": getRRsetName(rrset) + "/" + rrset.Spec.Type}); err != nil {
 		log.Error(err, "unable to find RRsets related to the DNS Name")
 		return ctrl.Result{}, err
@@ -466,7 +465,7 @@ func patchZoneStatus(ctx context.Context, zone *dnsv1alpha2.Zone, zoneRes *power
 	return cl.Status().Patch(ctx, zone, client.MergeFrom(original))
 }
 
-func deleteRrsetExternalResources(ctx context.Context, zone *dnsv1alpha2.Zone, rrset *dnsv1alpha1.RRset, PDNSClient PdnsClienter, log logr.Logger) error {
+func deleteRrsetExternalResources(ctx context.Context, zone *dnsv1alpha2.Zone, rrset *dnsv1alpha2.RRset, PDNSClient PdnsClienter, log logr.Logger) error {
 	err := PDNSClient.Records.Delete(ctx, zone.ObjectMeta.Name, getRRsetName(rrset), powerdns.RRType(rrset.Spec.Type))
 	if err != nil {
 		log.Error(err, "Failed to delete record")
@@ -476,7 +475,7 @@ func deleteRrsetExternalResources(ctx context.Context, zone *dnsv1alpha2.Zone, r
 	return nil
 }
 
-func createOrUpdateRrsetExternalResources(ctx context.Context, zone *dnsv1alpha2.Zone, rrset *dnsv1alpha1.RRset, PDNSClient PdnsClienter) (bool, error) {
+func createOrUpdateRrsetExternalResources(ctx context.Context, zone *dnsv1alpha2.Zone, rrset *dnsv1alpha2.RRset, PDNSClient PdnsClienter) (bool, error) {
 	name := getRRsetName(rrset)
 	rrType := powerdns.RRType(rrset.Spec.Type)
 	// Looking for a record with same Name and Type
@@ -512,7 +511,7 @@ func createOrUpdateRrsetExternalResources(ctx context.Context, zone *dnsv1alpha2
 	return true, nil
 }
 
-func ownObject(ctx context.Context, zone *dnsv1alpha2.Zone, rrset *dnsv1alpha1.RRset, scheme *runtime.Scheme, cl client.Client, log logr.Logger) error {
+func ownObject(ctx context.Context, zone *dnsv1alpha2.Zone, rrset *dnsv1alpha2.RRset, scheme *runtime.Scheme, cl client.Client, log logr.Logger) error {
 	err := ctrl.SetControllerReference(zone, rrset, scheme)
 	if err != nil {
 		log.Error(err, "Failed to set owner reference. Is there already a controller managing this object?")

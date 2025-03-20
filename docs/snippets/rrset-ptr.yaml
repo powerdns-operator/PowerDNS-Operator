@@ -1,5 +1,5 @@
 ---
-apiVersion: dns.cav.enablers.ob/v1alpha1
+apiVersion: dns.cav.enablers.ob/v1alpha2
 kind: RRset
 metadata:
   name: 1.1.168.192.in-addr.arpa.helloworld.com
@@ -11,3 +11,4 @@ spec:
     - mailserver.helloworld.com.
   zoneRef:
     name: 1.168.192.in-addr.arpa
+    kind: "Zone"

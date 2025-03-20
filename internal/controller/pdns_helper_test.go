@@ -15,7 +15,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/joeig/go-powerdns/v3"
-	dnsv1alpha1 "github.com/orange-opensource/powerdns-operator/api/v1alpha1"
 	dnsv1alpha2 "github.com/orange-opensource/powerdns-operator/api/v1alpha2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
@@ -204,25 +203,26 @@ func TestRrsetIsIdenticalToExternalRRset(t *testing.T) {
 
 	var testCases = []struct {
 		description     string
-		rrset           *dnsv1alpha1.RRset
+		rrset           *dnsv1alpha2.RRset
 		externalRrset   *powerdns.RRset
 		rrsetsIdentical bool
 	}{
 		{
 			"Identical RRsets",
-			&dnsv1alpha1.RRset{
+			&dnsv1alpha2.RRset{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
 					Namespace: namespace,
 				},
-				Spec: dnsv1alpha1.RRsetSpec{
+				Spec: dnsv1alpha2.RRsetSpec{
 					Comment: &recordComment1,
 					Name:    recordName,
 					Type:    recordType1,
 					TTL:     recordTtl1,
 					Records: records,
-					ZoneRef: dnsv1alpha1.ZoneRef{
+					ZoneRef: dnsv1alpha2.ZoneRef{
 						Name: zoneName,
+						Kind: "Zone",
 					},
 				},
 			},
@@ -252,19 +252,20 @@ func TestRrsetIsIdenticalToExternalRRset(t *testing.T) {
 		},
 		{
 			"Different RRsets on Comment",
-			&dnsv1alpha1.RRset{
+			&dnsv1alpha2.RRset{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
 					Namespace: namespace,
 				},
-				Spec: dnsv1alpha1.RRsetSpec{
+				Spec: dnsv1alpha2.RRsetSpec{
 					Comment: &recordComment1,
 					Name:    recordName,
 					Type:    recordType1,
 					TTL:     recordTtl1,
 					Records: records,
-					ZoneRef: dnsv1alpha1.ZoneRef{
+					ZoneRef: dnsv1alpha2.ZoneRef{
 						Name: zoneName,
+						Kind: "Zone",
 					},
 				},
 			},
@@ -294,19 +295,20 @@ func TestRrsetIsIdenticalToExternalRRset(t *testing.T) {
 		},
 		{
 			"Different RRsets on Records",
-			&dnsv1alpha1.RRset{
+			&dnsv1alpha2.RRset{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
 					Namespace: namespace,
 				},
-				Spec: dnsv1alpha1.RRsetSpec{
+				Spec: dnsv1alpha2.RRsetSpec{
 					Comment: &recordComment1,
 					Name:    recordName,
 					Type:    recordType1,
 					TTL:     recordTtl1,
 					Records: records,
-					ZoneRef: dnsv1alpha1.ZoneRef{
+					ZoneRef: dnsv1alpha2.ZoneRef{
 						Name: zoneName,
+						Kind: "Zone",
 					},
 				},
 			},
@@ -331,19 +333,20 @@ func TestRrsetIsIdenticalToExternalRRset(t *testing.T) {
 		},
 		{
 			"Different RRsets on Type",
-			&dnsv1alpha1.RRset{
+			&dnsv1alpha2.RRset{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
 					Namespace: namespace,
 				},
-				Spec: dnsv1alpha1.RRsetSpec{
+				Spec: dnsv1alpha2.RRsetSpec{
 					Comment: &recordComment1,
 					Name:    recordName,
 					Type:    recordType1,
 					TTL:     recordTtl1,
 					Records: records,
-					ZoneRef: dnsv1alpha1.ZoneRef{
+					ZoneRef: dnsv1alpha2.ZoneRef{
 						Name: zoneName,
+						Kind: "Zone",
 					},
 				},
 			},
@@ -373,19 +376,20 @@ func TestRrsetIsIdenticalToExternalRRset(t *testing.T) {
 		},
 		{
 			"Different RRsets on TTL",
-			&dnsv1alpha1.RRset{
+			&dnsv1alpha2.RRset{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
 					Namespace: namespace,
 				},
-				Spec: dnsv1alpha1.RRsetSpec{
+				Spec: dnsv1alpha2.RRsetSpec{
 					Comment: &recordComment1,
 					Name:    recordName,
 					Type:    recordType1,
 					TTL:     recordTtl1,
 					Records: records,
-					ZoneRef: dnsv1alpha1.ZoneRef{
+					ZoneRef: dnsv1alpha2.ZoneRef{
 						Name: zoneName,
+						Kind: "Zone",
 					},
 				},
 			},
@@ -469,24 +473,25 @@ func TestGetRRsetName(t *testing.T) {
 	)
 	var testCases = []struct {
 		description string
-		entry       *dnsv1alpha1.RRset
+		entry       *dnsv1alpha2.RRset
 		want        string
 	}{
 		{
 			"Non FQDN entry",
-			&dnsv1alpha1.RRset{
+			&dnsv1alpha2.RRset{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
 					Namespace: namespace,
 				},
-				Spec: dnsv1alpha1.RRsetSpec{
+				Spec: dnsv1alpha2.RRsetSpec{
 					Comment: &recordComment,
 					Name:    recordName,
 					Type:    recordType,
 					TTL:     recordTtl,
 					Records: records,
-					ZoneRef: dnsv1alpha1.ZoneRef{
+					ZoneRef: dnsv1alpha2.ZoneRef{
 						Name: zoneName,
+						Kind: "Zone",
 					},
 				},
 			},
@@ -494,19 +499,20 @@ func TestGetRRsetName(t *testing.T) {
 		},
 		{
 			"FQDN entry",
-			&dnsv1alpha1.RRset{
+			&dnsv1alpha2.RRset{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
 					Namespace: namespace,
 				},
-				Spec: dnsv1alpha1.RRsetSpec{
+				Spec: dnsv1alpha2.RRsetSpec{
 					Comment: &recordComment,
 					Name:    recordFQDName,
 					Type:    recordType,
 					TTL:     recordTtl,
 					Records: records,
-					ZoneRef: dnsv1alpha1.ZoneRef{
+					ZoneRef: dnsv1alpha2.ZoneRef{
 						Name: zoneName,
+						Kind: "Zone",
 					},
 				},
 			},

@@ -89,7 +89,7 @@ Then, you can create RRSets and reference the target Zone.
 
 ```yaml
 ---
-apiVersion: dns.cav.enablers.ob/v1alpha1
+apiVersion: dns.cav.enablers.ob/v1alpha2
 kind: RRset
 metadata:
   name: a.example.com
@@ -103,9 +103,10 @@ spec:
     - 8.8.8.8
   zoneRef:
     name: example.com
+    kind: Zone
 
 ---
-apiVersion: dns.cav.enablers.ob/v1alpha1
+apiVersion: dns.cav.enablers.ob/v1alpha2
 kind: RRset
 metadata:
   name: cname.example.com
@@ -117,6 +118,7 @@ spec:
     - a.example.com
   zoneRef:
     name: example.com
+    kind: Zone
 ```
 
 The operator will manage the lifecycle of the resources and update the PowerDNS server accordingly.

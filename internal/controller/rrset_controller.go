@@ -15,6 +15,7 @@ import (
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -26,7 +27,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
-	dnsv1alpha1 "github.com/orange-opensource/powerdns-operator/api/v1alpha1"
 	dnsv1alpha2 "github.com/orange-opensource/powerdns-operator/api/v1alpha2"
 )
 
@@ -38,6 +38,7 @@ const (
 	RrsetMessageDuplicated           = "Already existing RRset with the same FQDN"
 	RrsetMessageSyncSucceeded        = "RRset synced with PowerDNS instance"
 	RrsetMessageNonExistentZone      = "non-existent zone:"
+	RrsetMessageUnavailableZone      = "unavailable zone:"
 )
 
 // RRsetReconciler reconciles a RRset object
@@ -61,7 +62,7 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	log.Info("Reconcile RRset", "Zone.RRset.Name", req.Name)
 
 	// RRset
-	rrset := &dnsv1alpha1.RRset{}
+	rrset := &dnsv1alpha2.RRset{}
 	err := r.Get(ctx, req.NamespacedName, rrset)
 	if err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
@@ -78,7 +79,7 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	// When updating a RRset, if 'Status' is not changed, 'LastTransitionTime' will not be updated
 	// So we delete condition to force new 'LastTransitionTime'
 	original := rrset.DeepCopy()
-	if isModified {
+	if !isDeleted && isModified {
 		meta.RemoveStatusCondition(&rrset.Status.Conditions, "Available")
 		if err := r.Status().Patch(ctx, rrset, client.MergeFrom(original)); err != nil {
 			log.Error(err, "unable to patch RRSet status")
@@ -123,6 +124,29 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			return ctrl.Result{}, err
 		}
 	}
+	// If a Zone exists but is in Failed Status
+	zoneIsInFailedStatus := (zone.Status.SyncStatus != nil && *zone.Status.SyncStatus == FAILED_STATUS)
+	if zoneIsInFailedStatus {
+		original = rrset.DeepCopy()
+		rrset.Status.SyncStatus = ptr.To(FAILED_STATUS)
+		rrset.Status.ObservedGeneration = &rrset.Generation
+		meta.SetStatusCondition(&rrset.Status.Conditions, metav1.Condition{
+			Type:               "Available",
+			Status:             metav1.ConditionFalse,
+			LastTransitionTime: metav1.NewTime(time.Now().UTC()),
+			Reason:             RrsetReasonZoneNotAvailable,
+			Message:            RrsetMessageUnavailableZone + zone.GetName(),
+		})
+		if err := r.Status().Patch(ctx, rrset, client.MergeFrom(original)); err != nil {
+			log.Error(err, "unable to patch RRSet status")
+			return ctrl.Result{}, err
+		}
+
+		// Update metrics
+		updateRrsetsMetrics(getRRsetName(rrset), rrset.Spec.Type, *rrset.Status.SyncStatus, rrset.Name, rrset.Namespace)
+
+		return ctrl.Result{}, nil
+	}
 
 	return rrsetReconcile(ctx, rrset, zone, isModified, isDeleted, lastUpdateTime, r.Scheme, r.Client, r.PDNSClient, log)
 }
@@ -130,17 +154,17 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 // SetupWithManager sets up the controller with the Manager.
 func (r *RRsetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// We use indexer to ensure that only one RRset exists for DNS entry
-	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &dnsv1alpha1.RRset{}, "DNS.Entry.Name", func(rawObj client.Object) []string {
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &dnsv1alpha2.RRset{}, "DNS.Entry.Name", func(rawObj client.Object) []string {
 		// grab the RRset object, extract its name...
 		var RRsetName string
-		if rawObj.(*dnsv1alpha1.RRset).Status.SyncStatus == nil || *rawObj.(*dnsv1alpha1.RRset).Status.SyncStatus == SUCCEEDED_STATUS {
-			RRsetName = getRRsetName(rawObj.(*dnsv1alpha1.RRset)) + "/" + rawObj.(*dnsv1alpha1.RRset).Spec.Type
+		if rawObj.(*dnsv1alpha2.RRset).Status.SyncStatus == nil || *rawObj.(*dnsv1alpha2.RRset).Status.SyncStatus == SUCCEEDED_STATUS {
+			RRsetName = getRRsetName(rawObj.(*dnsv1alpha2.RRset)) + "/" + rawObj.(*dnsv1alpha2.RRset).Spec.Type
 		}
 		return []string{RRsetName}
 	}); err != nil {
 		return err
 	}
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&dnsv1alpha1.RRset{}).
+		For(&dnsv1alpha2.RRset{}).
 		Complete(r)
 }

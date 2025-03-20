@@ -22,7 +22,7 @@ The specification of the `ZoneRef` contains the following fields:
 ## Example
 
 ```yaml
-apiVersion: dns.cav.enablers.ob/v1alpha1
+apiVersion: dns.cav.enablers.ob/v1alpha2
 kind: RRset
 metadata:
   name: test.helloworld.com
@@ -37,6 +37,7 @@ spec:
     - 2.2.2.2
   zoneRef:
     name: helloworld.com
+    kind: "Zone"
 ```
 
 > Note: The name can be canonical or not. If not, the name of the `Zone` will be appended

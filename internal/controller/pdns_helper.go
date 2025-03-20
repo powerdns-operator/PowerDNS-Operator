@@ -17,7 +17,6 @@ import (
 	"strings"
 
 	"github.com/joeig/go-powerdns/v3"
-	dnsv1alpha1 "github.com/orange-opensource/powerdns-operator/api/v1alpha1"
 	dnsv1alpha2 "github.com/orange-opensource/powerdns-operator/api/v1alpha2"
 	"k8s.io/utils/ptr"
 )
@@ -56,7 +55,7 @@ func zoneIsIdenticalToExternalZone(zone *dnsv1alpha2.Zone, externalZone *powerdn
 }
 
 // rrsetIsIdenticalToExternalRRset return True if Comments, Name, Type, TTL and Records are identical between RRSet and External Resource
-func rrsetIsIdenticalToExternalRRset(rrset *dnsv1alpha1.RRset, externalRecord powerdns.RRset) bool {
+func rrsetIsIdenticalToExternalRRset(rrset *dnsv1alpha2.RRset, externalRecord powerdns.RRset) bool {
 	commentsIdentical := true
 	if len(externalRecord.Comments) != 0 {
 		if rrset.Spec.Comment != nil {
@@ -86,7 +85,7 @@ func makeCanonical(in string) string {
 	return result
 }
 
-func getRRsetName(rrset *dnsv1alpha1.RRset) string {
+func getRRsetName(rrset *dnsv1alpha2.RRset) string {
 	if !strings.HasSuffix(rrset.Spec.Name, ".") {
 		return makeCanonical(rrset.Spec.Name + "." + rrset.Spec.ZoneRef.Name)
 	}

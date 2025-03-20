@@ -19,7 +19,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	dnsv1alpha1 "github.com/orange-opensource/powerdns-operator/api/v1alpha1"
 	dnsv1alpha2 "github.com/orange-opensource/powerdns-operator/api/v1alpha2"
 )
 
@@ -85,7 +84,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ZoneReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	// We use indexer to ensure that only one Zone/ClusterZone exists for one DNS entry
+	// We use indexer to ensure that only one Zone exists for one DNS entry
 	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &dnsv1alpha2.Zone{}, "Zone.Entry.Name", func(rawObj client.Object) []string {
 		// grab the Zone object, extract its name...
 		var ZoneName string
@@ -98,6 +97,6 @@ func (r *ZoneReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&dnsv1alpha2.Zone{}).
-		Owns(&dnsv1alpha1.RRset{}).
+		Owns(&dnsv1alpha2.RRset{}).
 		Complete(r)
 }

@@ -20,7 +20,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/joeig/go-powerdns/v3"
-	dnsv1alpha1 "github.com/orange-opensource/powerdns-operator/api/v1alpha1"
 	dnsv1alpha2 "github.com/orange-opensource/powerdns-operator/api/v1alpha2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -301,11 +300,11 @@ func TestDeleteRrsetExternalResources(t *testing.T) {
 	var testCases = []struct {
 		description string
 		zone        *dnsv1alpha2.Zone
-		rrset       *dnsv1alpha1.RRset
+		rrset       *dnsv1alpha2.RRset
 		e           error
 	}{
-		{"Existing RRset", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: zoneName, Namespace: namespace}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, &dnsv1alpha1.RRset{ObjectMeta: metav1.ObjectMeta{Name: rrsetFqdn1, Namespace: namespace}, Spec: dnsv1alpha1.RRsetSpec{ZoneRef: dnsv1alpha1.ZoneRef{Name: zoneName}, Type: rrsetType1, Name: rrsetName1, TTL: rrsetTTL1, Records: rrsetRecords1, Comment: &rrsetComment1}}, nil},
-		{"Inexisting RRset", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: zoneName, Namespace: namespace}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, &dnsv1alpha1.RRset{ObjectMeta: metav1.ObjectMeta{Name: rrsetFqdn2, Namespace: namespace}, Spec: dnsv1alpha1.RRsetSpec{ZoneRef: dnsv1alpha1.ZoneRef{Name: zoneName}, Type: rrsetType2, Name: rrsetName2, TTL: rrsetTTL2, Records: rrsetRecords2, Comment: &rrsetComment2}}, nil},
+		{"Existing RRset", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: zoneName, Namespace: namespace}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, &dnsv1alpha2.RRset{ObjectMeta: metav1.ObjectMeta{Name: rrsetFqdn1, Namespace: namespace}, Spec: dnsv1alpha2.RRsetSpec{ZoneRef: dnsv1alpha2.ZoneRef{Name: zoneName, Kind: "Zone"}, Type: rrsetType1, Name: rrsetName1, TTL: rrsetTTL1, Records: rrsetRecords1, Comment: &rrsetComment1}}, nil},
+		{"Inexisting RRset", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: zoneName, Namespace: namespace}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, &dnsv1alpha2.RRset{ObjectMeta: metav1.ObjectMeta{Name: rrsetFqdn2, Namespace: namespace}, Spec: dnsv1alpha2.RRsetSpec{ZoneRef: dnsv1alpha2.ZoneRef{Name: zoneName, Kind: "Zone"}, Type: rrsetType2, Name: rrsetName2, TTL: rrsetTTL2, Records: rrsetRecords2, Comment: &rrsetComment2}}, nil},
 	}
 
 	// Mock initialization
@@ -350,13 +349,13 @@ func TestCreateOrUpdateRrsetExternalResources(t *testing.T) {
 	var testCases = []struct {
 		description string
 		zone        *dnsv1alpha2.Zone
-		rrset       *dnsv1alpha1.RRset
+		rrset       *dnsv1alpha2.RRset
 		want        bool
 		e           error
 	}{
-		{"RRset creation", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: zoneName, Namespace: namespace}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, &dnsv1alpha1.RRset{ObjectMeta: metav1.ObjectMeta{Name: rrsetFqdn2, Namespace: namespace}, Spec: dnsv1alpha1.RRsetSpec{ZoneRef: dnsv1alpha1.ZoneRef{Name: zoneName}, Type: rrsetType2, Name: rrsetName2, TTL: rrsetTTL2, Records: rrsetRecords2, Comment: &rrsetComment2}}, true, nil},
-		{"RRset update", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: zoneName, Namespace: namespace}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, &dnsv1alpha1.RRset{ObjectMeta: metav1.ObjectMeta{Name: rrsetFqdn1, Namespace: namespace}, Spec: dnsv1alpha1.RRsetSpec{ZoneRef: dnsv1alpha1.ZoneRef{Name: zoneName}, Type: rrsetType1, Name: rrsetName1, TTL: rrsetTTL1, Records: rrsetRecords1, Comment: &rrsetComment1}}, true, nil},
-		{"RRset identical", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: zoneName, Namespace: namespace}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, &dnsv1alpha1.RRset{ObjectMeta: metav1.ObjectMeta{Name: rrsetFqdn1, Namespace: namespace}, Spec: dnsv1alpha1.RRsetSpec{ZoneRef: dnsv1alpha1.ZoneRef{Name: zoneName}, Type: rrsetType1, Name: rrsetName1, TTL: rrsetTTL1, Records: rrsetRecords1, Comment: &rrsetComment1}}, false, nil},
+		{"RRset creation", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: zoneName, Namespace: namespace}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, &dnsv1alpha2.RRset{ObjectMeta: metav1.ObjectMeta{Name: rrsetFqdn2, Namespace: namespace}, Spec: dnsv1alpha2.RRsetSpec{ZoneRef: dnsv1alpha2.ZoneRef{Name: zoneName, Kind: "Zone"}, Type: rrsetType2, Name: rrsetName2, TTL: rrsetTTL2, Records: rrsetRecords2, Comment: &rrsetComment2}}, true, nil},
+		{"RRset update", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: zoneName, Namespace: namespace}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, &dnsv1alpha2.RRset{ObjectMeta: metav1.ObjectMeta{Name: rrsetFqdn1, Namespace: namespace}, Spec: dnsv1alpha2.RRsetSpec{ZoneRef: dnsv1alpha2.ZoneRef{Name: zoneName, Kind: "Zone"}, Type: rrsetType1, Name: rrsetName1, TTL: rrsetTTL1, Records: rrsetRecords1, Comment: &rrsetComment1}}, true, nil},
+		{"RRset identical", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: zoneName, Namespace: namespace}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, &dnsv1alpha2.RRset{ObjectMeta: metav1.ObjectMeta{Name: rrsetFqdn1, Namespace: namespace}, Spec: dnsv1alpha2.RRsetSpec{ZoneRef: dnsv1alpha2.ZoneRef{Name: zoneName, Kind: "Zone"}, Type: rrsetType1, Name: rrsetName1, TTL: rrsetTTL1, Records: rrsetRecords1, Comment: &rrsetComment1}}, false, nil},
 	}
 
 	// Mock initialization

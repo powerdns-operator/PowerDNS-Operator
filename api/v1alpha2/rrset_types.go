@@ -8,7 +8,7 @@
  * see the "LICENSE" file for more details
  */
 
-package v1alpha1
+package v1alpha2
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -35,6 +35,9 @@ type RRsetSpec struct {
 type ZoneRef struct {
 	// Name of the zone.
 	Name string `json:"name"`
+	// Kind of the Zone resource
+	// +kubebuilder:validation:Enum:=Zone
+	Kind string `json:"kind"`
 }
 
 // RRsetStatus defines the observed state of RRset
@@ -46,9 +49,11 @@ type RRsetStatus struct {
 	ObservedGeneration *int64             `json:"observedGeneration,omitempty"`
 }
 
-// +kubebuilder:object:root=true
-// +kubebuilder:subresource:status
-// +kubebuilder:unservedversion
+//+kubebuilder:object:root=true
+//+kubebuilder:storageversion
+//+kubebuilder:conversion:hub
+//+kubebuilder:subresource:status
+//+kubebuilder:resource:scope=Namespaced
 
 // +kubebuilder:printcolumn:name="Zone",type="string",JSONPath=".spec.zoneRef.name"
 // +kubebuilder:printcolumn:name="Name",type="string",JSONPath=".status.dnsEntryName"
@@ -65,7 +70,7 @@ type RRset struct {
 	Status RRsetStatus `json:"status,omitempty"`
 }
 
-// +kubebuilder:object:root=true
+//+kubebuilder:object:root=true
 
 // RRsetList contains a list of RRset
 type RRsetList struct {

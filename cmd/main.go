@@ -28,7 +28,6 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	dnsv1alpha1 "github.com/orange-opensource/powerdns-operator/api/v1alpha1"
 	"github.com/orange-opensource/powerdns-operator/internal/controller"
 
 	powerdns "github.com/joeig/go-powerdns/v3"
@@ -45,7 +44,6 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
-	utilruntime.Must(dnsv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(dnsv1alpha2.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
