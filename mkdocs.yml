@@ -44,6 +44,8 @@ markdown_extensions:
   - pymdownx.highlight
   - pymdownx.superfences
   - admonition
+  - toc:
+      permalink: ⚓
   - pymdownx.snippets:
       base_path: docs/snippets
 nav:
@@ -56,4 +58,8 @@ nav:
   - Guides:
       - Zones: guides/zones.md
       - RRsets: guides/rrsets.md
+      - Metrics: guides/metrics.md
       - Warnings: guides/warnings.md
+  - Testing Environment:
+      - K3D: testing_environment/k3d.md
+      - PowerDNS: testing_environment/powerdns.md

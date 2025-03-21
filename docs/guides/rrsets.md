@@ -17,7 +17,7 @@ The specification of the `ZoneRef` contains the following fields:
 
 | Field | Type | Required | Description |
 | ----- | ---- |:--------:| ----------- |
-| name | string | Y | Name of the zone |
+| name | string | Y | Name of the `Zone` |
 
 ## Example
 
@@ -26,6 +26,7 @@ apiVersion: dns.cav.enablers.ob/v1alpha1
 kind: RRset
 metadata:
   name: test.helloworld.com
+  namespace: default
 spec:
   comment: nothing to tell
   type: A
@@ -38,4 +39,4 @@ spec:
     name: helloworld.com
 ```
 
-> Note: The name can be canonical or not.
+> Note: The name can be canonical or not. If not, the name of the `Zone` will be appended

@@ -30,7 +30,7 @@ For some resources such as CNAME, PTR, MX, SRV, the records field MUST be in can
 
 ## TXT Records
 
-Sometime, you may encounter the following error when applying a RRset custom resource:
+Sometime, you may encounter the following error when applying a `RRset` custom resource:
 ```yaml
 status:
   syncErrorDescription: 'Record helloworld.com./TXT ''Welcome to the helloworld.com
@@ -40,7 +40,7 @@ status:
   syncStatus: Failed
 ```
 
-This error is due to a wrong format for the RRset.  
+This error is due to a wrong format for the `RRset`.  
 TXT records MUST start AND end with an escaped quote (\"). See following example.  
 
 ```yaml

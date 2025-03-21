@@ -47,4 +47,4 @@ kubectl apply -k https://github.com/Orange-OpenSource/PowerDNS-Operator/releases
 
 ## Installing with Helm
 
-We are working on a Helm chart to simplify the installation process. The Helm chart will be available in near future.
+A Helm chart is available on a [specific project](https://github.com/orange-opensource/PowerDNS-Operator-helm-chart).
