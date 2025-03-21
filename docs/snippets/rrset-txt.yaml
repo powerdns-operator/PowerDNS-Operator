@@ -1,5 +1,5 @@
 ---
-apiVersion: dns.cav.enablers.ob/v1alpha1
+apiVersion: dns.cav.enablers.ob/v1alpha2
 kind: RRset
 metadata:
   name: txt.helloworld.com
@@ -11,3 +11,4 @@ spec:
     - "\"Welcome to the helloworld.com domain\""
   zoneRef:
     name: helloworld.com
+    kind: "Zone"

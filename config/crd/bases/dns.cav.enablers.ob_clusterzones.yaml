@@ -1,0 +1,188 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.16.2
+  name: clusterzones.dns.cav.enablers.ob
+spec:
+  group: dns.cav.enablers.ob
+  names:
+    kind: ClusterZone
+    listKind: ClusterZoneList
+    plural: clusterzones
+    singular: clusterzone
+  scope: Cluster
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .status.serial
+      name: Serial
+      type: integer
+    - jsonPath: .status.id
+      name: ID
+      type: string
+    - jsonPath: .status.syncStatus
+      name: Status
+      type: string
+    name: v1alpha2
+    schema:
+      openAPIV3Schema:
+        description: ClusterZone is the Schema for the clusterzones API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ZoneSpec defines the desired state of Zone
+            properties:
+              catalog:
+                description: The catalog this zone is a member of
+                type: string
+              kind:
+                description: Kind of the zone, one of "Native", "Master", "Slave",
+                  "Producer", "Consumer".
+                enum:
+                - Native
+                - Master
+                - Slave
+                - Producer
+                - Consumer
+                type: string
+              nameservers:
+                description: List of the nameservers of the zone.
+                items:
+                  pattern: ^([a-zA-Z0-9-]+\.)*[a-zA-Z0-9-]+$
+                  type: string
+                minItems: 1
+                type: array
+              soa_edit_api:
+                default: DEFAULT
+                description: The SOA-EDIT-API metadata item, one of "DEFAULT", "INCREASE",
+                  "EPOCH", defaults to "DEFAULT"
+                enum:
+                - DEFAULT
+                - INCREASE
+                - EPOCH
+                type: string
+            required:
+            - kind
+            - nameservers
+            type: object
+          status:
+            description: ZoneStatus defines the observed state of Zone
+            properties:
+              catalog:
+                description: The catalog this zone is a member of.
+                type: string
+              conditions:
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+              dnssec:
+                description: Whether or not this zone is DNSSEC signed.
+                type: boolean
+              edited_serial:
+                description: The SOA serial as seen in query responses.
+                format: int32
+                type: integer
+              id:
+                description: ID define the opaque zone id.
+                type: string
+              kind:
+                description: Kind of the zone, one of "Native", "Master", "Slave",
+                  "Producer", "Consumer".
+                type: string
+              masters:
+                description: List of IP addresses configured as a master for this
+                  zone ("Slave" type zones only).
+                items:
+                  type: string
+                type: array
+              name:
+                description: Name of the zone (e.g. "example.com.")
+                type: string
+              notified_serial:
+                description: The SOA serial notifications have been sent out for
+                format: int32
+                type: integer
+              observedGeneration:
+                format: int64
+                type: integer
+              serial:
+                description: The SOA serial number.
+                format: int32
+                type: integer
+              syncStatus:
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

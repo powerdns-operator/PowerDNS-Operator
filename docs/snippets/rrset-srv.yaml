@@ -1,5 +1,5 @@
 ---
-apiVersion: dns.cav.enablers.ob/v1alpha1
+apiVersion: dns.cav.enablers.ob/v1alpha2
 kind: RRset
 metadata:
   name: database.srv.helloworld.com
@@ -11,3 +11,4 @@ spec:
     - 1 50 25565 test2.helloworld.com.
   zoneRef:
     name: helloworld.com
+    kind: "Zone"

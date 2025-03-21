@@ -20,7 +20,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/joeig/go-powerdns/v3"
-	dnsv1alpha1 "github.com/orange-opensource/powerdns-operator/api/v1alpha1"
+	dnsv1alpha2 "github.com/orange-opensource/powerdns-operator/api/v1alpha2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -127,18 +127,23 @@ func TestCreateExternalResources(t *testing.T) {
 		namespace1   = "example1"
 		nameservers1 = []string{"ns1.example1.org", "ns2.example1.org"}
 		soaEditApi1  = "DEFAULT"
+
+		name2        = "example2.org"
+		nameservers2 = []string{"ns1.example2.org", "ns2.example2.org"}
+		soaEditApi2  = "DEFAULT"
 	)
 	ctx := context.Background()
 	log := log.FromContext(ctx)
 
 	var testCases = []struct {
 		description string
-		zone        *dnsv1alpha1.Zone
+		genericZone dnsv1alpha2.GenericZone
 		e           error
 	}{
-		{"Valid Zone", &dnsv1alpha1.Zone{ObjectMeta: metav1.ObjectMeta{Name: name1, Namespace: namespace1}, Spec: dnsv1alpha1.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi1}}, nil},
-		{"Already existing Zone", &dnsv1alpha1.Zone{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace}, Spec: dnsv1alpha1.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, powerdns.Error{StatusCode: 409, Status: "409 Conflict", Message: "Conflict"}},
-		{"communication error", &dnsv1alpha1.Zone{ObjectMeta: metav1.ObjectMeta{Name: FAKE_SITE, Namespace: namespace}, Spec: dnsv1alpha1.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, &powerdns.Error{StatusCode: 500, Status: "500 Internal Server Error", Message: "Internal Server Error"}},
+		{"Valid Zone", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: name1, Namespace: namespace1}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi1}}, nil},
+		{"Valid ClusterZone", &dnsv1alpha2.ClusterZone{ObjectMeta: metav1.ObjectMeta{Name: name2}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers2, Catalog: &catalog, SOAEditAPI: &soaEditApi2}}, nil},
+		{"Already existing Zone", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, powerdns.Error{StatusCode: 409, Status: "409 Conflict", Message: "Conflict"}},
+		{"communication error", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: FAKE_SITE, Namespace: namespace}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, &powerdns.Error{StatusCode: 500, Status: "500 Internal Server Error", Message: "Internal Server Error"}},
 	}
 
 	// Mock initialization
@@ -147,7 +152,7 @@ func TestCreateExternalResources(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
-			err := createZoneExternalResources(ctx, tc.zone, PDNSClient, log)
+			err := createZoneExternalResources(ctx, tc.genericZone, PDNSClient, log)
 			if !cmp.Equal(err, tc.e) {
 				t.Errorf("got %v, want %v", err, tc.e)
 			}
@@ -167,18 +172,24 @@ func TestUpdateExternalResources(t *testing.T) {
 		namespace1   = "example1"
 		nameservers1 = []string{"ns1.example1.org", "ns2.example1.org"}
 		soaEditApi1  = "DEFAULT"
+
+		name2        = "example2.org"
+		nameservers2 = []string{"ns1.example2.org", "ns2.example2.org"}
+		soaEditApi2  = "DEFAULT"
 	)
 	ctx := context.Background()
 	log := log.FromContext(ctx)
 
 	var testCases = []struct {
 		description string
-		zone        *dnsv1alpha1.Zone
+		genericZone dnsv1alpha2.GenericZone
 		e           error
 	}{
-		{"Valid Zone", &dnsv1alpha1.Zone{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace}, Spec: dnsv1alpha1.ZoneSpec{Kind: SLAVE_KIND_ZONE, Nameservers: nameservers, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, nil},
-		{"Non-existing Zone", &dnsv1alpha1.Zone{ObjectMeta: metav1.ObjectMeta{Name: name1, Namespace: namespace1}, Spec: dnsv1alpha1.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi1}}, powerdns.Error{StatusCode: 404, Status: "404 Not Found", Message: "Not Found"}},
-		{"communication error", &dnsv1alpha1.Zone{ObjectMeta: metav1.ObjectMeta{Name: FAKE_SITE, Namespace: namespace}, Spec: dnsv1alpha1.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, &powerdns.Error{StatusCode: 500, Status: "500 Internal Server Error", Message: "Internal Server Error"}},
+		{"Valid Zone", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace}, Spec: dnsv1alpha2.ZoneSpec{Kind: SLAVE_KIND_ZONE, Nameservers: nameservers, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, nil},
+		{"Valid ClusterZone", &dnsv1alpha2.ClusterZone{ObjectMeta: metav1.ObjectMeta{Name: name}, Spec: dnsv1alpha2.ZoneSpec{Kind: NATIVE_KIND_ZONE, Nameservers: nameservers, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, nil},
+		{"Non-existing Zone", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: name1, Namespace: namespace1}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi1}}, powerdns.Error{StatusCode: 404, Status: "404 Not Found", Message: "Not Found"}},
+		{"Non-existing ClusterZone", &dnsv1alpha2.ClusterZone{ObjectMeta: metav1.ObjectMeta{Name: name2}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers2, Catalog: &catalog, SOAEditAPI: &soaEditApi2}}, powerdns.Error{StatusCode: 404, Status: "404 Not Found", Message: "Not Found"}},
+		{"communication error", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: FAKE_SITE, Namespace: namespace}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, &powerdns.Error{StatusCode: 500, Status: "500 Internal Server Error", Message: "Internal Server Error"}},
 	}
 
 	// Mock initialization
@@ -187,7 +198,7 @@ func TestUpdateExternalResources(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
-			err := updateZoneExternalResources(ctx, tc.zone, PDNSClient, log)
+			err := updateZoneExternalResources(ctx, tc.genericZone, PDNSClient, log)
 			if !cmp.Equal(err, tc.e) {
 				t.Errorf("got %v, want %v", err, tc.e)
 			}
@@ -204,6 +215,7 @@ func TestUpdateNsOnExternalResources(t *testing.T) {
 		catalog     = "catalog.org."
 
 		nameservers1 = []string{"ns1.example1.org", "ns2.example1.org"}
+		nameservers2 = []string{"ns1.example2.org", "ns2.example2.org"}
 	)
 	ctx := context.Background()
 	log := log.FromContext(ctx)
@@ -211,11 +223,12 @@ func TestUpdateNsOnExternalResources(t *testing.T) {
 
 	var testCases = []struct {
 		description string
-		zone        *dnsv1alpha1.Zone
+		genericZone dnsv1alpha2.GenericZone
 		e           error
 	}{
-		{"Valid Zone", &dnsv1alpha1.Zone{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace}, Spec: dnsv1alpha1.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, nil},
-		{"communication error", &dnsv1alpha1.Zone{ObjectMeta: metav1.ObjectMeta{Name: FAKE_SITE, Namespace: namespace}, Spec: dnsv1alpha1.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, &powerdns.Error{StatusCode: 500, Status: "500 Internal Server Error", Message: "Internal Server Error"}},
+		{"Valid Zone", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, nil},
+		{"Valid ClusterZone", &dnsv1alpha2.ClusterZone{ObjectMeta: metav1.ObjectMeta{Name: name}, Spec: dnsv1alpha2.ZoneSpec{Kind: NATIVE_KIND_ZONE, Nameservers: nameservers2, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, nil},
+		{"communication error", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: FAKE_SITE, Namespace: namespace}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, &powerdns.Error{StatusCode: 500, Status: "500 Internal Server Error", Message: "Internal Server Error"}},
 	}
 
 	// Mock initialization
@@ -224,7 +237,7 @@ func TestUpdateNsOnExternalResources(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
-			err := updateNsOnZoneExternalResources(ctx, tc.zone, ttl, PDNSClient, log)
+			err := updateNsOnZoneExternalResources(ctx, tc.genericZone, ttl, PDNSClient, log)
 			if !cmp.Equal(err, tc.e) {
 				t.Errorf("got %v, want %v", err, tc.e)
 			}
@@ -243,18 +256,23 @@ func TestDeleteExternalResources(t *testing.T) {
 		namespace1   = "example1"
 		nameservers1 = []string{"ns1.example1.org", "ns2.example1.org"}
 		soaEditApi1  = "DEFAULT"
+
+		name2        = "example2.org"
+		nameservers2 = []string{"ns1.example2.org", "ns2.example2.org"}
+		soaEditApi2  = "DEFAULT"
 	)
 	ctx := context.Background()
 	log := log.FromContext(ctx)
 
 	var testCases = []struct {
 		description string
-		zone        *dnsv1alpha1.Zone
+		genericZone dnsv1alpha2.GenericZone
 		e           error
 	}{
-		{"Valid Zone", &dnsv1alpha1.Zone{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace}, Spec: dnsv1alpha1.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, nil},
-		{"Non-existing Zone", &dnsv1alpha1.Zone{ObjectMeta: metav1.ObjectMeta{Name: name1, Namespace: namespace1}, Spec: dnsv1alpha1.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi1}}, nil},
-		{"communication error", &dnsv1alpha1.Zone{ObjectMeta: metav1.ObjectMeta{Name: FAKE_SITE, Namespace: namespace1}, Spec: dnsv1alpha1.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi1}}, &powerdns.Error{StatusCode: 500, Status: "500 Internal Server Error", Message: "Internal Server Error"}},
+		{"Valid Zone", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, nil},
+		{"Non-existing Zone", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: name1, Namespace: namespace1}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi1}}, nil},
+		{"Non-existing ClusterZone", &dnsv1alpha2.ClusterZone{ObjectMeta: metav1.ObjectMeta{Name: name2}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers2, Catalog: &catalog, SOAEditAPI: &soaEditApi2}}, nil},
+		{"communication error", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: FAKE_SITE, Namespace: namespace1}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi1}}, &powerdns.Error{StatusCode: 500, Status: "500 Internal Server Error", Message: "Internal Server Error"}},
 	}
 
 	// Mock initialization
@@ -263,7 +281,7 @@ func TestDeleteExternalResources(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
-			err := deleteZoneExternalResources(ctx, tc.zone, PDNSClient, log)
+			err := deleteZoneExternalResources(ctx, tc.genericZone, PDNSClient, log)
 			if !cmp.Equal(err, tc.e) {
 				t.Errorf("got %v, want %v", err, tc.e)
 			}
@@ -299,12 +317,12 @@ func TestDeleteRrsetExternalResources(t *testing.T) {
 
 	var testCases = []struct {
 		description string
-		zone        *dnsv1alpha1.Zone
-		rrset       *dnsv1alpha1.RRset
+		genericZone dnsv1alpha2.GenericZone
+		rrset       *dnsv1alpha2.RRset
 		e           error
 	}{
-		{"Existing RRset", &dnsv1alpha1.Zone{ObjectMeta: metav1.ObjectMeta{Name: zoneName, Namespace: namespace}, Spec: dnsv1alpha1.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, &dnsv1alpha1.RRset{ObjectMeta: metav1.ObjectMeta{Name: rrsetFqdn1, Namespace: namespace}, Spec: dnsv1alpha1.RRsetSpec{ZoneRef: dnsv1alpha1.ZoneRef{Name: zoneName}, Type: rrsetType1, Name: rrsetName1, TTL: rrsetTTL1, Records: rrsetRecords1, Comment: &rrsetComment1}}, nil},
-		{"Inexisting RRset", &dnsv1alpha1.Zone{ObjectMeta: metav1.ObjectMeta{Name: zoneName, Namespace: namespace}, Spec: dnsv1alpha1.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, &dnsv1alpha1.RRset{ObjectMeta: metav1.ObjectMeta{Name: rrsetFqdn2, Namespace: namespace}, Spec: dnsv1alpha1.RRsetSpec{ZoneRef: dnsv1alpha1.ZoneRef{Name: zoneName}, Type: rrsetType2, Name: rrsetName2, TTL: rrsetTTL2, Records: rrsetRecords2, Comment: &rrsetComment2}}, nil},
+		{"Existing RRset", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: zoneName, Namespace: namespace}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, &dnsv1alpha2.RRset{ObjectMeta: metav1.ObjectMeta{Name: rrsetFqdn1, Namespace: namespace}, Spec: dnsv1alpha2.RRsetSpec{ZoneRef: dnsv1alpha2.ZoneRef{Name: zoneName, Kind: "Zone"}, Type: rrsetType1, Name: rrsetName1, TTL: rrsetTTL1, Records: rrsetRecords1, Comment: &rrsetComment1}}, nil},
+		{"Inexisting RRset", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: zoneName, Namespace: namespace}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, &dnsv1alpha2.RRset{ObjectMeta: metav1.ObjectMeta{Name: rrsetFqdn2, Namespace: namespace}, Spec: dnsv1alpha2.RRsetSpec{ZoneRef: dnsv1alpha2.ZoneRef{Name: zoneName, Kind: "Zone"}, Type: rrsetType2, Name: rrsetName2, TTL: rrsetTTL2, Records: rrsetRecords2, Comment: &rrsetComment2}}, nil},
 	}
 
 	// Mock initialization
@@ -313,7 +331,7 @@ func TestDeleteRrsetExternalResources(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
-			err := deleteRrsetExternalResources(ctx, tc.zone, tc.rrset, PDNSClient, log)
+			err := deleteRrsetExternalResources(ctx, tc.genericZone, tc.rrset, PDNSClient, log)
 			if !cmp.Equal(err, tc.e) {
 				t.Errorf("got %v, want %v", err, tc.e)
 			}
@@ -348,14 +366,14 @@ func TestCreateOrUpdateRrsetExternalResources(t *testing.T) {
 
 	var testCases = []struct {
 		description string
-		zone        *dnsv1alpha1.Zone
-		rrset       *dnsv1alpha1.RRset
+		genericZone dnsv1alpha2.GenericZone
+		rrset       *dnsv1alpha2.RRset
 		want        bool
 		e           error
 	}{
-		{"RRset creation", &dnsv1alpha1.Zone{ObjectMeta: metav1.ObjectMeta{Name: zoneName, Namespace: namespace}, Spec: dnsv1alpha1.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, &dnsv1alpha1.RRset{ObjectMeta: metav1.ObjectMeta{Name: rrsetFqdn2, Namespace: namespace}, Spec: dnsv1alpha1.RRsetSpec{ZoneRef: dnsv1alpha1.ZoneRef{Name: zoneName}, Type: rrsetType2, Name: rrsetName2, TTL: rrsetTTL2, Records: rrsetRecords2, Comment: &rrsetComment2}}, true, nil},
-		{"RRset update", &dnsv1alpha1.Zone{ObjectMeta: metav1.ObjectMeta{Name: zoneName, Namespace: namespace}, Spec: dnsv1alpha1.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, &dnsv1alpha1.RRset{ObjectMeta: metav1.ObjectMeta{Name: rrsetFqdn1, Namespace: namespace}, Spec: dnsv1alpha1.RRsetSpec{ZoneRef: dnsv1alpha1.ZoneRef{Name: zoneName}, Type: rrsetType1, Name: rrsetName1, TTL: rrsetTTL1, Records: rrsetRecords1, Comment: &rrsetComment1}}, true, nil},
-		{"RRset identical", &dnsv1alpha1.Zone{ObjectMeta: metav1.ObjectMeta{Name: zoneName, Namespace: namespace}, Spec: dnsv1alpha1.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, &dnsv1alpha1.RRset{ObjectMeta: metav1.ObjectMeta{Name: rrsetFqdn1, Namespace: namespace}, Spec: dnsv1alpha1.RRsetSpec{ZoneRef: dnsv1alpha1.ZoneRef{Name: zoneName}, Type: rrsetType1, Name: rrsetName1, TTL: rrsetTTL1, Records: rrsetRecords1, Comment: &rrsetComment1}}, false, nil},
+		{"RRset creation", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: zoneName, Namespace: namespace}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, &dnsv1alpha2.RRset{ObjectMeta: metav1.ObjectMeta{Name: rrsetFqdn2, Namespace: namespace}, Spec: dnsv1alpha2.RRsetSpec{ZoneRef: dnsv1alpha2.ZoneRef{Name: zoneName, Kind: "Zone"}, Type: rrsetType2, Name: rrsetName2, TTL: rrsetTTL2, Records: rrsetRecords2, Comment: &rrsetComment2}}, true, nil},
+		{"RRset update", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: zoneName, Namespace: namespace}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, &dnsv1alpha2.RRset{ObjectMeta: metav1.ObjectMeta{Name: rrsetFqdn1, Namespace: namespace}, Spec: dnsv1alpha2.RRsetSpec{ZoneRef: dnsv1alpha2.ZoneRef{Name: zoneName, Kind: "Zone"}, Type: rrsetType1, Name: rrsetName1, TTL: rrsetTTL1, Records: rrsetRecords1, Comment: &rrsetComment1}}, true, nil},
+		{"RRset identical", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: zoneName, Namespace: namespace}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, &dnsv1alpha2.RRset{ObjectMeta: metav1.ObjectMeta{Name: rrsetFqdn1, Namespace: namespace}, Spec: dnsv1alpha2.RRsetSpec{ZoneRef: dnsv1alpha2.ZoneRef{Name: zoneName, Kind: "Zone"}, Type: rrsetType1, Name: rrsetName1, TTL: rrsetTTL1, Records: rrsetRecords1, Comment: &rrsetComment1}}, false, nil},
 	}
 
 	// Mock initialization
@@ -364,7 +382,7 @@ func TestCreateOrUpdateRrsetExternalResources(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
-			modified, err := createOrUpdateRrsetExternalResources(ctx, tc.zone, tc.rrset, PDNSClient)
+			modified, err := createOrUpdateRrsetExternalResources(ctx, tc.genericZone, tc.rrset, PDNSClient)
 			if !cmp.Equal(modified, tc.want) {
 				t.Errorf("got %v, want %v", modified, tc.want)
 			}

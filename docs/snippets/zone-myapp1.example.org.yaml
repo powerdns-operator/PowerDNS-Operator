@@ -1,0 +1,11 @@
+---
+apiVersion: dns.cav.enablers.ob/v1alpha2
+kind: Zone
+metadata:
+  name: myapp1.example.org
+  namespace: myapp1
+spec:
+  nameservers:
+    - ns1.example.org
+    - ns2.example.org
+  kind: Native

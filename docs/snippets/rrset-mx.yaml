@@ -1,5 +1,5 @@
 ---
-apiVersion: dns.cav.enablers.ob/v1alpha1
+apiVersion: dns.cav.enablers.ob/v1alpha2
 kind: RRset
 metadata:
   name: mx.helloworld.com
@@ -12,3 +12,4 @@ spec:
     - "20 mailserver2.helloworld.com."
   zoneRef:
     name: helloworld.com
+    kind: "Zone"

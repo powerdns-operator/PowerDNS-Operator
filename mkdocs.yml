@@ -44,6 +44,7 @@ markdown_extensions:
   - pymdownx.highlight
   - pymdownx.superfences
   - admonition
+  - footnotes
   - toc:
       permalink: ⚓
   - pymdownx.snippets:
@@ -56,6 +57,7 @@ nav:
       - FAQ: introduction/faq.md
       - Stability and Support: introduction/stability-support.md
   - Guides:
+      - ClusterZones: guides/clusterzones.md
       - Zones: guides/zones.md
       - RRsets: guides/rrsets.md
       - Metrics: guides/metrics.md

@@ -17,12 +17,13 @@ The specification of the `ZoneRef` contains the following fields:
 
 | Field | Type | Required | Description |
 | ----- | ---- |:--------:| ----------- |
-| name | string | Y | Name of the `Zone` |
+| name | string | Y | Name of the `ClusterZone`/`Zone` |
+| kind | string | Y | Kind of zone (Zone/ClusterZone) |
 
 ## Example
 
 ```yaml
-apiVersion: dns.cav.enablers.ob/v1alpha1
+apiVersion: dns.cav.enablers.ob/v1alpha2
 kind: RRset
 metadata:
   name: test.helloworld.com
@@ -37,6 +38,7 @@ spec:
     - 2.2.2.2
   zoneRef:
     name: helloworld.com
+    kind: "Zone"
 ```
 
-> Note: The name can be canonical or not. If not, the name of the `Zone` will be appended
+> Note: The name can be canonical or not. If not, the name of the `ClusterZone`/`Zone` will be appended

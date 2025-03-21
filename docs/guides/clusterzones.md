@@ -1,8 +1,8 @@
-# Zone deployment
+# ClusterZone deployment
 
 ## Specification
 
-The specification of the `Zone` contains the following fields:
+The specification of the `ClusterZone` contains the following fields:
 
 | Field | Type | Required | Description |
 | ----- | ---- |:--------:| ----------- |
@@ -15,10 +15,9 @@ The specification of the `Zone` contains the following fields:
 
 ```yaml
 apiVersion: dns.cav.enablers.ob/v1alpha2
-kind: Zone
+kind: ClusterZone
 metadata:
   name: helloworld.com
-  namespace: default
 spec:
   nameservers:
     - ns1.helloworld.com

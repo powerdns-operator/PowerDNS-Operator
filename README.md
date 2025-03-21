@@ -59,24 +59,40 @@ kubectl apply -f https://raw.githubusercontent.com/orange-opensource/powerdns-op
 
 ### Usage
 
-**Keep in mind that `Zone` are cluster-wide and `RRSet` are namespace scoped.**
-
-Zone is a critical resource and may be managed by a dedicated team, while RRSet may be managed by the application team.
+ClusterZone and Zone are critical resources and may be managed by a dedicated team, but Zone and RRSet may be managed by the application team.
 
 In either case, you can apply your own RBAC rules to restrict access to the resources.
 
 To create a PowerDNS resource, you can use the following examples.
 
-#### Zone
+#### ClusterZone
 
-First, create a Zone resource.
+First, create a ClusterZone resource.
 
 ```yaml
 ---
-apiVersion: dns.cav.enablers.ob/v1alpha1
+apiVersion: dns.cav.enablers.ob/v1alpha2
+kind: ClusterZone
+metadata:
+  name: example.org
+spec:
+  kind: Native
+  nameservers:
+    - ns1.example.org
+    - ns2.example.org
+```
+
+#### Zone
+
+Second, create a Zone resource.
+
+```yaml
+---
+apiVersion: dns.cav.enablers.ob/v1alpha2
 kind: Zone
 metadata:
   name: example.com
+  namespace: default
 spec:
   kind: Native
   nameservers:
@@ -90,7 +106,7 @@ Then, you can create RRSets and reference the target Zone.
 
 ```yaml
 ---
-apiVersion: dns.cav.enablers.ob/v1alpha1
+apiVersion: dns.cav.enablers.ob/v1alpha2
 kind: RRset
 metadata:
   name: a.example.com
@@ -104,9 +120,10 @@ spec:
     - 8.8.8.8
   zoneRef:
     name: example.com
+    kind: Zone
 
 ---
-apiVersion: dns.cav.enablers.ob/v1alpha1
+apiVersion: dns.cav.enablers.ob/v1alpha2
 kind: RRset
 metadata:
   name: cname.example.com
@@ -118,6 +135,7 @@ spec:
     - a.example.com
   zoneRef:
     name: example.com
+    kind: Zone
 ```
 
 The operator will manage the lifecycle of the resources and update the PowerDNS server accordingly.
@@ -127,14 +145,17 @@ The operator will manage the lifecycle of the resources and update the PowerDNS 
 Check the results
 
 ```sh
-kubectl get zones,rrsets -o wide
+kubectl get clusterzones,zones,rrsets -o wide
 
-NAME                                   SERIAL       ID
-zone.dns.cav.enablers.ob/example.com   2024081304   example.com.
+NAMESPACE     NAME                                          SERIAL       ID              STATUS
+              clusterzone.dns.cav.enablers.ob/example.org   2025032001   example.org.    Succeeded
 
-NAME                                          ZONE           TYPE    TTL   RECORDS
-rrset.dns.cav.enablers.ob/a.example.com       example.com.   A       300   ["1.1.1.1","8.8.8.8"]
-rrset.dns.cav.enablers.ob/cname.example.com   example.com.   CNAME   300   ["a.example.com"]
+NAMESPACE     NAME                                   SERIAL       ID              STATUS
+default       zone.dns.cav.enablers.ob/example.com   2024081304   example.com.    Succeeded
+
+NAMESPACE     NAME                                          ZONE           NAME                TYPE    TTL  STATUS     RECORDS
+default       rrset.dns.cav.enablers.ob/a.example.com       example.com.   a.example.com.      A       300  Succeeded  ["1.1.1.1","8.8.8.8"]
+default       rrset.dns.cav.enablers.ob/cname.example.com   example.com.   cname.example.com.  CNAME   300  Succeeded  ["a.example.com"]
 ```
 
 Test the DNS resolution

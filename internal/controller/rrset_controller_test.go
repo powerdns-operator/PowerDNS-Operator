@@ -23,21 +23,23 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	dnsv1alpha1 "github.com/orange-opensource/powerdns-operator/api/v1alpha1"
+	dnsv1alpha2 "github.com/orange-opensource/powerdns-operator/api/v1alpha2"
 )
 
 var _ = Describe("RRset Controller", func() {
 
 	const (
 		// Zone
-		zoneName = "example2.org"
-		zoneKind = NATIVE_KIND_ZONE
-		zoneNS1  = "ns1.example2.org"
-		zoneNS2  = "ns2.example2.org"
+		zoneName      = "example2.org"
+		zoneNamespace = "example2"
+		zoneKind      = NATIVE_KIND_ZONE
+		zoneNS1       = "ns1.example2.org"
+		zoneNS2       = "ns2.example2.org"
 
 		// RRset
 		resourceName      = "test.example2.org"
-		resourceNamespace = "default"
+		resourceNamespace = zoneNamespace
+		resourceZoneKind  = "Zone"
 		resourceDNSName   = "test"
 		resourceTTL       = uint32(300)
 		resourceType      = "A"
@@ -56,7 +58,8 @@ var _ = Describe("RRset Controller", func() {
 
 	// Zone
 	zoneLookupKey := types.NamespacedName{
-		Name: zoneName,
+		Name:      zoneName,
+		Namespace: zoneNamespace,
 	}
 
 	// RRset
@@ -68,14 +71,15 @@ var _ = Describe("RRset Controller", func() {
 	BeforeEach(func() {
 		ctx := context.Background()
 		By("Creating the Zone resource")
-		zone := &dnsv1alpha1.Zone{
+		zone := &dnsv1alpha2.Zone{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: zoneName,
+				Name:      zoneName,
+				Namespace: zoneNamespace,
 			},
 		}
 		zone.SetResourceVersion("")
 		_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, zone, func() error {
-			zone.Spec = dnsv1alpha1.ZoneSpec{
+			zone.Spec = dnsv1alpha2.ZoneSpec{
 				Kind:        zoneKind,
 				Nameservers: []string{zoneNS1, zoneNS2},
 			}
@@ -93,12 +97,12 @@ var _ = Describe("RRset Controller", func() {
 		}, timeout, interval).Should(BeTrue())
 
 		By("Ensuring the resource does not already exists")
-		emptyResource := &dnsv1alpha1.RRset{}
+		emptyResource := &dnsv1alpha2.RRset{}
 		err = k8sClient.Get(ctx, rssetLookupKey, emptyResource)
 		Expect(err).To(HaveOccurred())
 
 		By("Creating the RRset resource")
-		resource := &dnsv1alpha1.RRset{
+		resource := &dnsv1alpha2.RRset{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      resourceName,
 				Namespace: resourceNamespace,
@@ -107,9 +111,10 @@ var _ = Describe("RRset Controller", func() {
 		resource.SetResourceVersion("")
 		comment := resourceComment
 		_, err = controllerutil.CreateOrUpdate(ctx, k8sClient, resource, func() error {
-			resource.Spec = dnsv1alpha1.RRsetSpec{
-				ZoneRef: dnsv1alpha1.ZoneRef{
+			resource.Spec = dnsv1alpha2.RRsetSpec{
+				ZoneRef: dnsv1alpha2.ZoneRef{
 					Name: zoneRef,
+					Kind: resourceZoneKind,
 				},
 				Type:    resourceType,
 				Name:    resourceDNSName,
@@ -135,7 +140,7 @@ var _ = Describe("RRset Controller", func() {
 
 	AfterEach(func() {
 		ctx := context.Background()
-		resource := &dnsv1alpha1.RRset{}
+		resource := &dnsv1alpha2.RRset{}
 		err := k8sClient.Get(ctx, rssetLookupKey, resource)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -149,7 +154,7 @@ var _ = Describe("RRset Controller", func() {
 		}, timeout, interval).Should(BeTrue())
 
 		By("Cleaning up the specific resource instance Zone")
-		zone := &dnsv1alpha1.Zone{}
+		zone := &dnsv1alpha2.Zone{}
 		err = k8sClient.Get(ctx, zoneLookupKey, zone)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(k8sClient.Delete(ctx, zone)).To(Succeed())
@@ -171,7 +176,7 @@ var _ = Describe("RRset Controller", func() {
 			ic := countMetrics()
 			ctx := context.Background()
 			By("Getting the existing resource")
-			createdResource := &dnsv1alpha1.RRset{}
+			createdResource := &dnsv1alpha2.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, rssetLookupKey, createdResource)
 				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS)
@@ -184,7 +189,7 @@ var _ = Describe("RRset Controller", func() {
 			Expect(getMockedComment(resourceName, resourceType)).To(Equal(resourceComment))
 			Expect(createdResource.GetOwnerReferences()).NotTo(BeEmpty(), "RRset should have setOwnerReference")
 			Expect(createdResource.GetOwnerReferences()[0].Name).To(Equal(zoneRef), "RRset should have setOwnerReference to Zone")
-			Expect(createdResource.GetFinalizers()).To(ContainElement(FINALIZER_NAME), "RRset should contain the finalizer")
+			Expect(createdResource.GetFinalizers()).To(ContainElement(RESOURCES_FINALIZER_NAME), "RRset should contain the finalizer")
 		})
 	})
 
@@ -196,7 +201,7 @@ var _ = Describe("RRset Controller", func() {
 			updatedRecords := []string{"127.0.0.3"}
 
 			By("Getting the initial Serial of the zone")
-			zone := &dnsv1alpha1.Zone{}
+			zone := &dnsv1alpha2.Zone{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, zoneLookupKey, zone)
 				return err == nil && zone.Status.Serial != nil
@@ -204,7 +209,7 @@ var _ = Describe("RRset Controller", func() {
 			initialSerial := zone.Status.Serial
 
 			By("Updating RRset records")
-			resource := &dnsv1alpha1.RRset{
+			resource := &dnsv1alpha2.RRset{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      resourceName,
 					Namespace: resourceNamespace,
@@ -217,7 +222,7 @@ var _ = Describe("RRset Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Getting the updated resource")
-			updatedRRset := &dnsv1alpha1.RRset{}
+			updatedRRset := &dnsv1alpha2.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, rssetLookupKey, updatedRRset)
 				return err == nil && updatedRRset.IsInExpectedStatus(MODIFIED_GENERATION, SUCCEEDED_STATUS)
@@ -229,7 +234,7 @@ var _ = Describe("RRset Controller", func() {
 			Expect(getMockedComment(resourceName, resourceType)).To(Equal(resourceComment))
 
 			By("Getting the modified zone")
-			modifiedZone := &dnsv1alpha1.Zone{}
+			modifiedZone := &dnsv1alpha2.Zone{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, zoneLookupKey, modifiedZone)
 				return err == nil && *modifiedZone.Status.Serial != *initialSerial
@@ -248,7 +253,7 @@ var _ = Describe("RRset Controller", func() {
 			modifiedResourceTTL := uint32(150)
 
 			By("Getting the initial Serial of the zone")
-			zone := &dnsv1alpha1.Zone{}
+			zone := &dnsv1alpha2.Zone{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, zoneLookupKey, zone)
 				_, found := readFromZonesMap(makeCanonical(zone.Name))
@@ -257,7 +262,7 @@ var _ = Describe("RRset Controller", func() {
 			initialSerial := *zone.Status.Serial
 
 			By("Updating RRset TTL")
-			resource := &dnsv1alpha1.RRset{
+			resource := &dnsv1alpha2.RRset{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      resourceName,
 					Namespace: resourceNamespace,
@@ -270,7 +275,7 @@ var _ = Describe("RRset Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Getting the updated resource")
-			updatedRRset := &dnsv1alpha1.RRset{}
+			updatedRRset := &dnsv1alpha2.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, rssetLookupKey, updatedRRset)
 				return err == nil && updatedRRset.IsInExpectedStatus(MODIFIED_GENERATION, SUCCEEDED_STATUS)
@@ -282,7 +287,7 @@ var _ = Describe("RRset Controller", func() {
 			Expect(getMockedComment(resourceName, resourceType)).To(Equal(resourceComment))
 
 			By("Getting the modified zone")
-			modifiedZone := &dnsv1alpha1.Zone{}
+			modifiedZone := &dnsv1alpha2.Zone{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, zoneLookupKey, modifiedZone)
 				return err == nil && *modifiedZone.Status.Serial > initialSerial
@@ -300,7 +305,7 @@ var _ = Describe("RRset Controller", func() {
 			modifiedResourceComment := "Just another comment"
 
 			By("Getting the initial Serial of the zone")
-			zone := &dnsv1alpha1.Zone{}
+			zone := &dnsv1alpha2.Zone{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, zoneLookupKey, zone)
 				return err == nil && zone.Status.Serial != nil
@@ -308,7 +313,7 @@ var _ = Describe("RRset Controller", func() {
 			initialSerial := *zone.Status.Serial
 
 			By("Updating RRset Comment")
-			resource := &dnsv1alpha1.RRset{
+			resource := &dnsv1alpha2.RRset{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      resourceName,
 					Namespace: resourceNamespace,
@@ -321,7 +326,7 @@ var _ = Describe("RRset Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Getting the updated resource")
-			updatedRRset := &dnsv1alpha1.RRset{}
+			updatedRRset := &dnsv1alpha2.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, rssetLookupKey, updatedRRset)
 				return err == nil && updatedRRset.IsInExpectedStatus(MODIFIED_GENERATION, SUCCEEDED_STATUS)
@@ -333,7 +338,7 @@ var _ = Describe("RRset Controller", func() {
 			Expect(getMockedComment(resourceName, resourceType)).To(Equal(modifiedResourceComment))
 
 			By("Getting the modified zone")
-			modifiedZone := &dnsv1alpha1.Zone{}
+			modifiedZone := &dnsv1alpha2.Zone{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, zoneLookupKey, modifiedZone)
 				return err == nil && *modifiedZone.Status.Serial > initialSerial
@@ -349,7 +354,7 @@ var _ = Describe("RRset Controller", func() {
 			ctx := context.Background()
 			// Specific test variables
 			recreationResourceName := "test2.example2.org"
-			recreationResourceNamespace := "default"
+			recreationResourceNamespace := zoneNamespace
 			recreationResourceDNSName := "test2"
 			recreationResourceTTL := uint32(253)
 			recreationResourceType := "A"
@@ -371,7 +376,7 @@ var _ = Describe("RRset Controller", func() {
 			})
 
 			By("Recreating a RRset")
-			resource := &dnsv1alpha1.RRset{
+			resource := &dnsv1alpha2.RRset{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      recreationResourceName,
 					Namespace: recreationResourceNamespace,
@@ -379,14 +384,15 @@ var _ = Describe("RRset Controller", func() {
 			}
 			resource.SetResourceVersion("")
 			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, resource, func() error {
-				resource.Spec = dnsv1alpha1.RRsetSpec{
+				resource.Spec = dnsv1alpha2.RRsetSpec{
 					Type:    recreationResourceType,
 					TTL:     recreationResourceTTL,
 					Name:    recreationResourceDNSName,
 					Records: []string{recreationRecord},
 					Comment: &recreationResourceComment,
-					ZoneRef: dnsv1alpha1.ZoneRef{
+					ZoneRef: dnsv1alpha2.ZoneRef{
 						Name: recreationZoneRef,
+						Kind: resourceZoneKind,
 					},
 				}
 				return nil
@@ -394,7 +400,7 @@ var _ = Describe("RRset Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Getting the resource")
-			updatedRRset := &dnsv1alpha1.RRset{}
+			updatedRRset := &dnsv1alpha2.RRset{}
 			typeNamespacedName := types.NamespacedName{
 				Name:      recreationResourceName,
 				Namespace: recreationResourceNamespace,
@@ -448,7 +454,7 @@ var _ = Describe("RRset Controller", func() {
 			}, timeout, interval).Should(BeTrue())
 
 			By("Modifying the deleted RRset")
-			resource := &dnsv1alpha1.RRset{
+			resource := &dnsv1alpha2.RRset{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      resourceName,
 					Namespace: resourceNamespace,
@@ -464,7 +470,7 @@ var _ = Describe("RRset Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Getting the resource")
-			updatedRRset := &dnsv1alpha1.RRset{}
+			updatedRRset := &dnsv1alpha2.RRset{}
 			typeNamespacedName := types.NamespacedName{
 				Name:      resourceName,
 				Namespace: resourceNamespace,
@@ -498,7 +504,7 @@ var _ = Describe("RRset Controller", func() {
 			fakeZoneRef := zoneName
 			fakeRecords := []string{"127.0.0.11", "127.0.0.12"}
 
-			fakeResource := &dnsv1alpha1.RRset{
+			fakeResource := &dnsv1alpha2.RRset{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      fakeResourceName,
 					Namespace: fakeResourceNamespace,
@@ -506,14 +512,15 @@ var _ = Describe("RRset Controller", func() {
 			}
 			fakeResource.SetResourceVersion("")
 			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, fakeResource, func() error {
-				fakeResource.Spec = dnsv1alpha1.RRsetSpec{
+				fakeResource.Spec = dnsv1alpha2.RRsetSpec{
 					Type:    fakeResourceType,
 					Name:    fakeResourceDNSName,
 					TTL:     fakeResourceTTL,
 					Records: fakeRecords,
 					Comment: &fakeResourceComment,
-					ZoneRef: dnsv1alpha1.ZoneRef{
+					ZoneRef: dnsv1alpha2.ZoneRef{
 						Name: fakeZoneRef,
+						Kind: resourceZoneKind,
 					},
 				}
 				return nil
@@ -558,7 +565,7 @@ var _ = Describe("RRset Controller", func() {
 			additionalResourceComment := "This is a AAAA Record"
 
 			By("Creating the RRset resource")
-			additionalResource := &dnsv1alpha1.RRset{
+			additionalResource := &dnsv1alpha2.RRset{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      additionalResourceName,
 					Namespace: resourceNamespace,
@@ -566,9 +573,10 @@ var _ = Describe("RRset Controller", func() {
 			}
 			additionalResource.SetResourceVersion("")
 			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, additionalResource, func() error {
-				additionalResource.Spec = dnsv1alpha1.RRsetSpec{
-					ZoneRef: dnsv1alpha1.ZoneRef{
+				additionalResource.Spec = dnsv1alpha2.RRsetSpec{
+					ZoneRef: dnsv1alpha2.ZoneRef{
 						Name: zoneRef,
+						Kind: resourceZoneKind,
 					},
 					Type:    additionalResourceType,
 					Name:    additionalResourceName,
@@ -596,7 +604,7 @@ var _ = Describe("RRset Controller", func() {
 			}, timeout, interval).Should(BeTrue())
 
 			By("Getting the created resource")
-			createdResource := &dnsv1alpha1.RRset{}
+			createdResource := &dnsv1alpha2.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, additionalRRsetLookupKey, createdResource)
 				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS)
@@ -609,7 +617,7 @@ var _ = Describe("RRset Controller", func() {
 			Expect(getMockedComment(DnsFqdn, additionalResourceType)).To(Equal(additionalResourceComment))
 			Expect(createdResource.GetOwnerReferences()).NotTo(BeEmpty(), "RRset should have setOwnerReference")
 			Expect(createdResource.GetOwnerReferences()[0].Name).To(Equal(zoneRef), "RRset should have setOwnerReference to Zone")
-			Expect(createdResource.GetFinalizers()).To(ContainElement(FINALIZER_NAME), "RRset should contain the finalizer")
+			Expect(createdResource.GetFinalizers()).To(ContainElement(RESOURCES_FINALIZER_NAME), "RRset should contain the finalizer")
 
 		})
 	})
@@ -625,7 +633,7 @@ var _ = Describe("RRset Controller", func() {
 			additionalResourceComment := "This is a CNAME Record"
 
 			By("Creating the RRset resource")
-			additionalResource := &dnsv1alpha1.RRset{
+			additionalResource := &dnsv1alpha2.RRset{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      additionalResourceName,
 					Namespace: resourceNamespace,
@@ -633,9 +641,10 @@ var _ = Describe("RRset Controller", func() {
 			}
 			additionalResource.SetResourceVersion("")
 			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, additionalResource, func() error {
-				additionalResource.Spec = dnsv1alpha1.RRsetSpec{
-					ZoneRef: dnsv1alpha1.ZoneRef{
+				additionalResource.Spec = dnsv1alpha2.RRsetSpec{
+					ZoneRef: dnsv1alpha2.ZoneRef{
 						Name: zoneRef,
+						Kind: resourceZoneKind,
 					},
 					Type:    additionalResourceType,
 					Name:    additionalResourceName,
@@ -663,7 +672,7 @@ var _ = Describe("RRset Controller", func() {
 			}, timeout, interval).Should(BeTrue())
 
 			By("Getting the created resource")
-			createdResource := &dnsv1alpha1.RRset{}
+			createdResource := &dnsv1alpha2.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, additionalRRsetLookupKey, createdResource)
 				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS)
@@ -676,7 +685,7 @@ var _ = Describe("RRset Controller", func() {
 			Expect(getMockedComment(DnsFqdn, additionalResourceType)).To(Equal(additionalResourceComment))
 			Expect(createdResource.GetOwnerReferences()).NotTo(BeEmpty(), "RRset should have setOwnerReference")
 			Expect(createdResource.GetOwnerReferences()[0].Name).To(Equal(zoneRef), "RRset should have setOwnerReference to Zone")
-			Expect(createdResource.GetFinalizers()).To(ContainElement(FINALIZER_NAME), "RRset should contain the finalizer")
+			Expect(createdResource.GetFinalizers()).To(ContainElement(RESOURCES_FINALIZER_NAME), "RRset should contain the finalizer")
 		})
 	})
 
@@ -691,7 +700,7 @@ var _ = Describe("RRset Controller", func() {
 			additionalResourceComment := "This is a A Wildcard Record"
 
 			By("Creating the RRset resource")
-			additionalResource := &dnsv1alpha1.RRset{
+			additionalResource := &dnsv1alpha2.RRset{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      additionalResourceName,
 					Namespace: resourceNamespace,
@@ -699,9 +708,10 @@ var _ = Describe("RRset Controller", func() {
 			}
 			additionalResource.SetResourceVersion("")
 			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, additionalResource, func() error {
-				additionalResource.Spec = dnsv1alpha1.RRsetSpec{
-					ZoneRef: dnsv1alpha1.ZoneRef{
+				additionalResource.Spec = dnsv1alpha2.RRsetSpec{
+					ZoneRef: dnsv1alpha2.ZoneRef{
 						Name: zoneRef,
+						Kind: resourceZoneKind,
 					},
 					Type:    additionalResourceType,
 					Name:    additionalResourceName,
@@ -729,7 +739,7 @@ var _ = Describe("RRset Controller", func() {
 			}, timeout, interval).Should(BeTrue())
 
 			By("Getting the created resource")
-			createdResource := &dnsv1alpha1.RRset{}
+			createdResource := &dnsv1alpha2.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, additionalRRsetLookupKey, createdResource)
 				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS)
@@ -742,7 +752,7 @@ var _ = Describe("RRset Controller", func() {
 			Expect(getMockedComment(DnsFqdn, additionalResourceType)).To(Equal(additionalResourceComment))
 			Expect(createdResource.GetOwnerReferences()).NotTo(BeEmpty(), "RRset should have setOwnerReference")
 			Expect(createdResource.GetOwnerReferences()[0].Name).To(Equal(zoneRef), "RRset should have setOwnerReference to Zone")
-			Expect(createdResource.GetFinalizers()).To(ContainElement(FINALIZER_NAME), "RRset should contain the finalizer")
+			Expect(createdResource.GetFinalizers()).To(ContainElement(RESOURCES_FINALIZER_NAME), "RRset should contain the finalizer")
 		})
 	})
 	Context("When creating RRset", func() {
@@ -756,7 +766,7 @@ var _ = Describe("RRset Controller", func() {
 			additionalResourceComment := "This is a MX Record"
 
 			By("Creating the RRset resource")
-			additionalResource := &dnsv1alpha1.RRset{
+			additionalResource := &dnsv1alpha2.RRset{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      additionalResourceName,
 					Namespace: resourceNamespace,
@@ -764,9 +774,10 @@ var _ = Describe("RRset Controller", func() {
 			}
 			additionalResource.SetResourceVersion("")
 			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, additionalResource, func() error {
-				additionalResource.Spec = dnsv1alpha1.RRsetSpec{
-					ZoneRef: dnsv1alpha1.ZoneRef{
+				additionalResource.Spec = dnsv1alpha2.RRsetSpec{
+					ZoneRef: dnsv1alpha2.ZoneRef{
 						Name: zoneRef,
+						Kind: resourceZoneKind,
 					},
 					Type:    additionalResourceType,
 					Name:    additionalResourceName,
@@ -794,7 +805,7 @@ var _ = Describe("RRset Controller", func() {
 			}, timeout, interval).Should(BeTrue())
 
 			By("Getting the created resource")
-			createdResource := &dnsv1alpha1.RRset{}
+			createdResource := &dnsv1alpha2.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, additionalRRsetLookupKey, createdResource)
 				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS)
@@ -807,7 +818,7 @@ var _ = Describe("RRset Controller", func() {
 			Expect(getMockedComment(DnsFqdn, additionalResourceType)).To(Equal(additionalResourceComment))
 			Expect(createdResource.GetOwnerReferences()).NotTo(BeEmpty(), "RRset should have setOwnerReference")
 			Expect(createdResource.GetOwnerReferences()[0].Name).To(Equal(zoneRef), "RRset should have setOwnerReference to Zone")
-			Expect(createdResource.GetFinalizers()).To(ContainElement(FINALIZER_NAME), "RRset should contain the finalizer")
+			Expect(createdResource.GetFinalizers()).To(ContainElement(RESOURCES_FINALIZER_NAME), "RRset should contain the finalizer")
 		})
 	})
 
@@ -822,7 +833,7 @@ var _ = Describe("RRset Controller", func() {
 			additionalResourceComment := "This is a NS Record"
 
 			By("Creating the RRset resource")
-			additionalResource := &dnsv1alpha1.RRset{
+			additionalResource := &dnsv1alpha2.RRset{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      additionalResourceName,
 					Namespace: resourceNamespace,
@@ -830,9 +841,10 @@ var _ = Describe("RRset Controller", func() {
 			}
 			additionalResource.SetResourceVersion("")
 			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, additionalResource, func() error {
-				additionalResource.Spec = dnsv1alpha1.RRsetSpec{
-					ZoneRef: dnsv1alpha1.ZoneRef{
+				additionalResource.Spec = dnsv1alpha2.RRsetSpec{
+					ZoneRef: dnsv1alpha2.ZoneRef{
 						Name: zoneRef,
+						Kind: resourceZoneKind,
 					},
 					Type:    additionalResourceType,
 					Name:    additionalResourceName,
@@ -860,7 +872,7 @@ var _ = Describe("RRset Controller", func() {
 			}, timeout, interval).Should(BeTrue())
 
 			By("Getting the created resource")
-			createdResource := &dnsv1alpha1.RRset{}
+			createdResource := &dnsv1alpha2.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, additionalRRsetLookupKey, createdResource)
 				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS)
@@ -873,7 +885,7 @@ var _ = Describe("RRset Controller", func() {
 			Expect(getMockedComment(DnsFqdn, additionalResourceType)).To(Equal(additionalResourceComment))
 			Expect(createdResource.GetOwnerReferences()).NotTo(BeEmpty(), "RRset should have setOwnerReference")
 			Expect(createdResource.GetOwnerReferences()[0].Name).To(Equal(zoneRef), "RRset should have setOwnerReference to Zone")
-			Expect(createdResource.GetFinalizers()).To(ContainElement(FINALIZER_NAME), "RRset should contain the finalizer")
+			Expect(createdResource.GetFinalizers()).To(ContainElement(RESOURCES_FINALIZER_NAME), "RRset should contain the finalizer")
 		})
 	})
 
@@ -888,7 +900,7 @@ var _ = Describe("RRset Controller", func() {
 			additionalResourceComment := "This is a TXT Record"
 
 			By("Creating the RRset resource")
-			additionalResource := &dnsv1alpha1.RRset{
+			additionalResource := &dnsv1alpha2.RRset{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      additionalResourceName,
 					Namespace: resourceNamespace,
@@ -896,9 +908,10 @@ var _ = Describe("RRset Controller", func() {
 			}
 			additionalResource.SetResourceVersion("")
 			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, additionalResource, func() error {
-				additionalResource.Spec = dnsv1alpha1.RRsetSpec{
-					ZoneRef: dnsv1alpha1.ZoneRef{
+				additionalResource.Spec = dnsv1alpha2.RRsetSpec{
+					ZoneRef: dnsv1alpha2.ZoneRef{
 						Name: zoneRef,
+						Kind: resourceZoneKind,
 					},
 					Type:    additionalResourceType,
 					Name:    additionalResourceName,
@@ -926,7 +939,7 @@ var _ = Describe("RRset Controller", func() {
 			}, timeout, interval).Should(BeTrue())
 
 			By("Getting the created resource")
-			createdResource := &dnsv1alpha1.RRset{}
+			createdResource := &dnsv1alpha2.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, additionalRRsetLookupKey, createdResource)
 				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS)
@@ -939,7 +952,7 @@ var _ = Describe("RRset Controller", func() {
 			Expect(getMockedComment(DnsFqdn, additionalResourceType)).To(Equal(additionalResourceComment))
 			Expect(createdResource.GetOwnerReferences()).NotTo(BeEmpty(), "RRset should have setOwnerReference")
 			Expect(createdResource.GetOwnerReferences()[0].Name).To(Equal(zoneRef), "RRset should have setOwnerReference to Zone")
-			Expect(createdResource.GetFinalizers()).To(ContainElement(FINALIZER_NAME), "RRset should contain the finalizer")
+			Expect(createdResource.GetFinalizers()).To(ContainElement(RESOURCES_FINALIZER_NAME), "RRset should contain the finalizer")
 		})
 	})
 
@@ -954,7 +967,7 @@ var _ = Describe("RRset Controller", func() {
 			additionalResourceComment := "This is a SRV Record"
 
 			By("Creating the RRset resource")
-			additionalResource := &dnsv1alpha1.RRset{
+			additionalResource := &dnsv1alpha2.RRset{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      additionalResourceName,
 					Namespace: resourceNamespace,
@@ -962,9 +975,10 @@ var _ = Describe("RRset Controller", func() {
 			}
 			additionalResource.SetResourceVersion("")
 			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, additionalResource, func() error {
-				additionalResource.Spec = dnsv1alpha1.RRsetSpec{
-					ZoneRef: dnsv1alpha1.ZoneRef{
+				additionalResource.Spec = dnsv1alpha2.RRsetSpec{
+					ZoneRef: dnsv1alpha2.ZoneRef{
 						Name: zoneRef,
+						Kind: resourceZoneKind,
 					},
 					Type:    additionalResourceType,
 					Name:    additionalResourceName,
@@ -992,7 +1006,7 @@ var _ = Describe("RRset Controller", func() {
 			}, timeout, interval).Should(BeTrue())
 
 			By("Getting the created resource")
-			createdResource := &dnsv1alpha1.RRset{}
+			createdResource := &dnsv1alpha2.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, additionalRRsetLookupKey, createdResource)
 				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS)
@@ -1005,7 +1019,7 @@ var _ = Describe("RRset Controller", func() {
 			Expect(getMockedComment(DnsFqdn, additionalResourceType)).To(Equal(additionalResourceComment))
 			Expect(createdResource.GetOwnerReferences()).NotTo(BeEmpty(), "RRset should have setOwnerReference")
 			Expect(createdResource.GetOwnerReferences()[0].Name).To(Equal(zoneRef), "RRset should have setOwnerReference to Zone")
-			Expect(createdResource.GetFinalizers()).To(ContainElement(FINALIZER_NAME), "RRset should contain the finalizer")
+			Expect(createdResource.GetFinalizers()).To(ContainElement(RESOURCES_FINALIZER_NAME), "RRset should contain the finalizer")
 		})
 	})
 
@@ -1015,20 +1029,23 @@ var _ = Describe("RRset Controller", func() {
 			ctx := context.Background()
 			// Specific test variables
 			reverseZoneName := "123.168.192.in-addr.arpa"
+			reverseZoneNamespace := zoneNamespace
 			additionalResourceName := "ptr"
+			additionalResourceNamespace := zoneNamespace
 			additionalResourceType := "1"
 			additionalResourceRecords := []string{"mail1.example2.org"}
 			additionalResourceComment := "This is a PTR Record"
 
 			By("Creating the Reverse Zone resource")
-			reverseZone := &dnsv1alpha1.Zone{
+			reverseZone := &dnsv1alpha2.Zone{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: reverseZoneName,
+					Name:      reverseZoneName,
+					Namespace: reverseZoneNamespace,
 				},
 			}
 			reverseZone.SetResourceVersion("")
 			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, reverseZone, func() error {
-				reverseZone.Spec = dnsv1alpha1.ZoneSpec{
+				reverseZone.Spec = dnsv1alpha2.ZoneSpec{
 					Kind:        zoneKind,
 					Nameservers: []string{zoneNS1, zoneNS2},
 				}
@@ -1036,7 +1053,8 @@ var _ = Describe("RRset Controller", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 			additionalReverseZoneLookupKey := types.NamespacedName{
-				Name: reverseZoneName,
+				Name:      reverseZoneName,
+				Namespace: reverseZoneNamespace,
 			}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, additionalReverseZoneLookupKey, reverseZone)
@@ -1049,17 +1067,18 @@ var _ = Describe("RRset Controller", func() {
 			}, timeout, interval).Should(BeTrue())
 
 			By("Creating the RRset resource")
-			additionalResource := &dnsv1alpha1.RRset{
+			additionalResource := &dnsv1alpha2.RRset{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      additionalResourceName,
-					Namespace: resourceNamespace,
+					Namespace: additionalResourceNamespace,
 				},
 			}
 			additionalResource.SetResourceVersion("")
 			_, err = controllerutil.CreateOrUpdate(ctx, k8sClient, additionalResource, func() error {
-				additionalResource.Spec = dnsv1alpha1.RRsetSpec{
-					ZoneRef: dnsv1alpha1.ZoneRef{
+				additionalResource.Spec = dnsv1alpha2.RRsetSpec{
+					ZoneRef: dnsv1alpha2.ZoneRef{
 						Name: reverseZoneName,
+						Kind: resourceZoneKind,
 					},
 					Type:    additionalResourceType,
 					Name:    additionalResourceName,
@@ -1071,7 +1090,7 @@ var _ = Describe("RRset Controller", func() {
 			})
 			additionalRRsetLookupKey := types.NamespacedName{
 				Name:      additionalResourceName,
-				Namespace: resourceNamespace,
+				Namespace: additionalResourceNamespace,
 			}
 
 			Expect(err).NotTo(HaveOccurred())
@@ -1087,7 +1106,7 @@ var _ = Describe("RRset Controller", func() {
 			}, timeout, interval).Should(BeTrue())
 
 			By("Getting the created resource")
-			createdResource := &dnsv1alpha1.RRset{}
+			createdResource := &dnsv1alpha2.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, additionalRRsetLookupKey, createdResource)
 				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS)
@@ -1100,7 +1119,7 @@ var _ = Describe("RRset Controller", func() {
 			Expect(getMockedComment(DnsFqdn, additionalResourceType)).To(Equal(additionalResourceComment))
 			Expect(createdResource.GetOwnerReferences()).NotTo(BeEmpty(), "RRset should have setOwnerReference")
 			Expect(createdResource.GetOwnerReferences()[0].Name).To(Equal(reverseZoneName), "RRset should have setOwnerReference to Zone")
-			Expect(createdResource.GetFinalizers()).To(ContainElement(FINALIZER_NAME), "RRset should contain the finalizer")
+			Expect(createdResource.GetFinalizers()).To(ContainElement(RESOURCES_FINALIZER_NAME), "RRset should contain the finalizer")
 		})
 	})
 
@@ -1116,7 +1135,7 @@ var _ = Describe("RRset Controller", func() {
 			badTypeResourceComment := "This is a wrong-type Record"
 
 			By("Creating the RRset resource")
-			badTypeResource := &dnsv1alpha1.RRset{
+			badTypeResource := &dnsv1alpha2.RRset{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      badTypeResourceName,
 					Namespace: resourceNamespace,
@@ -1124,9 +1143,10 @@ var _ = Describe("RRset Controller", func() {
 			}
 			badTypeResource.SetResourceVersion("")
 			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, badTypeResource, func() error {
-				badTypeResource.Spec = dnsv1alpha1.RRsetSpec{
-					ZoneRef: dnsv1alpha1.ZoneRef{
+				badTypeResource.Spec = dnsv1alpha2.RRsetSpec{
+					ZoneRef: dnsv1alpha2.ZoneRef{
 						Name: zoneName,
+						Kind: resourceZoneKind,
 					},
 					Type:    badTypeResourceType,
 					Name:    badTypeResourceDNSName,
@@ -1150,7 +1170,7 @@ var _ = Describe("RRset Controller", func() {
 			DnsFqdn := getRRsetName(badTypeResource)
 
 			By("Getting the created resource")
-			createdResource := &dnsv1alpha1.RRset{}
+			createdResource := &dnsv1alpha2.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, badTypeRRsetLookupKey, createdResource)
 				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, FAILED_STATUS)
@@ -1162,7 +1182,7 @@ var _ = Describe("RRset Controller", func() {
 			Expect(*createdResource.Status.SyncStatus).To(Equal(FAILED_STATUS), "RRset status should be 'Failed'")
 			Expect(createdResource.GetOwnerReferences()).NotTo(BeEmpty(), "RRset should have setOwnerReference")
 			Expect(createdResource.GetOwnerReferences()[0].Name).To(Equal(zoneRef), "RRset should have setOwnerReference to Zone")
-			Expect(createdResource.GetFinalizers()).To(ContainElement(FINALIZER_NAME), "RRset should contain the finalizer")
+			Expect(createdResource.GetFinalizers()).To(ContainElement(RESOURCES_FINALIZER_NAME), "RRset should contain the finalizer")
 		})
 	})
 
@@ -1178,7 +1198,7 @@ var _ = Describe("RRset Controller", func() {
 			badFormatResourceComment := "This is a wrong-format Record"
 
 			By("Creating the RRset resource")
-			badFormatResource := &dnsv1alpha1.RRset{
+			badFormatResource := &dnsv1alpha2.RRset{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      badFormatResourceName,
 					Namespace: resourceNamespace,
@@ -1186,9 +1206,10 @@ var _ = Describe("RRset Controller", func() {
 			}
 			badFormatResource.SetResourceVersion("")
 			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, badFormatResource, func() error {
-				badFormatResource.Spec = dnsv1alpha1.RRsetSpec{
-					ZoneRef: dnsv1alpha1.ZoneRef{
+				badFormatResource.Spec = dnsv1alpha2.RRsetSpec{
+					ZoneRef: dnsv1alpha2.ZoneRef{
 						Name: zoneName,
+						Kind: resourceZoneKind,
 					},
 					Type:    badFormatResourceType,
 					Name:    badFormatResourceDNSName,
@@ -1212,7 +1233,7 @@ var _ = Describe("RRset Controller", func() {
 			DnsFqdn := getRRsetName(badFormatResource)
 
 			By("Getting the created resource")
-			createdResource := &dnsv1alpha1.RRset{}
+			createdResource := &dnsv1alpha2.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, badFormatRRsetLookupKey, createdResource)
 				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, FAILED_STATUS)
@@ -1224,7 +1245,7 @@ var _ = Describe("RRset Controller", func() {
 			Expect(*createdResource.Status.SyncStatus).To(Equal(FAILED_STATUS), "RRset status should be 'Failed'")
 			Expect(createdResource.GetOwnerReferences()).NotTo(BeEmpty(), "RRset should have setOwnerReference")
 			Expect(createdResource.GetOwnerReferences()[0].Name).To(Equal(zoneRef), "RRset should have setOwnerReference to Zone")
-			Expect(createdResource.GetFinalizers()).To(ContainElement(FINALIZER_NAME), "RRset should contain the finalizer")
+			Expect(createdResource.GetFinalizers()).To(ContainElement(RESOURCES_FINALIZER_NAME), "RRset should contain the finalizer")
 		})
 	})
 
@@ -1240,7 +1261,7 @@ var _ = Describe("RRset Controller", func() {
 			unquotedResourceComment := "This is an unquoted-TXT Record"
 
 			By("Creating the RRset resource")
-			unquotedResource := &dnsv1alpha1.RRset{
+			unquotedResource := &dnsv1alpha2.RRset{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      unquotedResourceName,
 					Namespace: resourceNamespace,
@@ -1248,9 +1269,10 @@ var _ = Describe("RRset Controller", func() {
 			}
 			unquotedResource.SetResourceVersion("")
 			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, unquotedResource, func() error {
-				unquotedResource.Spec = dnsv1alpha1.RRsetSpec{
-					ZoneRef: dnsv1alpha1.ZoneRef{
+				unquotedResource.Spec = dnsv1alpha2.RRsetSpec{
+					ZoneRef: dnsv1alpha2.ZoneRef{
 						Name: zoneName,
+						Kind: resourceZoneKind,
 					},
 					Type:    unquotedResourceType,
 					Name:    unquotedResourceDNSName,
@@ -1274,7 +1296,7 @@ var _ = Describe("RRset Controller", func() {
 			DnsFqdn := getRRsetName(unquotedResource)
 
 			By("Getting the created resource")
-			createdResource := &dnsv1alpha1.RRset{}
+			createdResource := &dnsv1alpha2.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, unquotedRRsetLookupKey, createdResource)
 				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, FAILED_STATUS)
@@ -1286,7 +1308,129 @@ var _ = Describe("RRset Controller", func() {
 			Expect(*createdResource.Status.SyncStatus).To(Equal(FAILED_STATUS), "RRset status should be 'Failed'")
 			Expect(createdResource.GetOwnerReferences()).NotTo(BeEmpty(), "RRset should have setOwnerReference")
 			Expect(createdResource.GetOwnerReferences()[0].Name).To(Equal(zoneRef), "RRset should have setOwnerReference to Zone")
-			Expect(createdResource.GetFinalizers()).To(ContainElement(FINALIZER_NAME), "RRset should contain the finalizer")
+			Expect(createdResource.GetFinalizers()).To(ContainElement(RESOURCES_FINALIZER_NAME), "RRset should contain the finalizer")
+		})
+	})
+
+	Context("When creating a RRset with an existing RRset with same FQDN", func() {
+		It("should reconcile the resource with Failed status", Label("wrong-rrset", "already-existing"), func() {
+			ic := countMetrics()
+			ctx := context.Background()
+			// Specific test variables
+			existingResourceName := "existing.example2.org"
+			existingResourceNamespace := zoneNamespace
+			existingResourceDNSName := "test"
+			existingResourceType := "A"
+			existingResourceRecords := []string{"1.2.3.4", "5.6.7.8"}
+			existingResourceComment := "This a duplicate RRset"
+			existingResourceTTL := uint32(300)
+
+			By("Creating the RRset resource")
+			existingResource := &dnsv1alpha2.RRset{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      existingResourceName,
+					Namespace: existingResourceNamespace,
+				},
+			}
+			existingResource.SetResourceVersion("")
+			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, existingResource, func() error {
+				existingResource.Spec = dnsv1alpha2.RRsetSpec{
+					ZoneRef: dnsv1alpha2.ZoneRef{
+						Name: zoneName,
+						Kind: resourceZoneKind,
+					},
+					Type:    existingResourceType,
+					Name:    existingResourceDNSName,
+					TTL:     existingResourceTTL,
+					Records: existingResourceRecords,
+					Comment: &existingResourceComment,
+				}
+				return nil
+			})
+			existingRRsetLookupKey := types.NamespacedName{
+				Name:      existingResourceName,
+				Namespace: existingResourceNamespace,
+			}
+
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, existingRRsetLookupKey, existingResource)
+				return err == nil && existingResource.Status.SyncStatus != nil
+			}, timeout, interval).Should(BeTrue())
+
+			By("Getting the created resource")
+			createdResource := &dnsv1alpha2.RRset{}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, existingRRsetLookupKey, createdResource)
+				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, FAILED_STATUS)
+			}, timeout, interval).Should(BeTrue())
+
+			Expect(countMetrics()-ic).To(Equal(1), "One more metric should have been created")
+			Expect(getMetricWithLabels(existingResourceDNSName+"."+zoneRef+".", existingResourceType, FAILED_STATUS, existingResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
+			Expect(*createdResource.Status.SyncStatus).To(Equal(FAILED_STATUS), "RRset status should be 'Failed'")
+			Expect(createdResource.GetFinalizers()).To(ContainElement(RESOURCES_FINALIZER_NAME), "RRset should contain the finalizer")
+			Expect(createdResource.GetFinalizers()).To(ContainElement(METRICS_FINALIZER_NAME), "RRset should contain the metrics finalizer")
+		})
+	})
+
+	Context("When creating a RRset with a non-existing Zone", func() {
+		It("should reconcile the resource with Pending status", Label("pending-rrset", "non-existing-zone"), func() {
+			ic := countMetrics()
+			ctx := context.Background()
+			// Specific test variables
+			pendingZoneName := "example4.org"
+			pendingResourceName := "test.example4.org"
+			pendingResourceNamespace := "example4"
+			pendingResourceDNSName := "test"
+			pendingResourceType := "A"
+			pendingResourceRecords := []string{"1.2.3.4", "5.6.7.8"}
+			pendingResourceComment := "This a pending RRset"
+			pendingResourceTTL := uint32(300)
+
+			By("Creating the RRset resource")
+			pendingResource := &dnsv1alpha2.RRset{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      pendingResourceName,
+					Namespace: pendingResourceNamespace,
+				},
+			}
+			pendingResource.SetResourceVersion("")
+			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, pendingResource, func() error {
+				pendingResource.Spec = dnsv1alpha2.RRsetSpec{
+					ZoneRef: dnsv1alpha2.ZoneRef{
+						Name: pendingZoneName,
+						Kind: resourceZoneKind,
+					},
+					Type:    pendingResourceType,
+					Name:    pendingResourceDNSName,
+					TTL:     pendingResourceTTL,
+					Records: pendingResourceRecords,
+					Comment: &pendingResourceComment,
+				}
+				return nil
+			})
+			pendingRRsetLookupKey := types.NamespacedName{
+				Name:      pendingResourceName,
+				Namespace: pendingResourceNamespace,
+			}
+
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, pendingRRsetLookupKey, pendingResource)
+				return err == nil && pendingResource.Status.SyncStatus != nil
+			}, timeout, interval).Should(BeTrue())
+
+			By("Getting the created resource")
+			createdResource := &dnsv1alpha2.RRset{}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, pendingRRsetLookupKey, createdResource)
+				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, PENDING_STATUS)
+			}, timeout, interval).Should(BeTrue())
+
+			Expect(countMetrics()-ic).To(Equal(1), "One more metric should have been created")
+			Expect(getMetricWithLabels(pendingResourceDNSName+"."+pendingZoneName+".", pendingResourceType, PENDING_STATUS, pendingResourceName, pendingResourceNamespace)).To(Equal(1.0), "metric should be 1.0")
+			Expect(*createdResource.Status.SyncStatus).To(Equal(PENDING_STATUS), "RRset status should be 'Pending'")
+			Expect(createdResource.GetFinalizers()).To(ContainElement(METRICS_FINALIZER_NAME), "RRset should contain the metrics finalizer")
 		})
 	})
 })

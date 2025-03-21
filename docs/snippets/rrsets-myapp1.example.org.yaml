@@ -1,0 +1,30 @@
+---
+apiVersion: dns.cav.enablers.ob/v1alpha2
+kind: RRset
+metadata:
+  name: soa.myapp1.example.org
+  namespace: myapp1
+spec:
+  name: myapp1.example.org.
+  records:
+  - ns1.example.org. admin.example.org. 1 10800 3600 604800 3600
+  ttl: 3600
+  type: SOA
+  zoneRef:
+    name: myapp1.example.org
+    kind: Zone
+---
+apiVersion: dns.cav.enablers.ob/v1alpha2
+kind: RRset
+metadata:
+  name: front.myapp1.example.org
+  namespace: myapp1
+spec:
+  type: A
+  name: front
+  ttl: 300
+  records:
+    - "1.2.3.4"
+  zoneRef:
+    name: myapp1.example.org
+    kind: Zone

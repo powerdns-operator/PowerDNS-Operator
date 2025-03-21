@@ -28,10 +28,11 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	dnsv1alpha1 "github.com/orange-opensource/powerdns-operator/api/v1alpha1"
 	"github.com/orange-opensource/powerdns-operator/internal/controller"
 
 	powerdns "github.com/joeig/go-powerdns/v3"
+
+	dnsv1alpha2 "github.com/orange-opensource/powerdns-operator/api/v1alpha2"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -43,7 +44,7 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
-	utilruntime.Must(dnsv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(dnsv1alpha2.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
@@ -164,6 +165,17 @@ func main() {
 		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "RRset")
+		os.Exit(1)
+	}
+	if err = (&controller.ClusterZoneReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+		PDNSClient: controller.PdnsClienter{
+			Records: pdnsClient.Records,
+			Zones:   pdnsClient.Zones,
+		},
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ClusterZone")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

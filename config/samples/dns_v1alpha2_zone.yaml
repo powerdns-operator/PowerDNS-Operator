@@ -1,0 +1,60 @@
+---
+# Specific Catalog
+apiVersion: dns.cav.enablers.ob/v1alpha2
+kind: Zone
+metadata:
+  name: example1.com
+  namespace: example1
+spec:
+  catalog: catalog.test
+  nameservers:
+    - ns1.example1.com
+    - ns2.example1.com
+  kind: Master
+
+---
+# Specific SOA_EDIT_API
+apiVersion: dns.cav.enablers.ob/v1alpha2
+kind: Zone
+metadata:
+  name: example2.com
+  namespace: example2
+spec:
+  catalog: catalog.test
+  nameservers:
+    - ns1.example2.com
+    - ns2.example2.com
+  kind: Master
+  soa_edit_api: EPOCH
+
+---
+# Fake Zone
+apiVersion: dns.cav.enablers.ob/v1alpha2
+kind: Zone
+metadata:
+  annotations:
+    fake-zone: "Same name as Zone/example2.com/NS:example2"
+  name: example2.com
+  namespace: example3
+spec:
+  catalog: catalog.test
+  nameservers:
+    - ns3.example2.com
+    - ns4.example2.com
+  kind: Master
+  soa_edit_api: EPOCH
+
+---
+# Fake Zone
+apiVersion: dns.cav.enablers.ob/v1alpha2
+kind: Zone
+metadata:
+  annotations:
+    fake-zone: "Same name as ClusterZone/helloworld.com"
+  name: helloworld.com
+  namespace: example3
+spec:
+  nameservers:
+    - ns3.helloworld.com
+    - ns4.helloworld.com
+  kind: Native

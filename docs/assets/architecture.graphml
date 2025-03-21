@@ -1,0 +1,463 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:java="http://www.yworks.com/xml/yfiles-common/1.0/java" xmlns:sys="http://www.yworks.com/xml/yfiles-common/markup/primitives/2.0" xmlns:x="http://www.yworks.com/xml/yfiles-common/markup/2.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:y="http://www.yworks.com/xml/graphml" xmlns:yed="http://www.yworks.com/xml/yed/3" xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://www.yworks.com/xml/schema/graphml/1.1/ygraphml.xsd">
+  <!--Created by yEd 3.23.1-->
+  <key attr.name="Description" attr.type="string" for="graph" id="d0"/>
+  <key for="port" id="d1" yfiles.type="portgraphics"/>
+  <key for="port" id="d2" yfiles.type="portgeometry"/>
+  <key for="port" id="d3" yfiles.type="portuserdata"/>
+  <key attr.name="url" attr.type="string" for="node" id="d4"/>
+  <key attr.name="description" attr.type="string" for="node" id="d5"/>
+  <key for="node" id="d6" yfiles.type="nodegraphics"/>
+  <key for="graphml" id="d7" yfiles.type="resources"/>
+  <key attr.name="url" attr.type="string" for="edge" id="d8"/>
+  <key attr.name="description" attr.type="string" for="edge" id="d9"/>
+  <key for="edge" id="d10" yfiles.type="edgegraphics"/>
+  <graph edgedefault="directed" id="G">
+    <data key="d0" xml:space="preserve"/>
+    <node id="n0">
+      <data key="d6">
+        <y:GenericNode configuration="com.yworks.bpmn.Activity.withShadow">
+          <y:Geometry height="355.78125" width="745.3843750000001" x="102.92919998168946" y="103.0546875"/>
+          <y:Fill color="#FFFFFFE6" transparent="false"/>
+          <y:BorderStyle color="#123EA2" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" hasText="false" height="4.0" horizontalTextPosition="center" iconTextGap="4" modelName="custom" textColor="#000000" verticalTextPosition="bottom" visible="true" width="4.0" x="370.69218750000005" y="175.890625">
+            <y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+          <y:StyleProperties>
+            <y:Property class="java.awt.Color" name="com.yworks.bpmn.icon.line.color" value="#000000"/>
+            <y:Property class="com.yworks.yfiles.bpmn.view.TaskTypeEnum" name="com.yworks.bpmn.taskType" value="TASK_TYPE_ABSTRACT"/>
+            <y:Property class="java.awt.Color" name="com.yworks.bpmn.icon.fill2" value="#d4d4d4cc"/>
+            <y:Property class="java.awt.Color" name="com.yworks.bpmn.icon.fill" value="#ffffffe6"/>
+            <y:Property class="com.yworks.yfiles.bpmn.view.BPMNTypeEnum" name="com.yworks.bpmn.type" value="ACTIVITY_TYPE"/>
+            <y:Property class="com.yworks.yfiles.bpmn.view.ActivityTypeEnum" name="com.yworks.bpmn.activityType" value="ACTIVITY_TYPE_TASK"/>
+          </y:StyleProperties>
+        </y:GenericNode>
+      </data>
+    </node>
+    <node id="n1">
+      <data key="d6">
+        <y:SVGNode>
+          <y:Geometry height="100.0" width="100.0" x="52.41878579999997" y="52.4674488"/>
+          <y:Fill color="#CCCCFF" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" hasText="false" height="4.0" horizontalTextPosition="center" iconTextGap="4" modelName="sandwich" modelPosition="s" textColor="#000000" verticalTextPosition="bottom" visible="true" width="4.0" x="48.0" y="104.0"/>
+          <y:SVGNodeProperties usingVisualBounds="true"/>
+          <y:SVGModel svgBoundsPolicy="0">
+            <y:SVGContent refid="1"/>
+          </y:SVGModel>
+        </y:SVGNode>
+      </data>
+    </node>
+    <node id="n2">
+      <data key="d6">
+        <y:ImageNode>
+          <y:Geometry height="100.0" width="100.0" x="443.12138748168945" y="-36.021843750000016"/>
+          <y:Fill color="#CCCCFF" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" hasText="false" height="4.0" horizontalTextPosition="center" iconTextGap="4" modelName="sandwich" modelPosition="s" textColor="#000000" verticalTextPosition="bottom" visible="true" width="4.0" x="48.0" y="104.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="12" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="17.96875" horizontalTextPosition="center" iconTextGap="4" modelName="sides" modelPosition="n" textColor="#000000" verticalTextPosition="bottom" visible="true" width="74.828125" x="12.5859375" xml:space="preserve" y="-21.96875">PowerDNS</y:NodeLabel>
+          <y:NodeLabel alignment="left" autoSizePolicy="content" fontFamily="Dialog" fontSize="16" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="41.25" horizontalTextPosition="center" iconTextGap="4" modelName="custom" textColor="#FF0000" verticalTextPosition="bottom" visible="true" width="76.515625" x="112.12080001831055" xml:space="preserve" y="21.396843750000016">Zones
+Records<y:LabelModel><y:SmartNodeLabelModel distance="4.0"/></y:LabelModel><y:ModelParameter><y:SmartNodeLabelModelParameter labelRatioX="-0.5" labelRatioY="-0.5" nodeRatioX="0.5" nodeRatioY="-0.28603156249999984" offsetX="12.120800018310547" offsetY="0.0" upX="0.0" upY="-1.0"/></y:ModelParameter></y:NodeLabel>
+          <y:Image alphaImage="true" refid="2"/>
+        </y:ImageNode>
+      </data>
+    </node>
+    <node id="n3">
+      <data key="d6">
+        <y:GenericNode configuration="com.yworks.bpmn.Activity.withShadow">
+          <y:Geometry height="75.0" width="200.0" x="608.0634386838145" y="156.16140817187505"/>
+          <y:Fill color="#FFFFFFE6" transparent="false"/>
+          <y:BorderStyle color="#123EA2" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="16" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="41.25" horizontalTextPosition="center" iconTextGap="4" modelName="custom" textColor="#339966" verticalTextPosition="bottom" visible="true" width="130.109375" x="34.9453125" xml:space="preserve" y="16.875">ClusterZones
+(cluster-wide)<y:LabelModel><y:SmartNodeLabelModel distance="4.0"/></y:LabelModel><y:ModelParameter><y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/></y:ModelParameter></y:NodeLabel>
+          <y:StyleProperties>
+            <y:Property class="java.awt.Color" name="com.yworks.bpmn.icon.line.color" value="#000000"/>
+            <y:Property class="com.yworks.yfiles.bpmn.view.TaskTypeEnum" name="com.yworks.bpmn.taskType" value="TASK_TYPE_ABSTRACT"/>
+            <y:Property class="java.awt.Color" name="com.yworks.bpmn.icon.fill2" value="#d4d4d4cc"/>
+            <y:Property class="java.awt.Color" name="com.yworks.bpmn.icon.fill" value="#ffffffe6"/>
+            <y:Property class="com.yworks.yfiles.bpmn.view.BPMNTypeEnum" name="com.yworks.bpmn.type" value="ACTIVITY_TYPE"/>
+            <y:Property class="com.yworks.yfiles.bpmn.view.ActivityTypeEnum" name="com.yworks.bpmn.activityType" value="ACTIVITY_TYPE_TASK"/>
+          </y:StyleProperties>
+        </y:GenericNode>
+      </data>
+    </node>
+    <node id="n4">
+      <data key="d6">
+        <y:GenericNode configuration="com.yworks.bpmn.Activity.withShadow">
+          <y:Geometry height="75.0" width="200.0" x="608.0634386838145" y="339.5935995156251"/>
+          <y:Fill color="#FFFFFFE6" transparent="false"/>
+          <y:BorderStyle color="#123EA2" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="16" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="41.25" horizontalTextPosition="center" iconTextGap="4" modelName="custom" textColor="#339966" verticalTextPosition="bottom" visible="true" width="131.8984375" x="34.05078125" xml:space="preserve" y="16.875">Zones
+(namespaced)<y:LabelModel><y:SmartNodeLabelModel distance="4.0"/></y:LabelModel><y:ModelParameter><y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/></y:ModelParameter></y:NodeLabel>
+          <y:StyleProperties>
+            <y:Property class="java.awt.Color" name="com.yworks.bpmn.icon.line.color" value="#000000"/>
+            <y:Property class="com.yworks.yfiles.bpmn.view.TaskTypeEnum" name="com.yworks.bpmn.taskType" value="TASK_TYPE_ABSTRACT"/>
+            <y:Property class="java.awt.Color" name="com.yworks.bpmn.icon.fill2" value="#d4d4d4cc"/>
+            <y:Property class="java.awt.Color" name="com.yworks.bpmn.icon.fill" value="#ffffffe6"/>
+            <y:Property class="com.yworks.yfiles.bpmn.view.BPMNTypeEnum" name="com.yworks.bpmn.type" value="ACTIVITY_TYPE"/>
+            <y:Property class="com.yworks.yfiles.bpmn.view.ActivityTypeEnum" name="com.yworks.bpmn.activityType" value="ACTIVITY_TYPE_TASK"/>
+          </y:StyleProperties>
+        </y:GenericNode>
+      </data>
+    </node>
+    <node id="n5">
+      <data key="d6">
+        <y:SVGNode>
+          <y:Geometry height="40.0" width="40.0" x="587.2553800598145" y="135.75661374374963"/>
+          <y:Fill color="#CCCCFF" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" hasText="false" height="4.0" horizontalTextPosition="center" iconTextGap="4" modelName="sandwich" modelPosition="s" textColor="#000000" verticalTextPosition="bottom" visible="true" width="4.0" x="18.0" y="44.0"/>
+          <y:SVGNodeProperties usingVisualBounds="true"/>
+          <y:SVGModel svgBoundsPolicy="0">
+            <y:SVGContent refid="3"/>
+          </y:SVGModel>
+        </y:SVGNode>
+      </data>
+    </node>
+    <node id="n6">
+      <data key="d6">
+        <y:SVGNode>
+          <y:Geometry height="40.0" width="40.0" x="587.2553800598145" y="318.9566321156251"/>
+          <y:Fill color="#CCCCFF" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" hasText="false" height="4.0" horizontalTextPosition="center" iconTextGap="4" modelName="sandwich" modelPosition="s" textColor="#000000" verticalTextPosition="bottom" visible="true" width="4.0" x="18.0" y="44.0"/>
+          <y:SVGNodeProperties usingVisualBounds="true"/>
+          <y:SVGModel svgBoundsPolicy="0">
+            <y:SVGContent refid="3"/>
+          </y:SVGModel>
+        </y:SVGNode>
+      </data>
+    </node>
+    <node id="n7">
+      <data key="d6">
+        <y:SVGNode>
+          <y:Geometry height="100.0" width="100.0" x="443.12138748168945" y="230.9453125"/>
+          <y:Fill color="#CCCCFF" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" hasText="false" height="4.0" horizontalTextPosition="center" iconTextGap="4" modelName="sandwich" modelPosition="s" textColor="#000000" verticalTextPosition="bottom" visible="true" width="4.0" x="48.0" y="104.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="12" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="17.96875" horizontalTextPosition="center" iconTextGap="4" modelName="sides" modelPosition="s" textColor="#000000" verticalTextPosition="bottom" visible="true" width="140.65234375" x="-20.326171875" xml:space="preserve" y="104.0">PowerDNS-Operator</y:NodeLabel>
+          <y:SVGNodeProperties usingVisualBounds="true"/>
+          <y:SVGModel svgBoundsPolicy="0">
+            <y:SVGContent refid="4"/>
+          </y:SVGModel>
+        </y:SVGNode>
+      </data>
+    </node>
+    <node id="n8">
+      <data key="d6">
+        <y:GenericNode configuration="com.yworks.bpmn.Activity.withShadow">
+          <y:Geometry height="75.0" width="200.0" x="165.84692798168948" y="243.4453125"/>
+          <y:Fill color="#FFFFFFE6" transparent="false"/>
+          <y:BorderStyle color="#123EA2" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="16" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="41.25" horizontalTextPosition="center" iconTextGap="4" modelName="custom" textColor="#339966" verticalTextPosition="bottom" visible="true" width="131.8984375" x="34.05078125" xml:space="preserve" y="16.875">RRsets
+(namespaced)<y:LabelModel><y:SmartNodeLabelModel distance="4.0"/></y:LabelModel><y:ModelParameter><y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/></y:ModelParameter></y:NodeLabel>
+          <y:StyleProperties>
+            <y:Property class="java.awt.Color" name="com.yworks.bpmn.icon.line.color" value="#000000"/>
+            <y:Property class="com.yworks.yfiles.bpmn.view.TaskTypeEnum" name="com.yworks.bpmn.taskType" value="TASK_TYPE_ABSTRACT"/>
+            <y:Property class="java.awt.Color" name="com.yworks.bpmn.icon.fill2" value="#d4d4d4cc"/>
+            <y:Property class="java.awt.Color" name="com.yworks.bpmn.icon.fill" value="#ffffffe6"/>
+            <y:Property class="com.yworks.yfiles.bpmn.view.BPMNTypeEnum" name="com.yworks.bpmn.type" value="ACTIVITY_TYPE"/>
+            <y:Property class="com.yworks.yfiles.bpmn.view.ActivityTypeEnum" name="com.yworks.bpmn.activityType" value="ACTIVITY_TYPE_TASK"/>
+          </y:StyleProperties>
+        </y:GenericNode>
+      </data>
+    </node>
+    <node id="n9">
+      <data key="d6">
+        <y:SVGNode>
+          <y:Geometry height="40.0" width="40.0" x="144.92919998168946" y="222.48743327187483"/>
+          <y:Fill color="#CCCCFF" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" hasText="false" height="4.0" horizontalTextPosition="center" iconTextGap="4" modelName="sandwich" modelPosition="s" textColor="#000000" verticalTextPosition="bottom" visible="true" width="4.0" x="18.0" y="43.99999999999997"/>
+          <y:SVGNodeProperties usingVisualBounds="true"/>
+          <y:SVGModel svgBoundsPolicy="0">
+            <y:SVGContent refid="3"/>
+          </y:SVGModel>
+        </y:SVGNode>
+      </data>
+    </node>
+    <edge id="e0" source="n7" target="n3">
+      <data key="d10">
+        <y:PolyLineEdge>
+          <y:Path sx="0.0" sy="0.0" tx="-84.99214402356404" ty="12.489061579999174"/>
+          <y:LineStyle color="#000000" type="line" width="1.0"/>
+          <y:Arrows source="white_delta_bar" target="white_delta_bar"/>
+          <y:BendStyle smoothed="false"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e1" source="n7" target="n4">
+      <data key="d10">
+        <y:PolyLineEdge>
+          <y:Path sx="0.0" sy="0.0" tx="-96.82273123493417" ty="4.446011702898886"/>
+          <y:LineStyle color="#000000" type="line" width="1.0"/>
+          <y:Arrows source="white_delta_bar" target="white_delta_bar"/>
+          <y:BendStyle smoothed="false"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e2" source="n7" target="n2">
+      <data key="d10">
+        <y:PolyLineEdge>
+          <y:Path sx="0.0" sy="0.0" tx="0.0" ty="0.0"/>
+          <y:LineStyle color="#000000" type="line" width="1.0"/>
+          <y:Arrows source="none" target="delta"/>
+          <y:BendStyle smoothed="false"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e3" source="n7" target="n8">
+      <data key="d10">
+        <y:PolyLineEdge>
+          <y:Path sx="0.0" sy="0.0" tx="0.0" ty="0.0"/>
+          <y:LineStyle color="#000000" type="line" width="1.0"/>
+          <y:Arrows source="white_delta_bar" target="white_delta_bar"/>
+          <y:BendStyle smoothed="false"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+  </graph>
+  <data key="d7">
+    <y:Resources>
+      <y:Resource id="1" xml:space="preserve">&lt;svg xmlns="http://www.w3.org/2000/svg" role="img" viewBox="-0.17 0.08 230.10 223.35" height="62" width="63"&gt;&lt;defs&gt;&lt;style&gt;.cls-1{fill:#fff}.cls-2{fill:#326ce5}&lt;/style&gt;&lt;/defs&gt;&lt;path d="M134.358 126.466a3.59 3.59 0 0 0-.855-.065 3.685 3.685 0 0 0-1.425.37 3.725 3.725 0 0 0-1.803 4.825l-.026.037 8.528 20.603a43.53 43.53 0 0 0 17.595-22.102l-21.976-3.714zm-34.194 2.92a3.72 3.72 0 0 0-3.568-2.894 3.656 3.656 0 0 0-.733.065l-.037-.045-21.785 3.698a43.695 43.695 0 0 0 17.54 21.946l8.442-20.4-.066-.08a3.683 3.683 0 0 0 .207-2.29zm18.245 8a3.718 3.718 0 0 0-6.557.008h-.018l-10.713 19.372a43.637 43.637 0 0 0 23.815 1.225q2.197-.5 4.292-1.2l-10.738-19.406zm33.914-45l-16.483 14.753.009.047a3.725 3.725 0 0 0 1.46 6.395l.02.089 21.35 6.15a44.278 44.278 0 0 0-6.356-27.432zM121.7 94.039a3.725 3.725 0 0 0 5.913 2.84l.065.027 18.036-12.788a43.85 43.85 0 0 0-25.287-12.19l1.253 22.105zm-19.1 2.921a3.72 3.72 0 0 0 5.904-2.85l.092-.043 1.253-22.14a44.682 44.682 0 0 0-4.501.776 43.467 43.467 0 0 0-20.937 11.409l18.154 12.869zm-9.678 16.729a3.72 3.72 0 0 0 1.462-6.396l.018-.088-16.574-14.824a43.454 43.454 0 0 0-6.168 27.51l21.245-6.13zm16.098 6.512l6.114 2.94 6.096-2.934 1.514-6.581-4.219-5.276h-6.79l-4.231 5.268z" class="cls-2" /&gt;&lt;path d="M216.208 133.167l-17.422-75.675a13.602 13.602 0 0 0-7.293-9.073l-70.521-33.67a13.589 13.589 0 0 0-11.705 0L38.76 48.437a13.598 13.598 0 0 0-7.295 9.072l-17.394 75.673a13.315 13.315 0 0 0-.004 5.81 13.506 13.506 0 0 0 .491 1.718 13.1 13.1 0 0 0 1.343 2.726c.239.365.491.72.765 1.064l48.804 60.678c.213.264.448.505.681.75a13.423 13.423 0 0 0 2.574 2.133 13.924 13.924 0 0 0 3.857 1.677 13.298 13.298 0 0 0 3.43.473h.759l77.504-.018a12.993 12.993 0 0 0 1.41-.083 13.47 13.47 0 0 0 1.989-.378 13.872 13.872 0 0 0 1.381-.442c.353-.135.705-.27 1.045-.433a13.941 13.941 0 0 0 1.479-.822 13.303 13.303 0 0 0 3.237-2.865l1.488-1.85 47.299-58.84a13.185 13.185 0 0 0 2.108-3.785 13.67 13.67 0 0 0 .5-1.724 13.282 13.282 0 0 0-.004-5.81zm-73.147 29.432a14.516 14.516 0 0 0 .703 1.703 3.314 3.314 0 0 0-.327 2.49 39.372 39.372 0 0 0 3.742 6.7 35.06 35.06 0 0 1 2.263 3.364c.17.315.392.803.553 1.136a4.24 4.24 0 1 1-7.63 3.607c-.161-.33-.385-.77-.522-1.082a35.275 35.275 0 0 1-1.225-3.868 39.305 39.305 0 0 0-2.896-7.097 3.335 3.335 0 0 0-2.154-1.307c-.135-.233-.635-1.15-.903-1.623a54.617 54.617 0 0 1-38.948-.1l-.955 1.73a3.429 3.429 0 0 0-1.819.887 29.517 29.517 0 0 0-3.268 7.582 34.9 34.9 0 0 1-1.218 3.868c-.135.31-.361.744-.522 1.073v.009l-.007.008a4.238 4.238 0 1 1-7.619-3.616c.159-.335.372-.82.54-1.135a35.177 35.177 0 0 1 2.262-3.373 41.228 41.228 0 0 0 3.82-6.866 4.188 4.188 0 0 0-.376-2.387l.768-1.84a54.922 54.922 0 0 1-24.338-30.387l-1.839.313a4.68 4.68 0 0 0-2.428-.855 39.524 39.524 0 0 0-7.356 2.165 35.589 35.589 0 0 1-3.787 1.45c-.305.084-.745.168-1.093.244-.028.01-.052.022-.08.029a.605.605 0 0 1-.065.006 4.236 4.236 0 1 1-1.874-8.224l.061-.015.037-.01c.353-.083.805-.2 1.127-.262a35.27 35.27 0 0 1 4.05-.326 39.388 39.388 0 0 0 7.564-1.242 5.835 5.835 0 0 0 1.814-1.83l1.767-.516a54.613 54.613 0 0 1 8.613-38.073l-1.353-1.206a4.688 4.688 0 0 0-.848-2.436 39.366 39.366 0 0 0-6.277-4.41 35.25 35.25 0 0 1-3.499-2.046c-.256-.191-.596-.478-.874-.704l-.063-.044a4.473 4.473 0 0 1-1.038-6.222 4.066 4.066 0 0 1 3.363-1.488 5.03 5.03 0 0 1 2.942 1.11c.287.225.68.526.935.745a35.253 35.253 0 0 1 2.78 2.95 39.383 39.383 0 0 0 5.69 5.142 3.333 3.333 0 0 0 2.507.243q.754.55 1.522 1.082A54.289 54.289 0 0 1 102.86 61.89a55.052 55.052 0 0 1 7.63-1.173l.1-1.784a4.6 4.6 0 0 0 1.37-2.184 39.476 39.476 0 0 0-.47-7.654 35.466 35.466 0 0 1-.576-4.014c-.011-.307.006-.731.01-1.081 0-.04-.01-.08-.01-.118a4.242 4.242 0 1 1 8.441-.004c0 .37.022.86.009 1.2a35.109 35.109 0 0 1-.579 4.013 39.533 39.533 0 0 0-.478 7.656 3.344 3.344 0 0 0 1.379 2.11c.015.305.065 1.323.102 1.884a55.309 55.309 0 0 1 35.032 16.927l1.606-1.147a4.69 4.69 0 0 0 2.56-.278 39.532 39.532 0 0 0 5.69-5.148 35.004 35.004 0 0 1 2.787-2.95c.259-.222.65-.52.936-.746a4.242 4.242 0 1 1 5.258 6.598c-.283.229-.657.548-.929.75a35.095 35.095 0 0 1-3.507 2.046 39.495 39.495 0 0 0-6.277 4.41 3.337 3.337 0 0 0-.792 2.39c-.235.216-1.06.947-1.497 1.343a54.837 54.837 0 0 1 8.792 37.983l1.704.496a4.745 4.745 0 0 0 1.82 1.83 39.464 39.464 0 0 0 7.568 1.246 35.64 35.64 0 0 1 4.046.324c.355.065.868.207 1.23.29a4.236 4.236 0 1 1-1.878 8.223l-.061-.008c-.028-.007-.054-.022-.083-.03-.348-.075-.785-.151-1.09-.231a35.14 35.14 0 0 1-3.785-1.462 39.477 39.477 0 0 0-7.363-2.165 3.337 3.337 0 0 0-2.362.877q-.9-.171-1.804-.316a54.92 54.92 0 0 1-24.328 30.605z" class="cls-2" /&gt;&lt;path d="M225.407 135.107L206.4 52.547a14.838 14.838 0 0 0-7.958-9.9l-76.935-36.73a14.825 14.825 0 0 0-12.771 0L31.808 42.669a14.838 14.838 0 0 0-7.961 9.895L4.873 135.129a14.668 14.668 0 0 0 1.995 11.185c.261.4.538.788.838 1.162l53.246 66.205a14.98 14.98 0 0 0 11.499 5.487l85.387-.02a14.986 14.986 0 0 0 11.5-5.48l53.227-66.211a14.72 14.72 0 0 0 2.842-12.347zm-9.197 3.866a13.677 13.677 0 0 1-.498 1.723 13.184 13.184 0 0 1-2.11 3.786l-47.299 58.838-1.486 1.852a13.305 13.305 0 0 1-3.24 2.865 13.945 13.945 0 0 1-1.474.822q-.513.237-1.045.43a13.873 13.873 0 0 1-1.383.445 13.473 13.473 0 0 1-1.989.379 12.988 12.988 0 0 1-1.41.082l-77.504.018h-.76a13.298 13.298 0 0 1-3.429-.472 13.925 13.925 0 0 1-3.855-1.679 13.424 13.424 0 0 1-2.576-2.132c-.233-.246-.468-.487-.68-.75l-48.805-60.679q-.408-.514-.765-1.066a13.102 13.102 0 0 1-1.343-2.726 13.505 13.505 0 0 1-.491-1.719 13.315 13.315 0 0 1 .004-5.809l17.394-75.675a13.598 13.598 0 0 1 7.295-9.07l70.508-33.685a13.589 13.589 0 0 1 11.705 0l70.519 33.67a13.602 13.602 0 0 1 7.293 9.073l17.422 75.674a13.282 13.282 0 0 1 .002 5.807z" class="cls-1" /&gt;&lt;path d="M185.814 127.106c-.36-.083-.874-.225-1.227-.29a35.642 35.642 0 0 0-4.046-.326 39.464 39.464 0 0 1-7.57-1.242 4.745 4.745 0 0 1-1.82-1.832l-1.704-.496a54.837 54.837 0 0 0-8.79-37.983c.436-.396 1.262-1.127 1.495-1.342a3.338 3.338 0 0 1 .792-2.39 39.495 39.495 0 0 1 6.277-4.41 35.095 35.095 0 0 0 3.507-2.046c.272-.202.644-.522.929-.75a4.242 4.242 0 1 0-5.256-6.6c-.288.227-.68.525-.936.747a35.004 35.004 0 0 0-2.789 2.95 39.533 39.533 0 0 1-5.69 5.148 4.69 4.69 0 0 1-2.56.278l-1.606 1.147a55.309 55.309 0 0 0-35.032-16.927c-.039-.561-.087-1.577-.102-1.884a3.344 3.344 0 0 1-1.377-2.11 39.533 39.533 0 0 1 .478-7.656 35.112 35.112 0 0 0 .575-4.012c.013-.34-.007-.834-.007-1.201a4.242 4.242 0 1 0-8.441.004c0 .04.009.078.01.118-.004.35-.021.774-.01 1.08a35.476 35.476 0 0 0 .576 4.015 39.475 39.475 0 0 1 .47 7.654 4.601 4.601 0 0 1-1.37 2.182l-.1 1.786a55.052 55.052 0 0 0-7.63 1.173 54.289 54.289 0 0 0-27.574 15.754q-.77-.531-1.526-1.082a3.333 3.333 0 0 1-2.506-.243 39.383 39.383 0 0 1-5.69-5.141 35.255 35.255 0 0 0-2.777-2.95c-.257-.22-.65-.52-.938-.75a5.03 5.03 0 0 0-2.942-1.11 4.066 4.066 0 0 0-3.363 1.49 4.473 4.473 0 0 0 1.038 6.222l.065.046c.276.226.616.515.872.702a35.256 35.256 0 0 0 3.499 2.048 39.367 39.367 0 0 1 6.276 4.412 4.69 4.69 0 0 1 .849 2.434l1.351 1.208a54.613 54.613 0 0 0-8.611 38.073l-1.767.514a5.835 5.835 0 0 1-1.814 1.827 39.39 39.39 0 0 1-7.565 1.247 35.266 35.266 0 0 0-4.049.326c-.324.06-.774.174-1.127.262l-.037.008-.06.018a4.236 4.236 0 1 0 1.875 8.224l.063-.01c.028-.006.052-.02.08-.025.348-.08.786-.163 1.092-.246a35.59 35.59 0 0 0 3.786-1.451 39.527 39.527 0 0 1 7.358-2.165 4.68 4.68 0 0 1 2.426.857l1.84-.315a54.922 54.922 0 0 0 24.34 30.387l-.769 1.84a4.188 4.188 0 0 1 .377 2.387 41.228 41.228 0 0 1-3.82 6.864 35.183 35.183 0 0 0-2.263 3.372c-.168.318-.381.805-.542 1.138a4.238 4.238 0 1 0 7.621 3.616l.007-.008v-.01c.16-.33.387-.763.522-1.072a34.903 34.903 0 0 0 1.218-3.868 29.517 29.517 0 0 1 3.268-7.582 3.43 3.43 0 0 1 1.819-.888l.957-1.73a54.617 54.617 0 0 0 38.946.099c.268.478.768 1.392.9 1.623a3.335 3.335 0 0 1 2.155 1.31 39.306 39.306 0 0 1 2.898 7.096 35.275 35.275 0 0 0 1.225 3.868c.137.312.36.75.522 1.082a4.24 4.24 0 1 0 7.63-3.607c-.161-.333-.383-.82-.55-1.136a35.06 35.06 0 0 0-2.263-3.364 39.372 39.372 0 0 1-3.742-6.7 3.314 3.314 0 0 1 .324-2.49 14.519 14.519 0 0 1-.703-1.703 54.92 54.92 0 0 0 24.328-30.605c.546.087 1.497.253 1.806.316a3.337 3.337 0 0 1 2.36-.877 39.476 39.476 0 0 1 7.36 2.165 35.135 35.135 0 0 0 3.788 1.462c.305.08.74.156 1.09.233.029.008.055.02.083.028l.06.009a4.236 4.236 0 1 0 1.878-8.224zm-40.1-42.987l-18.037 12.787-.063-.03a3.723 3.723 0 0 1-5.913-2.838l-.02-.01-1.253-22.103a43.85 43.85 0 0 1 25.285 12.194zm-33.978 24.228h6.788l4.22 5.276-1.513 6.58-6.096 2.934-6.114-2.94-1.516-6.583zm-6.386-35.648a44.672 44.672 0 0 1 4.503-.774l-1.255 22.137-.092.044a3.72 3.72 0 0 1-5.904 2.852l-.035.02-18.154-12.872a43.467 43.467 0 0 1 20.937-11.407zm-27.52 19.68l16.574 14.824-.018.09a3.72 3.72 0 0 1-1.462 6.395l-.017.072-21.245 6.13a43.454 43.454 0 0 1 6.168-27.51zm22.191 39.38l-8.441 20.397a43.696 43.696 0 0 1-17.536-21.948l21.783-3.7.037.049a3.655 3.655 0 0 1 .73-.065 3.72 3.72 0 0 1 3.364 5.185zm24.916 26.23a43.637 43.637 0 0 1-23.815-1.223l10.713-19.372h.018a3.725 3.725 0 0 1 6.557-.006h.08l10.74 19.404q-2.091.698-4.293 1.199zm13.841-5.751l-8.528-20.605.026-.037a3.725 3.725 0 0 1 1.803-4.823 3.685 3.685 0 0 1 1.425-.37 3.59 3.59 0 0 1 .855.063l.037-.046 21.977 3.714a43.53 43.53 0 0 1-17.595 22.105zm19.903-32.42l-21.352-6.15-.02-.09a3.725 3.725 0 0 1-1.46-6.395l-.008-.043 16.482-14.751a44.279 44.279 0 0 1 6.357 27.43z" class="cls-1" /&gt;&lt;/svg&gt;</y:Resource>
+      <y:Resource id="2" type="java.awt.image.BufferedImage" xml:space="preserve">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</y:Resource>
+      <y:Resource id="3" xml:space="preserve">&lt;?xml version="1.0" encoding="UTF-8" standalone="no"?&gt;
+&lt;!-- Created with Inkscape (http://www.inkscape.org/) --&gt;
+
+&lt;svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="18.035334mm"
+   height="17.500378mm"
+   viewBox="0 0 18.035334 17.500378"
+   version="1.1"
+   id="svg13826"
+   inkscape:version="0.91 r13725"
+   sodipodi:docname="crd.svg"&gt;
+  &lt;defs
+     id="defs13820" /&gt;
+  &lt;sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="8"
+     inkscape:cx="3.972496"
+     inkscape:cy="33.752239"
+     inkscape:document-units="mm"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     inkscape:window-width="1440"
+     inkscape:window-height="775"
+     inkscape:window-x="0"
+     inkscape:window-y="1"
+     inkscape:window-maximized="1"
+     fit-margin-top="0"
+     fit-margin-left="0"
+     fit-margin-right="0"
+     fit-margin-bottom="0" /&gt;
+  &lt;metadata
+     id="metadata13823"&gt;
+    &lt;rdf:RDF&gt;
+      &lt;cc:Work
+         rdf:about=""&gt;
+        &lt;dc:format&gt;image/svg+xml&lt;/dc:format&gt;
+        &lt;dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" /&gt;
+        &lt;dc:title /&gt;
+      &lt;/cc:Work&gt;
+    &lt;/rdf:RDF&gt;
+  &lt;/metadata&gt;
+  &lt;g
+     inkscape:label="Calque 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-0.99262638,-1.174181)"&gt;
+    &lt;g
+       id="g70"
+       transform="matrix(1.0148887,0,0,1.0148887,16.902146,-2.698726)"&gt;
+      &lt;path
+         inkscape:export-ydpi="250.55"
+         inkscape:export-xdpi="250.55"
+         inkscape:export-filename="new.png"
+         inkscape:connector-curvature="0"
+         id="path3055"
+         d="m -6.8492015,4.2724668 a 1.1191255,1.1099671 0 0 0 -0.4288818,0.1085303 l -5.8524037,2.7963394 a 1.1191255,1.1099671 0 0 0 -0.605524,0.7529759 l -1.443828,6.2812846 a 1.1191255,1.1099671 0 0 0 0.151943,0.851028 1.1191255,1.1099671 0 0 0 0.06362,0.08832 l 4.0508,5.036555 a 1.1191255,1.1099671 0 0 0 0.874979,0.417654 l 6.4961011,-0.0015 a 1.1191255,1.1099671 0 0 0 0.8749788,-0.416906 L 1.3818872,15.149453 A 1.1191255,1.1099671 0 0 0 1.5981986,14.210104 L 0.15212657,7.9288154 A 1.1191255,1.1099671 0 0 0 -0.45339794,7.1758396 L -6.3065496,4.3809971 A 1.1191255,1.1099671 0 0 0 -6.8492015,4.2724668 Z"
+         style="fill:#326ce5;fill-opacity:1;stroke:none;stroke-width:0;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" /&gt;
+      &lt;path
+         id="path3054-2-9"
+         d="M -6.8523435,3.8176372 A 1.1814304,1.171762 0 0 0 -7.3044284,3.932904 l -6.1787426,2.9512758 a 1.1814304,1.171762 0 0 0 -0.639206,0.794891 l -1.523915,6.6308282 a 1.1814304,1.171762 0 0 0 0.160175,0.89893 1.1814304,1.171762 0 0 0 0.06736,0.09281 l 4.276094,5.317236 a 1.1814304,1.171762 0 0 0 0.92363,0.440858 l 6.8576188,-0.0015 a 1.1814304,1.171762 0 0 0 0.9236308,-0.44011 l 4.2745966,-5.317985 a 1.1814304,1.171762 0 0 0 0.228288,-0.990993 L 0.53894439,7.6775738 A 1.1814304,1.171762 0 0 0 -0.10026101,6.8834313 L -6.2790037,3.9321555 A 1.1814304,1.171762 0 0 0 -6.8523435,3.8176372 Z m 0.00299,0.4550789 a 1.1191255,1.1099671 0 0 1 0.5426517,0.1085303 l 5.85315169,2.7948425 A 1.1191255,1.1099671 0 0 1 0.15197811,7.9290648 L 1.598051,14.21035 a 1.1191255,1.1099671 0 0 1 -0.2163123,0.939348 l -4.0493032,5.037304 a 1.1191255,1.1099671 0 0 1 -0.8749789,0.416906 l -6.4961006,0.0015 a 1.1191255,1.1099671 0 0 1 -0.874979,-0.417652 l -4.0508,-5.036554 a 1.1191255,1.1099671 0 0 1 -0.06362,-0.08832 1.1191255,1.1099671 0 0 1 -0.151942,-0.851028 l 1.443827,-6.2812853 a 1.1191255,1.1099671 0 0 1 0.605524,-0.7529758 l 5.8524036,-2.7963395 a 1.1191255,1.1099671 0 0 1 0.4288819,-0.1085303 z"
+         style="color:#000000;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:medium;line-height:normal;font-family:Sans;-inkscape-font-specification:Sans;text-indent:0;text-align:start;text-decoration:none;text-decoration-line:none;letter-spacing:normal;word-spacing:normal;text-transform:none;writing-mode:lr-tb;direction:ltr;baseline-shift:baseline;text-anchor:start;display:inline;overflow:visible;visibility:visible;fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:0;stroke-miterlimit:4;stroke-dasharray:none;marker:none;enable-background:accumulate"
+         inkscape:connector-curvature="0" /&gt;
+    &lt;/g&gt;
+    &lt;path
+       style="fill:#ffffff;fill-opacity:1;stroke-width:0.46185368"
+       inkscape:connector-curvature="0"
+       d="m 14.269566,9.6934441 -0.692781,0 0,-1.847416 c 0,-0.5080383 -0.415668,-0.9237063 -0.923706,-0.9237063 l -1.847416,0 0,-0.69278 c 0,-0.637359 -0.517275,-1.154636 -1.1546334,-1.154636 -0.6373578,0 -1.1546338,0.517277 -1.1546338,1.154636 l 0,0.69278 -1.847416,0 c -0.508038,0 -0.919089,0.415668 -0.919089,0.9237063 l 0,1.755045 0.688164,0 c 0.688161,0 1.247005,0.5588429 1.247005,1.2470049 0,0.688162 -0.558844,1.247005 -1.247005,1.247005 l -0.692781,0 0,1.755045 c 0,0.508038 0.415668,0.923706 0.923706,0.923706 l 1.755045,0 0,-0.692781 c 0,-0.688161 0.558843,-1.247005 1.2470048,-1.247005 0.6881624,0 1.2470044,0.558844 1.2470044,1.247005 l 0,0.692781 1.755045,0 c 0.508038,0 0.923706,-0.415668 0.923706,-0.923706 l 0,-1.847416 0.692781,0 c 0.637358,0 1.154635,-0.517276 1.154635,-1.154634 0,-0.637358 -0.517277,-1.1546339 -1.154635,-1.1546339 z"
+       id="path7415" /&gt;
+  &lt;/g&gt;
+&lt;/svg&gt;
+</y:Resource>
+      <y:Resource id="4" xml:space="preserve">&lt;?xml version="1.0" encoding="UTF-8" standalone="no"?&gt;
+&lt;!-- Created with Inkscape (http://www.inkscape.org/) --&gt;
+
+&lt;svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="18.035334mm"
+   height="17.500378mm"
+   viewBox="0 0 18.035334 17.500378"
+   version="1.1"
+   id="svg11531"
+   inkscape:version="0.91 r13725"
+   sodipodi:docname="api.svg"&gt;
+  &lt;defs
+     id="defs11525" /&gt;
+  &lt;sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="8"
+     inkscape:cx="16.968621"
+     inkscape:cy="33.509081"
+     inkscape:document-units="mm"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     inkscape:window-width="1440"
+     inkscape:window-height="771"
+     inkscape:window-x="55"
+     inkscape:window-y="0"
+     inkscape:window-maximized="0"
+     fit-margin-top="0"
+     fit-margin-left="0"
+     fit-margin-right="0"
+     fit-margin-bottom="0" /&gt;
+  &lt;metadata
+     id="metadata11528"&gt;
+    &lt;rdf:RDF&gt;
+      &lt;cc:Work
+         rdf:about=""&gt;
+        &lt;dc:format&gt;image/svg+xml&lt;/dc:format&gt;
+        &lt;dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" /&gt;
+        &lt;dc:title /&gt;
+      &lt;/cc:Work&gt;
+    &lt;/rdf:RDF&gt;
+  &lt;/metadata&gt;
+  &lt;g
+     inkscape:label="Calque 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-0.99262638,-1.174181)"&gt;
+    &lt;g
+       id="g70"
+       transform="matrix(1.0148887,0,0,1.0148887,16.902146,-2.698726)"&gt;
+      &lt;path
+         inkscape:export-ydpi="250.55"
+         inkscape:export-xdpi="250.55"
+         inkscape:export-filename="new.png"
+         inkscape:connector-curvature="0"
+         id="path3055"
+         d="m -6.8492015,4.2724668 a 1.1191255,1.1099671 0 0 0 -0.4288818,0.1085303 l -5.8524037,2.7963394 a 1.1191255,1.1099671 0 0 0 -0.605524,0.7529759 l -1.443828,6.2812846 a 1.1191255,1.1099671 0 0 0 0.151943,0.851028 1.1191255,1.1099671 0 0 0 0.06362,0.08832 l 4.0508,5.036555 a 1.1191255,1.1099671 0 0 0 0.874979,0.417654 l 6.4961011,-0.0015 a 1.1191255,1.1099671 0 0 0 0.8749788,-0.416906 L 1.3818872,15.149453 A 1.1191255,1.1099671 0 0 0 1.5981986,14.210104 L 0.15212657,7.9288154 A 1.1191255,1.1099671 0 0 0 -0.45339794,7.1758396 L -6.3065496,4.3809971 A 1.1191255,1.1099671 0 0 0 -6.8492015,4.2724668 Z"
+         style="fill:#326ce5;fill-opacity:1;stroke:none;stroke-width:0;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" /&gt;
+      &lt;path
+         id="path3054-2-9"
+         d="M -6.8523435,3.8176372 A 1.1814304,1.171762 0 0 0 -7.3044284,3.932904 l -6.1787426,2.9512758 a 1.1814304,1.171762 0 0 0 -0.639206,0.794891 l -1.523915,6.6308282 a 1.1814304,1.171762 0 0 0 0.160175,0.89893 1.1814304,1.171762 0 0 0 0.06736,0.09281 l 4.276094,5.317236 a 1.1814304,1.171762 0 0 0 0.92363,0.440858 l 6.8576188,-0.0015 a 1.1814304,1.171762 0 0 0 0.9236308,-0.44011 l 4.2745966,-5.317985 a 1.1814304,1.171762 0 0 0 0.228288,-0.990993 L 0.53894439,7.6775738 A 1.1814304,1.171762 0 0 0 -0.10026101,6.8834313 L -6.2790037,3.9321555 A 1.1814304,1.171762 0 0 0 -6.8523435,3.8176372 Z m 0.00299,0.4550789 a 1.1191255,1.1099671 0 0 1 0.5426517,0.1085303 l 5.85315169,2.7948425 A 1.1191255,1.1099671 0 0 1 0.15197811,7.9290648 L 1.598051,14.21035 a 1.1191255,1.1099671 0 0 1 -0.2163123,0.939348 l -4.0493032,5.037304 a 1.1191255,1.1099671 0 0 1 -0.8749789,0.416906 l -6.4961006,0.0015 a 1.1191255,1.1099671 0 0 1 -0.874979,-0.417652 l -4.0508,-5.036554 a 1.1191255,1.1099671 0 0 1 -0.06362,-0.08832 1.1191255,1.1099671 0 0 1 -0.151942,-0.851028 l 1.443827,-6.2812853 a 1.1191255,1.1099671 0 0 1 0.605524,-0.7529758 l 5.8524036,-2.7963395 a 1.1191255,1.1099671 0 0 1 0.4288819,-0.1085303 z"
+         style="color:#000000;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:medium;line-height:normal;font-family:Sans;-inkscape-font-specification:Sans;text-indent:0;text-align:start;text-decoration:none;text-decoration-line:none;letter-spacing:normal;word-spacing:normal;text-transform:none;writing-mode:lr-tb;direction:ltr;baseline-shift:baseline;display:inline;overflow:visible;visibility:visible;fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:0;stroke-miterlimit:4;stroke-dasharray:none;marker:none;enable-background:accumulate"
+         text-anchor="start"
+         inkscape:connector-curvature="0" /&gt;
+    &lt;/g&gt;
+    &lt;text
+       id="text2066"
+       y="16.811775"
+       x="10.055769"
+       style="font-style:normal;font-weight:normal;font-size:10.58333302px;line-height:6.61458349px;font-family:Sans;letter-spacing:0px;word-spacing:0px;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:0.26458332px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       xml:space="preserve"&gt;&lt;tspan
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.82222223px;font-family:Arial;-inkscape-font-specification:'Arial, Normal';text-align:center;writing-mode:lr-tb;fill:#ffffff;fill-opacity:1;stroke-width:0.26458332px"
+         text-anchor="middle"
+         y="16.811775"
+         x="10.055769"
+         id="tspan2064"
+         sodipodi:role="line"&gt;api&lt;/tspan&gt;&lt;/text&gt;
+    &lt;path
+       id="path1984"
+       d="m 9.9922574,4.4469925 c -0.1383234,-0.0044 -3.9953139,1.8917791 -4.0457429,1.9890241 -0.121153,0.233682 -0.998802,4.2814784 -0.947235,4.3687244 0.03,0.05065 0.662199,0.852305 1.404567,1.780771 l 1.349798,1.687754 2.2215743,0.0011 2.2215722,0.0011 1.412819,-1.765784 1.41388,-1.765265 -0.49456,-2.1688607 C 14.25673,7.3828155 14.01329,6.3872756 13.98842,6.3632856 13.91892,6.2964056 10.06724,4.4495465 9.9922574,4.4471255 Z m 0.2361666,1.9828241 c 0.186637,0.008 0.205792,0.291571 0.605128,0.321427 0.5216,0.039 0.465508,-0.446651 0.864553,-0.108522 0.399044,0.338125 -0.0889,0.362641 0.03514,0.870749 0.12409,0.5081041 0.568801,0.3050991 0.370523,0.7890987 -0.198279,0.484002 -0.372613,0.02728 -0.81751,0.302308 -0.444897,0.275023 -0.114564,0.635346 -0.636138,0.596347 -0.521652,-0.039 -0.140467,-0.346065 -0.53951,-0.684197 C 9.711566,8.1788955 9.4703718,8.6044873 9.3463088,8.0963797 9.2222188,7.5882716 9.632244,7.8553625 9.830523,7.3713607 10.029224,6.8873136 9.5494288,6.7901076 9.9943524,6.5150816 c 0.05564,-0.03434 0.1018906,-0.05688 0.1421056,-0.07028 0.03508,-0.01167 0.06533,-0.01614 0.09197,-0.01497 z m 0.521493,0.572059 c -0.07578,-5.306e-4 -0.151209,0.01021 -0.223758,0.03204 -0.400393,0.120732 -0.626954,0.5433219 -0.505909,0.943613 0.12094,0.3999197 0.54311,0.6261487 0.943107,0.5053937 0.399838,-0.120746 0.626268,-0.5426107 0.505909,-0.9425788 C 11.373516,7.2225236 11.081837,7.0041896 10.749917,7.0018776 Z M 7.7572695,8.3036033 c 0.03969,7.9e-4 0.08832,0.009 0.1482991,0.02739 0.4799279,0.147138 -0.0077,0.399503 0.334354,0.766879 0.3420531,0.367377 0.6285182,-0.101086 0.7410452,0.388091 0.112527,0.4891777 -0.3499913,0.192921 -0.4971261,0.6728277 -0.1471612,0.479904 0.4014791,0.494083 0.03411,0.836123 -0.367374,0.342041 -0.3418151,-0.20606 -0.8309501,-0.09353 -0.489188,0.112527 -0.227039,0.594654 -0.70694,0.447516 -0.479928,-0.147137 0.0077,-0.3995 -0.334354,-0.766876 -0.342054,-0.367379 -0.628518,0.100571 -0.741045,-0.388607 -0.112528,-0.48918 0.349991,-0.192924 0.497125,-0.6728267 0.147162,-0.479907 -0.401981,-0.49357 -0.03461,-0.83561 0.367374,-0.342043 0.342291,0.206065 0.831453,0.09354 0.428043,-0.09846 0.280643,-0.479607 0.558641,-0.474906 z m 3.5672165,0.524516 c 0.04551,5.36e-4 0.100807,0.01243 0.170022,0.03927 0.55327,0.214739 -0.175234,0.545894 0.253735,0.9560137 0.428969,0.410118 0.727472,-0.3327417 0.966867,0.210323 0.239369,0.543065 -0.510434,0.262432 -0.497126,0.855763 0.01323,0.593331 0.749591,0.27872 0.534829,0.83199 -0.214709,0.553268 -0.545888,-0.175247 -0.955992,0.25373 -0.410131,0.428977 0.33221,0.726972 -0.210847,0.966348 -0.543057,0.23938 -0.261382,-0.509939 -0.854736,-0.496609 -0.593328,0.01333 -0.279215,0.749072 -0.83251,0.534334 C 9.3454848,12.764543 10.073987,12.433388 9.644993,12.023268 9.2160238,11.613148 8.9180238,12.356008 8.6786546,11.812945 8.4392867,11.26988 9.1885598,11.551032 9.1752778,10.957701 9.1617878,10.36437 8.4256867,10.678462 8.6404225,10.125192 8.8551588,9.5719223 9.1868138,10.300955 9.596945,9.871978 10.007048,9.4430013 9.2641778,9.1444903 9.807262,8.9051143 c 0.543055,-0.239377 0.26191,0.509939 0.855237,0.496609 0.519192,-0.01167 0.343429,-0.576408 0.661987,-0.573608 z m -3.8814095,0.25528 c -0.417988,-1.58e-4 -0.756946,0.338564 -0.757078,0.7565447 -1.59e-4,0.418182 0.338905,0.757219 0.757078,0.75706 0.4179631,-1.48e-4 0.756682,-0.339095 0.7565239,-0.75706 C 8.1994675,9.4221803 7.8608276,9.0835473 7.4430765,9.0833993 Z M 10.69663,9.808421 c -0.615684,4.2e-5 -1.114846,0.498983 -1.11519,1.114661 -2.38e-4,0.616082 0.499109,1.11565 1.11519,1.115692 0.616268,2.22e-4 1.115907,-0.499425 1.115669,-1.115692 0,-0.615866 -0.499798,-1.114883 -1.115669,-1.114661 z"
+       style="opacity:1;fill:#ffffff;fill-opacity:1;stroke:#eeeeee;stroke-width:0;stroke-miterlimit:10;stroke-dasharray:none;stroke-dashoffset:11.23642349;stroke-opacity:1"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="cccccccccccccscccccsccccccccccccccscscccccccccccccccccccccscccccccccccccc" /&gt;
+  &lt;/g&gt;
+&lt;/svg&gt;
+</y:Resource>
+    </y:Resources>
+  </data>
+</graphml>
