@@ -1378,9 +1378,9 @@ var _ = Describe("RRset Controller", func() {
 			ic := countMetrics()
 			ctx := context.Background()
 			// Specific test variables
-			pendingZoneName := "example4.org"
-			pendingResourceName := "test.example4.org"
-			pendingResourceNamespace := "example4"
+			pendingZoneName := "example5.org"
+			pendingResourceName := "test.example5.org"
+			pendingResourceNamespace := "example5"
 			pendingResourceDNSName := "test"
 			pendingResourceType := "A"
 			pendingResourceRecords := []string{"1.2.3.4", "5.6.7.8"}

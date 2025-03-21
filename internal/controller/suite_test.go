@@ -235,6 +235,7 @@ var _ = BeforeSuite(func() {
 		"example2",
 		"example3",
 		"example4",
+		"example5",
 	}
 
 	for _, n := range namespaces {
