@@ -60,6 +60,15 @@ var (
 const (
 	FIRST_GENERATION    = 1
 	MODIFIED_GENERATION = 2
+	FAKE_SITE           = "fake.com"
+)
+
+const (
+	NATIVE_KIND_ZONE   = "Native"
+	MASTER_KIND_ZONE   = "Master"
+	SLAVE_KIND_ZONE    = "Slave"
+	PRODUCER_KIND_ZONE = "Producer"
+	CONSUMER_KIND_ZONE = "Consumer"
 )
 
 // writeToZonesMap stores a value in the Zones sync.Map
@@ -118,6 +127,16 @@ func readFromRecordsMap(key string) (*powerdns.RRset, bool) {
 // deleteFromRecordsMap removes a key from the Records sync.Map
 func deleteFromRecordsMap(key string) {
 	records.Delete(key)
+}
+
+// resetZonesMap removes all entries from the Zones sync.Map
+func resetZonesMap() {
+	zones.Clear()
+}
+
+// resetZonesMap removes all entries from the Zones sync.Map
+func resetRecordsMap() {
+	records.Clear()
 }
 
 func TestControllers(t *testing.T) {
@@ -216,6 +235,15 @@ func NewMockClient() mockClient {
 }
 
 func (m mockZonesClient) Add(ctx context.Context, zone *powerdns.Zone) (*powerdns.Zone, error) {
+	// Specific behaviour to
+	// for "fake" domain, return an error
+	if *zone.Name == FAKE_SITE {
+		return &powerdns.Zone{}, &powerdns.Error{
+			StatusCode: 500,
+			Status:     "500 Internal Server Error",
+			Message:    "Internal Server Error",
+		}
+	}
 
 	if _, ok := readFromZonesMap(makeCanonical(*zone.Name)); ok {
 		return &powerdns.Zone{}, powerdns.Error{StatusCode: ZONE_CONFLICT_CODE, Status: fmt.Sprintf("%d %s", ZONE_CONFLICT_CODE, ZONE_CONFLICT_MSG), Message: ZONE_CONFLICT_MSG}
@@ -252,6 +280,16 @@ func (m mockZonesClient) Add(ctx context.Context, zone *powerdns.Zone) (*powerdn
 }
 
 func (m mockZonesClient) Get(ctx context.Context, domain string) (*powerdns.Zone, error) {
+	// Specific behaviour to
+	// for "fake" domain, return an error
+	if domain == FAKE_SITE {
+		return &powerdns.Zone{}, &powerdns.Error{
+			StatusCode: 500,
+			Status:     "500 Internal Server Error",
+			Message:    "Internal Server Error",
+		}
+	}
+
 	if z, ok := readFromZonesMap(makeCanonical(domain)); ok {
 		return z, nil
 	}
@@ -259,6 +297,16 @@ func (m mockZonesClient) Get(ctx context.Context, domain string) (*powerdns.Zone
 }
 
 func (m mockZonesClient) Delete(ctx context.Context, domain string) error {
+	// Specific behaviour to
+	// for "fake" domain, return an error
+	if domain == FAKE_SITE {
+		return &powerdns.Error{
+			StatusCode: 500,
+			Status:     "500 Internal Server Error",
+			Message:    "Internal Server Error",
+		}
+	}
+
 	deleteFromRecordsMap(makeCanonical(domain))
 	if _, ok := readFromZonesMap(makeCanonical(domain)); !ok {
 		return powerdns.Error{StatusCode: ZONE_NOT_FOUND_CODE, Status: fmt.Sprintf("%d %s", ZONE_NOT_FOUND_CODE, ZONE_NOT_FOUND_MSG), Message: ZONE_NOT_FOUND_MSG}
@@ -268,6 +316,16 @@ func (m mockZonesClient) Delete(ctx context.Context, domain string) error {
 }
 
 func (m mockZonesClient) Change(ctx context.Context, domain string, zone *powerdns.Zone) error {
+	// Specific behaviour to
+	// for "fake" domain, return an error
+	if *zone.Name == FAKE_SITE {
+		return &powerdns.Error{
+			StatusCode: 500,
+			Status:     "500 Internal Server Error",
+			Message:    "Internal Server Error",
+		}
+	}
+
 	localZone, ok := readFromZonesMap(makeCanonical(domain))
 	if !ok {
 		return powerdns.Error{StatusCode: ZONE_NOT_FOUND_CODE, Status: fmt.Sprintf("%d %s", ZONE_NOT_FOUND_CODE, ZONE_NOT_FOUND_MSG), Message: ZONE_NOT_FOUND_MSG}
@@ -305,6 +363,16 @@ func (m mockRecordsClient) Get(ctx context.Context, domain string, name string, 
 }
 
 func (m mockRecordsClient) Change(ctx context.Context, domain string, name string, recordType powerdns.RRType, ttl uint32, content []string, options ...func(*powerdns.RRset)) error {
+	// Specific behaviour to
+	// for "fake" domain, return an error
+	if domain == FAKE_SITE+"." {
+		return &powerdns.Error{
+			StatusCode: 500,
+			Status:     "500 Internal Server Error",
+			Message:    "Internal Server Error",
+		}
+	}
+
 	// Preliminary test - Linked to 'wrong-rrset && wrong-type' test
 	if string(recordType) == "AA" {
 		return &powerdns.Error{

@@ -31,7 +31,7 @@ var _ = Describe("Zone Controller", func() {
 
 	const (
 		resourceName    = "example1.org"
-		resourceKind    = "Native"
+		resourceKind    = NATIVE_KIND_ZONE
 		resourceCatalog = "catalog.example1.org."
 
 		timeout  = time.Second * 5
@@ -157,7 +157,7 @@ var _ = Describe("Zone Controller", func() {
 		It("should successfully modify the kind of the zone", Label("zone-modification", "kind"), func() {
 			ctx := context.Background()
 			// Specific test variables
-			var modifiedResourceKind = []string{"Master", "Native", "Slave", "Producer", "Consumer"}
+			var modifiedResourceKind = []string{MASTER_KIND_ZONE, NATIVE_KIND_ZONE, SLAVE_KIND_ZONE, PRODUCER_KIND_ZONE, CONSUMER_KIND_ZONE}
 
 			By("Getting the initial Serial of the resource")
 			zone := &dnsv1alpha1.Zone{}
@@ -288,7 +288,7 @@ var _ = Describe("Zone Controller", func() {
 			ctx := context.Background()
 			// Specific test variables
 			recreationResourceName := "example3.org"
-			recreationResourceKind := "Native"
+			recreationResourceKind := NATIVE_KIND_ZONE
 			recreationResourceNameservers := []string{"ns1.example3.org", "ns2.example3.org"}
 
 			By("Creating a Zone directly in the mock")
@@ -398,7 +398,7 @@ var _ = Describe("Zone Controller", func() {
 			ctx := context.Background()
 			By("Creating a Zone")
 			fakeResourceName := "fake.org"
-			fakeResourceKind := "Native"
+			fakeResourceKind := NATIVE_KIND_ZONE
 			fakeResourceNameservers := []string{"ns1.fake.org", "ns2.fake.org"}
 			fakeResource := &dnsv1alpha1.Zone{
 				ObjectMeta: metav1.ObjectMeta{
