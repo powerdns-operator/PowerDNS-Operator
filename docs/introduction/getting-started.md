@@ -36,13 +36,13 @@ EOF
 Install the latest version using the following command:
 
 ```bash
-kubectl apply -k https://github.com/Orange-OpenSource/PowerDNS-Operator/releases/latest/download/bundle.yaml
+kubectl apply -f https://github.com/Orange-OpenSource/PowerDNS-Operator/releases/latest/download/bundle.yaml
 ```
 
 Or you can specify a specific version (e.g. `v0.1.0`):
 
 ```bash
-kubectl apply -k https://github.com/Orange-OpenSource/PowerDNS-Operator/releases/download/v0.1.0/bundle.yaml
+kubectl apply -f https://github.com/Orange-OpenSource/PowerDNS-Operator/releases/download/v0.1.0/bundle.yaml
 ```
 
 ## Installing with Helm
