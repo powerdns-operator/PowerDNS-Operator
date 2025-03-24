@@ -7,7 +7,7 @@ on:
   pull_request: {}
 
 env:
-  GOLANGCI_VERSION: 'v1.64.6'
+  GOLANGCI_VERSION: 'v1.64.8'
   KUBERNETES_VERSION: '1.31.0'
 
 permissions:
