@@ -21,7 +21,7 @@ import (
 // +k8s:deepcopy-gen:interfaces=nil
 // +k8s:deepcopy-gen=nil
 
-// GenericRRset is a common interface for interacting with a namespaced RRset.
+// GenericRRset is a common interface for interacting with ClusterRRset or a namespaced RRset.
 type GenericRRset interface {
 	runtime.Object
 	metav1.Object
@@ -60,5 +60,33 @@ func (c *RRset) SetStatus(status RRsetStatus) {
 }
 
 func (c *RRset) Copy() GenericRRset {
+	return c.DeepCopy()
+}
+
+// +kubebuilder:object:root:false
+// +kubebuilder:object:generate:false
+var _ GenericRRset = &ClusterRRset{}
+
+func (c *ClusterRRset) GetObjectMeta() *metav1.ObjectMeta {
+	return &c.ObjectMeta
+}
+
+func (c *ClusterRRset) GetTypeMeta() *metav1.TypeMeta {
+	return &c.TypeMeta
+}
+
+func (c *ClusterRRset) GetSpec() *RRsetSpec {
+	return &c.Spec
+}
+
+func (c *ClusterRRset) GetStatus() RRsetStatus {
+	return c.Status
+}
+
+func (c *ClusterRRset) SetStatus(status RRsetStatus) {
+	c.Status = status
+}
+
+func (c *ClusterRRset) Copy() GenericRRset {
 	return c.DeepCopy()
 }

@@ -233,11 +233,22 @@ func rrsetReconcile(ctx context.Context, gr dnsv1alpha2.GenericRRset, zone dnsv1
 	// * Stop reconciliation
 	// * Append a Failed Status on RRset
 	var existingRRsets dnsv1alpha2.RRsetList
-	if err := cl.List(ctx, &existingRRsets, client.MatchingFields{"DNS.Entry.Name": getRRsetName(gr) + "/" + gr.GetSpec().Type}); err != nil {
+	if err := cl.List(ctx, &existingRRsets, client.MatchingFields{"RRset.Entry.Name": getRRsetName(gr) + "/" + gr.GetSpec().Type}); err != nil {
 		log.Error(err, "unable to find RRsets related to the DNS Name")
 		return ctrl.Result{}, err
 	}
-	if len(existingRRsets.Items) > 1 {
+	var existingClusterRRsets dnsv1alpha2.ClusterRRsetList
+	if err := cl.List(ctx, &existingClusterRRsets, client.MatchingFields{"ClusterRRset.Entry.Name": getRRsetName(gr) + "/" + gr.GetSpec().Type}); err != nil {
+		log.Error(err, "unable to find RRsets related to the DNS Name")
+		return ctrl.Result{}, err
+	}
+
+	// Multiple use-cases:
+	// 1 RRset (test.example.com in NS example1) + 1 RRset (test.example.com in NS example3)
+	// In that case: len(existingRRsets.Items) > 1
+	// 1 RRset (test.example.com in NS example1) + 1 ClusterRRset (test.example.com)
+	// In that case: len(existingRRsets.Items) >= 1 AND len(existingClusterRRsets.Items) >= 1
+	if len(existingRRsets.Items) > 1 || (len(existingRRsets.Items) >= 1 && len(existingClusterRRsets.Items) >= 1) {
 		original := gr.Copy()
 		conditions := gr.GetStatus().Conditions
 		meta.SetStatusCondition(&conditions, metav1.Condition{

@@ -98,6 +98,7 @@ func (r *ClusterZoneReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&dnsv1alpha2.ClusterZone{}).
+		Owns(&dnsv1alpha2.ClusterRRset{}).
 		Owns(&dnsv1alpha2.RRset{}).
 		Complete(r)
 }

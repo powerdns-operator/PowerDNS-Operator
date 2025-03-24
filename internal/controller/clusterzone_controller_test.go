@@ -8,6 +8,7 @@
  * see the "LICENSE" file for more details
  */
 
+//nolint:goconst
 package controller
 
 import (

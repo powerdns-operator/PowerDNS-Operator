@@ -119,6 +119,7 @@ func (r *ZoneReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&dnsv1alpha2.Zone{}).
+		Owns(&dnsv1alpha2.ClusterRRset{}).
 		Owns(&dnsv1alpha2.RRset{}).
 		Complete(r)
 }

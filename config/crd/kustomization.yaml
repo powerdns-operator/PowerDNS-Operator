@@ -5,6 +5,7 @@ resources:
 - bases/dns.cav.enablers.ob_zones.yaml
 - bases/dns.cav.enablers.ob_rrsets.yaml
 - bases/dns.cav.enablers.ob_clusterzones.yaml
+- bases/dns.cav.enablers.ob_clusterrrsets.yaml
 #+kubebuilder:scaffold:crdkustomizeresource
 
 patches:
@@ -17,6 +18,7 @@ patches:
 #- path: patches/cainjection_in_zones.yaml
 #- path: patches/cainjection_in_rrsets.yaml
 #- path: patches/cainjection_in_clusterzones.yaml
+#- path: patches/cainjection_in_clusterrrsets.yaml
 #+kubebuilder:scaffold:crdkustomizecainjectionpatch
 
 # [WEBHOOK] To enable webhook, uncomment the following section

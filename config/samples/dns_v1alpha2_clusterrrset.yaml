@@ -1,0 +1,40 @@
+---
+# Records of type 'MX' in 'helloworld.com' zone
+# helloworld.com.      IN    MX    10 mx1.helloworld.com.
+# helloworld.com.      IN    MX    20 mx2.helloworld.com.
+apiVersion: dns.cav.enablers.ob/v1alpha2
+kind: ClusterRRset
+metadata:
+  name: mx.helloworld.com
+spec:
+  type: MX
+  name: "helloworld.com."
+  ttl: 300
+  records:
+    - "10 mx1.helloworld.com."
+    - "20 mx2.helloworld.com."
+  zoneRef:
+    name: helloworld.com
+    kind: ClusterZone
+
+---
+# Record of type 'A' in 'helloworld.com' zone
+# test.helloworld.com.      IN    A    1.1.1.1
+# test.helloworld.com.      IN    A    2.2.2.2
+apiVersion: dns.cav.enablers.ob/v1alpha2
+kind: ClusterRRset
+metadata:
+  annotations:
+    fake-rrset: "Same FQDN as RRset/test.helloworld.com"
+  name: test.helloworld.com
+spec:
+  comment: nothing to tell
+  name: test
+  type: A
+  ttl: 300
+  records:
+    - 1.1.1.1
+    - 2.2.2.2
+  zoneRef:
+    name: helloworld.com
+    kind: ClusterZone

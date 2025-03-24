@@ -1,16 +1,16 @@
----
+# permissions for end users to edit clusterrrsets.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: manager-role
+  labels:
+    app.kubernetes.io/name: powerdns-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: clusterrrset-editor-role
 rules:
 - apiGroups:
   - dns.cav.enablers.ob
   resources:
   - clusterrrsets
-  - clusterzones
-  - rrsets
-  - zones
   verbs:
   - create
   - delete
@@ -22,20 +22,6 @@ rules:
 - apiGroups:
   - dns.cav.enablers.ob
   resources:
-  - clusterrrsets/finalizers
-  - clusterzones/finalizers
-  - rrsets/finalizers
-  - zones/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - dns.cav.enablers.ob
-  resources:
   - clusterrrsets/status
-  - clusterzones/status
-  - rrsets/status
-  - zones/status
   verbs:
   - get
-  - patch
-  - update
