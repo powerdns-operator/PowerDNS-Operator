@@ -43,7 +43,6 @@ resources:
   version: v1alpha2
 - api:
     crdVersion: v1
-    namespaced: true
   controller: true
   domain: cav.enablers.ob
   group: dns
