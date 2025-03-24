@@ -1,9 +1,8 @@
 ---
 apiVersion: dns.cav.enablers.ob/v1alpha2
-kind: RRset
+kind: ClusterRRset
 metadata:
   name: soa.example.org
-  namespace: example
 spec:
   name: example.org.
   records:
@@ -15,10 +14,9 @@ spec:
     kind: ClusterZone
 ---
 apiVersion: dns.cav.enablers.ob/v1alpha2
-kind: RRset
+kind: ClusterRRset
 metadata:
   name: mx.example.org
-  namespace: example
 spec:
   type: MX
   name: "example.org."
@@ -31,10 +29,9 @@ spec:
     kind: ClusterZone
 ---
 apiVersion: dns.cav.enablers.ob/v1alpha2
-kind: RRset
+kind: ClusterRRset
 metadata:
   name: ns1.example.org
-  namespace: example
 spec:
   type: A
   name: ns1
@@ -46,10 +43,9 @@ spec:
     kind: ClusterZone
 ---
 apiVersion: dns.cav.enablers.ob/v1alpha2
-kind: RRset
+kind: ClusterRRset
 metadata:
   name: ns2.example.org
-  namespace: example
 spec:
   type: A
   name: ns2

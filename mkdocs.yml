@@ -59,6 +59,7 @@ nav:
   - Guides:
       - ClusterZones: guides/clusterzones.md
       - Zones: guides/zones.md
+      - ClusterRRsets: guides/clusterrrsets.md
       - RRsets: guides/rrsets.md
       - Metrics: guides/metrics.md
       - Warnings: guides/warnings.md
