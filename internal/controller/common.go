@@ -166,8 +166,8 @@ func zoneReconcile(ctx context.Context, gz dnsv1alpha2.GenericZone, isModified b
 	return ctrl.Result{}, nil
 }
 
-func rrsetReconcile(ctx context.Context, rrset *dnsv1alpha2.RRset, zone dnsv1alpha2.GenericZone, isModified bool, isDeleted bool, lastUpdateTime *metav1.Time, scheme *runtime.Scheme, cl client.Client, PDNSClient PdnsClienter, log logr.Logger) (ctrl.Result, error) {
-	isInFailedStatus := (rrset.Status.SyncStatus != nil && *rrset.Status.SyncStatus == FAILED_STATUS)
+func rrsetReconcile(ctx context.Context, gr dnsv1alpha2.GenericRRset, zone dnsv1alpha2.GenericZone, isModified bool, isDeleted bool, lastUpdateTime *metav1.Time, scheme *runtime.Scheme, cl client.Client, PDNSClient PdnsClienter, log logr.Logger) (ctrl.Result, error) {
+	isInFailedStatus := (gr.GetStatus().SyncStatus != nil && *gr.GetStatus().SyncStatus == FAILED_STATUS)
 
 	// initialize syncStatus
 	var syncStatus *string
@@ -180,10 +180,10 @@ func rrsetReconcile(ctx context.Context, rrset *dnsv1alpha2.RRset, zone dnsv1alp
 		// The object is not being deleted, so if it does not have our finalizer,
 		// then lets add the finalizer and update the object. This is equivalent
 		// to registering our finalizer.
-		if !controllerutil.ContainsFinalizer(rrset, RESOURCES_FINALIZER_NAME) {
-			controllerutil.AddFinalizer(rrset, RESOURCES_FINALIZER_NAME)
+		if !controllerutil.ContainsFinalizer(gr, RESOURCES_FINALIZER_NAME) {
+			controllerutil.AddFinalizer(gr, RESOURCES_FINALIZER_NAME)
 			lastUpdateTime = &metav1.Time{Time: time.Now().UTC()}
-			if err := cl.Update(ctx, rrset); err != nil {
+			if err := cl.Update(ctx, gr); err != nil {
 				log.Error(err, "Failed to add finalizer")
 				return ctrl.Result{}, err
 			}
@@ -191,26 +191,26 @@ func rrsetReconcile(ctx context.Context, rrset *dnsv1alpha2.RRset, zone dnsv1alp
 	} else {
 		// The object is being deleted
 		finalizerRemoved := false
-		if controllerutil.ContainsFinalizer(rrset, RESOURCES_FINALIZER_NAME) {
+		if controllerutil.ContainsFinalizer(gr, RESOURCES_FINALIZER_NAME) {
 			// our finalizer is present, so lets handle any external dependency
-			if err := deleteRrsetExternalResources(ctx, zone, rrset, PDNSClient, log); err != nil {
+			if err := deleteRrsetExternalResources(ctx, zone, gr, PDNSClient, log); err != nil {
 				// if fail to delete the external resource, return with error
 				// so that it can be retried
 				log.Error(err, "Failed to delete external resources")
 				return ctrl.Result{}, err
 			}
 			// remove our finalizer from the list.
-			controllerutil.RemoveFinalizer(rrset, RESOURCES_FINALIZER_NAME)
+			controllerutil.RemoveFinalizer(gr, RESOURCES_FINALIZER_NAME)
 			finalizerRemoved = true
 		}
-		if controllerutil.ContainsFinalizer(rrset, METRICS_FINALIZER_NAME) {
+		if controllerutil.ContainsFinalizer(gr, METRICS_FINALIZER_NAME) {
 			// Remove resource metrics and finalizer
-			removeRrsetMetrics(rrset.Name, rrset.Namespace)
-			controllerutil.RemoveFinalizer(rrset, METRICS_FINALIZER_NAME)
+			removeRrsetMetrics(gr)
+			controllerutil.RemoveFinalizer(gr, METRICS_FINALIZER_NAME)
 			finalizerRemoved = true
 		}
 		if finalizerRemoved {
-			if err := cl.Update(ctx, rrset); err != nil {
+			if err := cl.Update(ctx, gr); err != nil {
 				log.Error(err, "Failed to remove finalizer")
 				return ctrl.Result{}, err
 			}
@@ -225,7 +225,7 @@ func rrsetReconcile(ctx context.Context, rrset *dnsv1alpha2.RRset, zone dnsv1alp
 	// We cannot exit previously (at the early moments of reconcile), because we have to allow deletion process
 	if isInFailedStatus && !isModified {
 		// Update resource metrics
-		updateRrsetsMetrics(getRRsetName(rrset), rrset.Spec.Type, *rrset.Status.SyncStatus, rrset.Name, rrset.Namespace)
+		updateRrsetsMetrics(getRRsetName(gr), gr)
 		return ctrl.Result{}, nil
 	}
 
@@ -233,37 +233,41 @@ func rrsetReconcile(ctx context.Context, rrset *dnsv1alpha2.RRset, zone dnsv1alp
 	// * Stop reconciliation
 	// * Append a Failed Status on RRset
 	var existingRRsets dnsv1alpha2.RRsetList
-	if err := cl.List(ctx, &existingRRsets, client.MatchingFields{"DNS.Entry.Name": getRRsetName(rrset) + "/" + rrset.Spec.Type}); err != nil {
+	if err := cl.List(ctx, &existingRRsets, client.MatchingFields{"DNS.Entry.Name": getRRsetName(gr) + "/" + gr.GetSpec().Type}); err != nil {
 		log.Error(err, "unable to find RRsets related to the DNS Name")
 		return ctrl.Result{}, err
 	}
 	if len(existingRRsets.Items) > 1 {
-		original := rrset.DeepCopy()
-		rrset.Status.LastUpdateTime = lastUpdateTime
-		name := getRRsetName(rrset)
-		rrset.Status.DnsEntryName = &name
-		rrset.Status.SyncStatus = ptr.To(FAILED_STATUS)
-		rrset.Status.ObservedGeneration = &rrset.Generation
-		meta.SetStatusCondition(&rrset.Status.Conditions, metav1.Condition{
+		original := gr.Copy()
+		conditions := gr.GetStatus().Conditions
+		meta.SetStatusCondition(&conditions, metav1.Condition{
 			Type:               "Available",
 			Status:             metav1.ConditionFalse,
 			LastTransitionTime: *lastUpdateTime,
 			Reason:             RrsetReasonDuplicated,
 			Message:            RrsetMessageDuplicated,
 		})
-		if err := cl.Status().Patch(ctx, rrset, client.MergeFrom(original)); err != nil {
+		name := getRRsetName(gr)
+		gr.SetStatus(dnsv1alpha2.RRsetStatus{
+			LastUpdateTime:     lastUpdateTime,
+			DnsEntryName:       &name,
+			SyncStatus:         ptr.To(FAILED_STATUS),
+			ObservedGeneration: &gr.GetObjectMeta().Generation,
+			Conditions:         conditions,
+		})
+		if err := cl.Status().Patch(ctx, gr, client.MergeFrom(original)); err != nil {
 			log.Error(err, "unable to patch RRSet status")
 			return ctrl.Result{}, err
 		}
 
 		// Update resource metrics
-		updateRrsetsMetrics(getRRsetName(rrset), rrset.Spec.Type, *rrset.Status.SyncStatus, rrset.Name, rrset.Namespace)
+		updateRrsetsMetrics(getRRsetName(gr), gr)
 
 		return ctrl.Result{}, nil
 	}
 
 	// Create or Update
-	changed, err := createOrUpdateRrsetExternalResources(ctx, zone, rrset, PDNSClient)
+	changed, err := createOrUpdateRrsetExternalResources(ctx, zone, gr, PDNSClient)
 	if err != nil {
 		log.Error(err, "Failed to create or update external resources")
 		syncStatus = ptr.To(FAILED_STATUS)
@@ -276,7 +280,7 @@ func rrsetReconcile(ctx context.Context, rrset *dnsv1alpha2.RRset, zone dnsv1alp
 	}
 
 	// Set OwnerReference
-	if err := ownObject(ctx, zone, rrset, scheme, cl, log); err != nil {
+	if err := ownObject(ctx, zone, gr, scheme, cl, log); err != nil {
 		if errors.IsConflict(err) {
 			log.Info("Conflict on RRSet owner reference, retrying")
 			return ctrl.Result{Requeue: true}, nil
@@ -290,28 +294,32 @@ func rrsetReconcile(ctx context.Context, rrset *dnsv1alpha2.RRset, zone dnsv1alp
 	// But, sometimes, Zone reonciliation finish before RRSet update is applied
 	// In that case, the Serial in Zone Status is false
 	// This update permits triggering a new event after RRSet update applied
-	original := rrset.DeepCopy()
+	original := gr.Copy()
 	if syncStatus == nil {
 		syncStatus = ptr.To(SUCCEEDED_STATUS)
 	}
-	rrset.Status.LastUpdateTime = lastUpdateTime
-	rrset.Status.DnsEntryName = ptr.To(getRRsetName(rrset))
-	rrset.Status.SyncStatus = syncStatus
-	rrset.Status.ObservedGeneration = ptr.To(rrset.GetGeneration())
-	meta.SetStatusCondition(&rrset.Status.Conditions, metav1.Condition{
+	conditions := gr.GetStatus().Conditions
+	meta.SetStatusCondition(&conditions, metav1.Condition{
 		Type:               "Available",
 		LastTransitionTime: *lastUpdateTime,
 		Status:             conditionStatus,
 		Reason:             conditionReason,
 		Message:            conditionMessage,
 	})
-	if err := cl.Status().Patch(ctx, rrset, client.MergeFrom(original)); err != nil {
+	name := getRRsetName(gr)
+	gr.SetStatus(dnsv1alpha2.RRsetStatus{
+		LastUpdateTime:     lastUpdateTime,
+		DnsEntryName:       &name,
+		SyncStatus:         syncStatus,
+		ObservedGeneration: &gr.GetObjectMeta().Generation,
+	})
+	if err := cl.Status().Patch(ctx, gr, client.MergeFrom(original)); err != nil {
 		log.Error(err, "unable to patch RRSet status")
 		return ctrl.Result{}, err
 	}
 
 	// Metrics calculation
-	updateRrsetsMetrics(getRRsetName(rrset), rrset.Spec.Type, *rrset.Status.SyncStatus, rrset.Name, rrset.Namespace)
+	updateRrsetsMetrics(getRRsetName(gr), gr)
 
 	return ctrl.Result{}, nil
 }
@@ -499,8 +507,8 @@ func patchZoneStatus(ctx context.Context, zone dnsv1alpha2.GenericZone, zoneRes 
 	return cl.Status().Patch(ctx, zone, client.MergeFrom(original))
 }
 
-func deleteRrsetExternalResources(ctx context.Context, zone dnsv1alpha2.GenericZone, rrset *dnsv1alpha2.RRset, PDNSClient PdnsClienter, log logr.Logger) error {
-	err := PDNSClient.Records.Delete(ctx, zone.GetObjectMeta().Name, getRRsetName(rrset), powerdns.RRType(rrset.Spec.Type))
+func deleteRrsetExternalResources(ctx context.Context, zone dnsv1alpha2.GenericZone, rrset dnsv1alpha2.GenericRRset, PDNSClient PdnsClienter, log logr.Logger) error {
+	err := PDNSClient.Records.Delete(ctx, zone.GetObjectMeta().Name, getRRsetName(rrset), powerdns.RRType(rrset.GetSpec().Type))
 	if err != nil {
 		log.Error(err, "Failed to delete record")
 		return err
@@ -509,9 +517,9 @@ func deleteRrsetExternalResources(ctx context.Context, zone dnsv1alpha2.GenericZ
 	return nil
 }
 
-func createOrUpdateRrsetExternalResources(ctx context.Context, zone dnsv1alpha2.GenericZone, rrset *dnsv1alpha2.RRset, PDNSClient PdnsClienter) (bool, error) {
+func createOrUpdateRrsetExternalResources(ctx context.Context, zone dnsv1alpha2.GenericZone, rrset dnsv1alpha2.GenericRRset, PDNSClient PdnsClienter) (bool, error) {
 	name := getRRsetName(rrset)
-	rrType := powerdns.RRType(rrset.Spec.Type)
+	rrType := powerdns.RRType(rrset.GetSpec().Type)
 	// Looking for a record with same Name and Type
 	records, err := PDNSClient.Records.Get(ctx, zone.GetObjectMeta().Name, name, &rrType)
 	if err != nil && !errors.IsNotFound(err) {
@@ -534,10 +542,10 @@ func createOrUpdateRrsetExternalResources(ctx context.Context, zone dnsv1alpha2.
 	// Create or Update
 	operatorAccount := "powerdns-operator"
 	comments := func(*powerdns.RRset) {}
-	if rrset.Spec.Comment != nil {
-		comments = powerdns.WithComments(powerdns.Comment{Content: rrset.Spec.Comment, Account: &operatorAccount})
+	if rrset.GetSpec().Comment != nil {
+		comments = powerdns.WithComments(powerdns.Comment{Content: rrset.GetSpec().Comment, Account: &operatorAccount})
 	}
-	err = PDNSClient.Records.Change(ctx, zone.GetObjectMeta().Name, name, rrType, rrset.Spec.TTL, rrset.Spec.Records, comments)
+	err = PDNSClient.Records.Change(ctx, zone.GetObjectMeta().Name, name, rrType, rrset.GetSpec().TTL, rrset.GetSpec().Records, comments)
 	if err != nil {
 		return false, err
 	}
@@ -545,7 +553,7 @@ func createOrUpdateRrsetExternalResources(ctx context.Context, zone dnsv1alpha2.
 	return true, nil
 }
 
-func ownObject(ctx context.Context, zone dnsv1alpha2.GenericZone, rrset *dnsv1alpha2.RRset, scheme *runtime.Scheme, cl client.Client, log logr.Logger) error {
+func ownObject(ctx context.Context, zone dnsv1alpha2.GenericZone, rrset dnsv1alpha2.GenericRRset, scheme *runtime.Scheme, cl client.Client, log logr.Logger) error {
 	err := ctrl.SetControllerReference(zone, rrset, scheme)
 	if err != nil {
 		log.Error(err, "Failed to set owner reference. Is there already a controller managing this object?")

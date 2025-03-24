@@ -8,6 +8,7 @@
  * see the "LICENSE" file for more details
  */
 
+//nolint:dupl
 package v1alpha2
 
 import (

@@ -122,7 +122,7 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			if isDeleted && controllerutil.ContainsFinalizer(rrset, METRICS_FINALIZER_NAME) {
 				controllerutil.RemoveFinalizer(rrset, METRICS_FINALIZER_NAME)
 				// Remove resource metrics
-				removeRrsetMetrics(rrset.Name, rrset.Namespace)
+				removeRrsetMetrics(rrset)
 				actionOnFinalizer = true
 			}
 			if actionOnFinalizer {
@@ -148,7 +148,7 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 					log.Error(err, "unable to patch RRSet status")
 					return ctrl.Result{}, err
 				}
-				updateRrsetsMetrics(getRRsetName(rrset), rrset.Spec.Type, *rrset.Status.SyncStatus, rrset.Name, rrset.Namespace)
+				updateRrsetsMetrics(getRRsetName(rrset), rrset)
 			}
 
 			// Race condition when creating Zone+RRset at the same time
@@ -179,13 +179,13 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		}
 
 		// Update metrics
-		updateRrsetsMetrics(getRRsetName(rrset), rrset.Spec.Type, *rrset.Status.SyncStatus, rrset.Name, rrset.Namespace)
+		updateRrsetsMetrics(getRRsetName(rrset), rrset)
 
 		if isDeleted {
 			if controllerutil.ContainsFinalizer(rrset, METRICS_FINALIZER_NAME) {
 				controllerutil.RemoveFinalizer(rrset, METRICS_FINALIZER_NAME)
 				// Remove resource metrics
-				removeRrsetMetrics(rrset.Name, rrset.Namespace)
+				removeRrsetMetrics(rrset)
 				if err := r.Update(ctx, rrset); err != nil {
 					log.Error(err, "Failed to remove finalizer")
 					return ctrl.Result{}, err

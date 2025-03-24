@@ -56,16 +56,16 @@ func zoneIsIdenticalToExternalZone(zone dnsv1alpha2.GenericZone, externalZone *p
 }
 
 // rrsetIsIdenticalToExternalRRset return True if Comments, Name, Type, TTL and Records are identical between RRSet and External Resource
-func rrsetIsIdenticalToExternalRRset(rrset *dnsv1alpha2.RRset, externalRecord powerdns.RRset) bool {
+func rrsetIsIdenticalToExternalRRset(rrset dnsv1alpha2.GenericRRset, externalRecord powerdns.RRset) bool {
 	commentsIdentical := true
 	if len(externalRecord.Comments) != 0 {
-		if rrset.Spec.Comment != nil {
-			commentsIdentical = *rrset.Spec.Comment == *(externalRecord.Comments[0].Content)
+		if rrset.GetSpec().Comment != nil {
+			commentsIdentical = *rrset.GetSpec().Comment == *(externalRecord.Comments[0].Content)
 		} else {
 			commentsIdentical = false
 		}
 	} else {
-		if rrset.Spec.Comment != nil {
+		if rrset.GetSpec().Comment != nil {
 			commentsIdentical = false
 		}
 	}
@@ -75,7 +75,7 @@ func rrsetIsIdenticalToExternalRRset(rrset *dnsv1alpha2.RRset, externalRecord po
 		externalRecordsSlice = append(externalRecordsSlice, *r.Content)
 	}
 	name := getRRsetName(rrset)
-	return name == *externalRecord.Name && rrset.Spec.Type == string(*externalRecord.Type) && rrset.Spec.TTL == *(externalRecord.TTL) && commentsIdentical && reflect.DeepEqual(rrset.Spec.Records, externalRecordsSlice)
+	return name == *externalRecord.Name && rrset.GetSpec().Type == string(*externalRecord.Type) && rrset.GetSpec().TTL == *(externalRecord.TTL) && commentsIdentical && reflect.DeepEqual(rrset.GetSpec().Records, externalRecordsSlice)
 }
 
 func makeCanonical(in string) string {
@@ -86,9 +86,9 @@ func makeCanonical(in string) string {
 	return result
 }
 
-func getRRsetName(rrset *dnsv1alpha2.RRset) string {
-	if !strings.HasSuffix(rrset.Spec.Name, ".") {
-		return makeCanonical(rrset.Spec.Name + "." + rrset.Spec.ZoneRef.Name)
+func getRRsetName(rrset dnsv1alpha2.GenericRRset) string {
+	if !strings.HasSuffix(rrset.GetSpec().Name, ".") {
+		return makeCanonical(rrset.GetSpec().Name + "." + rrset.GetSpec().ZoneRef.Name)
 	}
-	return makeCanonical(rrset.Spec.Name)
+	return makeCanonical(rrset.GetSpec().Name)
 }

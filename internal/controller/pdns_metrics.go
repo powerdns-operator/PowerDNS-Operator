@@ -30,20 +30,20 @@ var (
 	)
 )
 
-func updateRrsetsMetrics(fqdn, rrsetType, rrsetStatus, name, namespace string) {
+func updateRrsetsMetrics(fqdn string, gr dnsv1alpha2.GenericRRset) {
 	rrsetsStatusesMetric.With(map[string]string{
 		"fqdn":      fqdn,
-		"type":      rrsetType,
-		"status":    rrsetStatus,
-		"name":      name,
-		"namespace": namespace,
+		"type":      gr.GetSpec().Type,
+		"status":    *gr.GetStatus().SyncStatus,
+		"name":      gr.GetName(),
+		"namespace": gr.GetNamespace(),
 	}).Set(1)
 }
-func removeRrsetMetrics(name, namespace string) {
+func removeRrsetMetrics(gr dnsv1alpha2.GenericRRset) {
 	rrsetsStatusesMetric.DeletePartialMatch(
 		map[string]string{
-			"namespace": namespace,
-			"name":      name,
+			"namespace": gr.GetNamespace(),
+			"name":      gr.GetName(),
 		},
 	)
 }
