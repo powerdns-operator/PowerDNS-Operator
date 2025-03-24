@@ -129,6 +129,35 @@ func getClusterRrsetMetricWithLabels(rrsetFQDN, rrsetType, rrsetStatus, rrsetNam
 	}))
 }
 
-func countMetrics() int {
+//nolint:unparam
+func getZoneMetricWithLabels(zoneStatus, zoneName, zoneNamespace string) float64 {
+	return testutil.ToFloat64(zonesStatusesMetric.With(prometheus.Labels{
+		"status":    zoneStatus,
+		"name":      zoneName,
+		"namespace": zoneNamespace,
+	}))
+}
+
+//nolint:unparam
+func getClusterZoneMetricWithLabels(zoneStatus, zoneName string) float64 {
+	return testutil.ToFloat64(clusterZonesStatusesMetric.With(prometheus.Labels{
+		"status": zoneStatus,
+		"name":   zoneName,
+	}))
+}
+
+func countRrsetsMetrics() int {
 	return testutil.CollectAndCount(rrsetsStatusesMetric)
+}
+
+func countClusterRrsetsMetrics() int {
+	return testutil.CollectAndCount(clusterRrsetsStatusesMetric)
+}
+
+func countZonesMetrics() int {
+	return testutil.CollectAndCount(zonesStatusesMetric)
+}
+
+func countClusterZonesMetrics() int {
+	return testutil.CollectAndCount(clusterZonesStatusesMetric)
 }

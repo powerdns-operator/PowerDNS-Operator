@@ -100,6 +100,7 @@ var _ = Describe("ClusterZone Controller", func() {
 
 	Context("When existing resource", func() {
 		It("should successfully retrieve the resource", Label("clusterzone-initialization"), func() {
+			ic := countClusterZonesMetrics()
 			ctx := context.Background()
 			By("Getting the existing resource")
 			clusterzone := &dnsv1alpha2.ClusterZone{}
@@ -107,6 +108,8 @@ var _ = Describe("ClusterZone Controller", func() {
 				err := k8sClient.Get(ctx, typeNamespacedName, clusterzone)
 				return err == nil && clusterzone.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS)
 			}, timeout, interval).Should(BeTrue())
+			Expect(countClusterZonesMetrics()-ic).To(Equal(0), "No more metric should have been created")
+			Expect(getClusterZoneMetricWithLabels(SUCCEEDED_STATUS, resourceName)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedKind(resourceName)).To(Equal(resourceKind), "Kind should be equal")
 			Expect(getMockedNameservers(resourceName)).To(Equal(resourceNameservers), "Nameservers should be equal")
 			Expect(getMockedCatalog(resourceName)).To(Equal(resourceCatalog), "Catalog should be equal")

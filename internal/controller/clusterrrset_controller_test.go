@@ -168,7 +168,7 @@ var _ = Describe("ClusterRRset Controller", func() {
 
 	Context("When existing resource", func() {
 		It("should successfully retrieve the resource", Label("clusterrrset-initialization"), func() {
-			ic := countMetrics()
+			ic := countClusterRrsetsMetrics()
 			ctx := context.Background()
 			By("Getting the existing resource")
 			createdResource := &dnsv1alpha2.ClusterRRset{}
@@ -177,7 +177,7 @@ var _ = Describe("ClusterRRset Controller", func() {
 				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS)
 			}, timeout, interval).Should(BeTrue())
 
-			Expect(countMetrics()-ic).To(Equal(0), "No more metric should have been created")
+			Expect(countClusterRrsetsMetrics()-ic).To(Equal(0), "No more metric should have been created")
 			Expect(getClusterRrsetMetricWithLabels(resourceDNSName+"."+zoneRef+".", resourceType, SUCCEEDED_STATUS, resourceName)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(resourceName, resourceType)).To(Equal(resourceRecords))
 			Expect(getMockedTTL(resourceName, resourceType)).To(Equal(resourceTTL))

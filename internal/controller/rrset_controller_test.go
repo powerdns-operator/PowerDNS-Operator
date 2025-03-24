@@ -174,7 +174,7 @@ var _ = Describe("RRset Controller", func() {
 
 	Context("When existing resource", func() {
 		It("should successfully retrieve the resource", Label("rrset-initialization"), func() {
-			ic := countMetrics()
+			ic := countRrsetsMetrics()
 			ctx := context.Background()
 			By("Getting the existing resource")
 			createdResource := &dnsv1alpha2.RRset{}
@@ -183,7 +183,7 @@ var _ = Describe("RRset Controller", func() {
 				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS)
 			}, timeout, interval).Should(BeTrue())
 
-			Expect(countMetrics()-ic).To(Equal(0), "No more metric should have been created")
+			Expect(countRrsetsMetrics()-ic).To(Equal(0), "No more metric should have been created")
 			Expect(getRrsetMetricWithLabels(resourceDNSName+"."+zoneRef+".", resourceType, SUCCEEDED_STATUS, resourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(resourceName, resourceType)).To(Equal(resourceRecords))
 			Expect(getMockedTTL(resourceName, resourceType)).To(Equal(resourceTTL))
@@ -196,7 +196,7 @@ var _ = Describe("RRset Controller", func() {
 
 	Context("When updating RRset", func() {
 		It("should successfully reconcile the resource", Label("rrset-modification", "records"), func() {
-			ic := countMetrics()
+			ic := countRrsetsMetrics()
 			ctx := context.Background()
 			// Specific test variables
 			updatedRecords := []string{"127.0.0.3"}
@@ -228,7 +228,7 @@ var _ = Describe("RRset Controller", func() {
 				err := k8sClient.Get(ctx, rssetLookupKey, updatedRRset)
 				return err == nil && updatedRRset.IsInExpectedStatus(MODIFIED_GENERATION, SUCCEEDED_STATUS)
 			}, timeout, interval).Should(BeTrue())
-			Expect(countMetrics()-ic).To(Equal(0), "No more metric should have been created")
+			Expect(countRrsetsMetrics()-ic).To(Equal(0), "No more metric should have been created")
 			Expect(getRrsetMetricWithLabels(resourceDNSName+"."+zoneRef+".", resourceType, SUCCEEDED_STATUS, resourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(resourceName, resourceType)).To(Equal(updatedRecords))
 			Expect(getMockedTTL(resourceName, resourceType)).To(Equal(resourceTTL))
@@ -248,7 +248,7 @@ var _ = Describe("RRset Controller", func() {
 
 	Context("When updating RRset", func() {
 		It("should successfully reconcile the resource", Label("rrset-modification", "ttl"), func() {
-			ic := countMetrics()
+			ic := countRrsetsMetrics()
 			ctx := context.Background()
 			// Specific test variables
 			modifiedResourceTTL := uint32(150)
@@ -281,7 +281,7 @@ var _ = Describe("RRset Controller", func() {
 				err := k8sClient.Get(ctx, rssetLookupKey, updatedRRset)
 				return err == nil && updatedRRset.IsInExpectedStatus(MODIFIED_GENERATION, SUCCEEDED_STATUS)
 			}, timeout, interval).Should(BeTrue())
-			Expect(countMetrics()-ic).To(Equal(0), "No more metric should have been created")
+			Expect(countRrsetsMetrics()-ic).To(Equal(0), "No more metric should have been created")
 			Expect(getRrsetMetricWithLabels(resourceDNSName+"."+zoneRef+".", resourceType, SUCCEEDED_STATUS, resourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(resourceName, resourceType)).To(Equal(resourceRecords))
 			Expect(getMockedTTL(resourceName, resourceType)).To(Equal(modifiedResourceTTL))
@@ -300,7 +300,7 @@ var _ = Describe("RRset Controller", func() {
 
 	Context("When updating RRset", func() {
 		It("should successfully reconcile the resource", Label("rrset-modification", "comments"), func() {
-			ic := countMetrics()
+			ic := countRrsetsMetrics()
 			ctx := context.Background()
 			// Specific test variables
 			modifiedResourceComment := "Just another comment"
@@ -332,7 +332,7 @@ var _ = Describe("RRset Controller", func() {
 				err := k8sClient.Get(ctx, rssetLookupKey, updatedRRset)
 				return err == nil && updatedRRset.IsInExpectedStatus(MODIFIED_GENERATION, SUCCEEDED_STATUS)
 			}, timeout, interval).Should(BeTrue())
-			Expect(countMetrics()-ic).To(Equal(0), "No more metric should have been created")
+			Expect(countRrsetsMetrics()-ic).To(Equal(0), "No more metric should have been created")
 			Expect(getRrsetMetricWithLabels(resourceDNSName+"."+zoneRef+".", resourceType, SUCCEEDED_STATUS, resourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(resourceName, resourceType)).To(Equal(resourceRecords))
 			Expect(getMockedTTL(resourceName, resourceType)).To(Equal(resourceTTL))
@@ -351,7 +351,7 @@ var _ = Describe("RRset Controller", func() {
 
 	Context("When existing resource", func() {
 		It("should successfully recreate an existing rrset", Label("rrset-recreation"), func() {
-			ic := countMetrics()
+			ic := countRrsetsMetrics()
 			ctx := context.Background()
 			// Specific test variables
 			recreationResourceName := "test2.example2.org"
@@ -412,7 +412,7 @@ var _ = Describe("RRset Controller", func() {
 				return err == nil && updatedRRset.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS)
 			}, timeout, interval).Should(BeTrue())
 
-			Expect(countMetrics()-ic).To(Equal(1), "One more metric should have been created")
+			Expect(countRrsetsMetrics()-ic).To(Equal(1), "One more metric should have been created")
 			Expect(getRrsetMetricWithLabels(resourceDNSName+"."+zoneRef+".", resourceType, SUCCEEDED_STATUS, resourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Eventually(func() bool {
 				return getMockedRecordsForType(recreationResourceName, recreationResourceType) != nil
@@ -433,7 +433,7 @@ var _ = Describe("RRset Controller", func() {
 
 	Context("When existing resource", func() {
 		It("should successfully modify a deleted rrset", Label("rrset-modification-after-deletion"), func() {
-			ic := countMetrics()
+			ic := countRrsetsMetrics()
 			ctx := context.Background()
 
 			// Specific test variables
@@ -482,7 +482,7 @@ var _ = Describe("RRset Controller", func() {
 				return err == nil && updatedRRset.IsInExpectedStatus(MODIFIED_GENERATION, SUCCEEDED_STATUS)
 			}, timeout, interval).Should(BeTrue())
 
-			Expect(countMetrics()-ic).To(Equal(0), "No more metric should have been created")
+			Expect(countRrsetsMetrics()-ic).To(Equal(0), "No more metric should have been created")
 			Expect(getRrsetMetricWithLabels(resourceDNSName+"."+zoneRef+".", resourceType, SUCCEEDED_STATUS, resourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(resourceName, resourceType)).To(Equal(modifiedResourceRecords))
 			Expect(getMockedTTL(resourceName, resourceType)).To(Equal(modifiedResourceTTL))
@@ -492,7 +492,7 @@ var _ = Describe("RRset Controller", func() {
 
 	Context("When existing resource", func() {
 		It("should successfully delete a deleted rrset", Label("rrset-deletion-after-deletion"), func() {
-			ic := countMetrics()
+			ic := countRrsetsMetrics()
 			ctx := context.Background()
 
 			By("Creating a RRset")
@@ -551,13 +551,13 @@ var _ = Describe("RRset Controller", func() {
 				return errors.IsNotFound(err)
 			}, timeout, interval).Should(BeTrue())
 
-			Expect(countMetrics()-ic).To(Equal(0), "No more metric should have been created")
+			Expect(countRrsetsMetrics()-ic).To(Equal(0), "No more metric should have been created")
 		})
 	})
 
 	Context("When creating RRset", func() {
 		It("should successfully reconcile the resource", Label("rrset-creation", "AAAA-Type"), func() {
-			ic := countMetrics()
+			ic := countRrsetsMetrics()
 			ctx := context.Background()
 			// Specific test variables
 			additionalResourceName := "aaaa"
@@ -611,7 +611,7 @@ var _ = Describe("RRset Controller", func() {
 				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS)
 			}, timeout, interval).Should(BeTrue())
 
-			Expect(countMetrics()-ic).To(Equal(1), "One more metric should have been created")
+			Expect(countRrsetsMetrics()-ic).To(Equal(1), "One more metric should have been created")
 			Expect(getRrsetMetricWithLabels(additionalResourceName+"."+zoneName+".", additionalResourceType, SUCCEEDED_STATUS, additionalResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(DnsFqdn, additionalResourceType)).To(Equal(additionalResourceRecords))
 			Expect(getMockedTTL(DnsFqdn, additionalResourceType)).To(Equal(resourceTTL))
@@ -625,7 +625,7 @@ var _ = Describe("RRset Controller", func() {
 
 	Context("When creating RRset", func() {
 		It("should successfully reconcile the resource", Label("rrset-creation", "CNAME-Type"), func() {
-			ic := countMetrics()
+			ic := countRrsetsMetrics()
 			ctx := context.Background()
 			// Specific test variables
 			additionalResourceName := "cname"
@@ -679,7 +679,7 @@ var _ = Describe("RRset Controller", func() {
 				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS)
 			}, timeout, interval).Should(BeTrue())
 
-			Expect(countMetrics()-ic).To(Equal(1), "One more metric should have been created")
+			Expect(countRrsetsMetrics()-ic).To(Equal(1), "One more metric should have been created")
 			Expect(getRrsetMetricWithLabels(additionalResourceName+"."+zoneName+".", additionalResourceType, SUCCEEDED_STATUS, additionalResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(DnsFqdn, additionalResourceType)).To(Equal(additionalResourceRecords))
 			Expect(getMockedTTL(DnsFqdn, additionalResourceType)).To(Equal(resourceTTL))
@@ -692,7 +692,7 @@ var _ = Describe("RRset Controller", func() {
 
 	Context("When creating RRset", func() {
 		It("should successfully reconcile the resource", Label("rrset-creation", "Wildcard-Type"), func() {
-			ic := countMetrics()
+			ic := countRrsetsMetrics()
 			ctx := context.Background()
 			// Specific test variables
 			additionalResourceName := "wildcard"
@@ -746,7 +746,7 @@ var _ = Describe("RRset Controller", func() {
 				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS)
 			}, timeout, interval).Should(BeTrue())
 
-			Expect(countMetrics()-ic).To(Equal(1), "One more metric should have been created")
+			Expect(countRrsetsMetrics()-ic).To(Equal(1), "One more metric should have been created")
 			Expect(getRrsetMetricWithLabels(additionalResourceName+"."+zoneName+".", additionalResourceType, SUCCEEDED_STATUS, additionalResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(DnsFqdn, additionalResourceType)).To(Equal(additionalResourceRecords))
 			Expect(getMockedTTL(DnsFqdn, additionalResourceType)).To(Equal(resourceTTL))
@@ -758,7 +758,7 @@ var _ = Describe("RRset Controller", func() {
 	})
 	Context("When creating RRset", func() {
 		It("should successfully reconcile the resource", Label("rrset-creation", "MX-Type"), func() {
-			ic := countMetrics()
+			ic := countRrsetsMetrics()
 			ctx := context.Background()
 			// Specific test variables
 			additionalResourceName := "mx"
@@ -812,7 +812,7 @@ var _ = Describe("RRset Controller", func() {
 				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS)
 			}, timeout, interval).Should(BeTrue())
 
-			Expect(countMetrics()-ic).To(Equal(1), "One more metric should have been created")
+			Expect(countRrsetsMetrics()-ic).To(Equal(1), "One more metric should have been created")
 			Expect(getRrsetMetricWithLabels(additionalResourceName+"."+zoneName+".", additionalResourceType, SUCCEEDED_STATUS, additionalResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(DnsFqdn, additionalResourceType)).To(Equal(additionalResourceRecords))
 			Expect(getMockedTTL(DnsFqdn, additionalResourceType)).To(Equal(resourceTTL))
@@ -825,7 +825,7 @@ var _ = Describe("RRset Controller", func() {
 
 	Context("When creating RRset", func() {
 		It("should successfully reconcile the resource", Label("rrset-creation", "NS-Type"), func() {
-			ic := countMetrics()
+			ic := countRrsetsMetrics()
 			ctx := context.Background()
 			// Specific test variables
 			additionalResourceName := "ns"
@@ -879,7 +879,7 @@ var _ = Describe("RRset Controller", func() {
 				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS)
 			}, timeout, interval).Should(BeTrue())
 
-			Expect(countMetrics()-ic).To(Equal(1), "One more metric should have been created")
+			Expect(countRrsetsMetrics()-ic).To(Equal(1), "One more metric should have been created")
 			Expect(getRrsetMetricWithLabels(additionalResourceName+"."+zoneName+".", additionalResourceType, SUCCEEDED_STATUS, additionalResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(DnsFqdn, additionalResourceType)).To(Equal(additionalResourceRecords))
 			Expect(getMockedTTL(DnsFqdn, additionalResourceType)).To(Equal(resourceTTL))
@@ -892,7 +892,7 @@ var _ = Describe("RRset Controller", func() {
 
 	Context("When creating RRset", func() {
 		It("should successfully reconcile the resource", Label("rrset-creation", "TXT-Type"), func() {
-			ic := countMetrics()
+			ic := countRrsetsMetrics()
 			ctx := context.Background()
 			// Specific test variables
 			additionalResourceName := "txt"
@@ -946,7 +946,7 @@ var _ = Describe("RRset Controller", func() {
 				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS)
 			}, timeout, interval).Should(BeTrue())
 
-			Expect(countMetrics()-ic).To(Equal(1), "One more metric should have been created")
+			Expect(countRrsetsMetrics()-ic).To(Equal(1), "One more metric should have been created")
 			Expect(getRrsetMetricWithLabels(additionalResourceName+"."+zoneName+".", additionalResourceType, SUCCEEDED_STATUS, additionalResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(DnsFqdn, additionalResourceType)).To(Equal(additionalResourceRecords))
 			Expect(getMockedTTL(DnsFqdn, additionalResourceType)).To(Equal(resourceTTL))
@@ -959,7 +959,7 @@ var _ = Describe("RRset Controller", func() {
 
 	Context("When creating RRset", func() {
 		It("should successfully reconcile the resource", Label("rrset-creation", "SRV-Type"), func() {
-			ic := countMetrics()
+			ic := countRrsetsMetrics()
 			ctx := context.Background()
 			// Specific test variables
 			additionalResourceName := "srv"
@@ -1013,7 +1013,7 @@ var _ = Describe("RRset Controller", func() {
 				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS)
 			}, timeout, interval).Should(BeTrue())
 
-			Expect(countMetrics()-ic).To(Equal(1), "One more metric should have been created")
+			Expect(countRrsetsMetrics()-ic).To(Equal(1), "One more metric should have been created")
 			Expect(getRrsetMetricWithLabels(additionalResourceName+"."+zoneName+".", additionalResourceType, SUCCEEDED_STATUS, additionalResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(DnsFqdn, additionalResourceType)).To(Equal(additionalResourceRecords))
 			Expect(getMockedTTL(DnsFqdn, additionalResourceType)).To(Equal(resourceTTL))
@@ -1026,7 +1026,7 @@ var _ = Describe("RRset Controller", func() {
 
 	Context("When creating RRset", func() {
 		It("should successfully reconcile the resource", Label("rrset-creation", "PTR-Type"), func() {
-			ic := countMetrics()
+			ic := countRrsetsMetrics()
 			ctx := context.Background()
 			// Specific test variables
 			reverseZoneName := "123.168.192.in-addr.arpa"
@@ -1113,7 +1113,7 @@ var _ = Describe("RRset Controller", func() {
 				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS)
 			}, timeout, interval).Should(BeTrue())
 
-			Expect(countMetrics()-ic).To(Equal(1), "One more metric should have been created")
+			Expect(countRrsetsMetrics()-ic).To(Equal(1), "One more metric should have been created")
 			Expect(getRrsetMetricWithLabels(additionalResourceName+"."+reverseZoneName+".", additionalResourceType, SUCCEEDED_STATUS, additionalResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(DnsFqdn, additionalResourceType)).To(Equal(additionalResourceRecords))
 			Expect(getMockedTTL(DnsFqdn, additionalResourceType)).To(Equal(resourceTTL))
@@ -1126,7 +1126,7 @@ var _ = Describe("RRset Controller", func() {
 
 	Context("When creating a wrong RRset", func() {
 		It("should reconcile the resource with Failed status", Label("wrong-rrset", "wrong-type"), func() {
-			ic := countMetrics()
+			ic := countRrsetsMetrics()
 			ctx := context.Background()
 			// Specific test variables
 			badTypeResourceName := "wrong-type"
@@ -1177,7 +1177,7 @@ var _ = Describe("RRset Controller", func() {
 				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, FAILED_STATUS)
 			}, timeout, interval).Should(BeTrue())
 
-			Expect(countMetrics()-ic).To(Equal(1), "One more metric should have been created")
+			Expect(countRrsetsMetrics()-ic).To(Equal(1), "One more metric should have been created")
 			Expect(getRrsetMetricWithLabels(badTypeResourceDNSName+"."+zoneRef+".", badTypeResourceType, FAILED_STATUS, badTypeResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(DnsFqdn, badTypeResourceType)).To(Equal([]string{}), "RRset should not have been created in backend")
 			Expect(*createdResource.Status.SyncStatus).To(Equal(FAILED_STATUS), "RRset status should be 'Failed'")
@@ -1189,7 +1189,7 @@ var _ = Describe("RRset Controller", func() {
 
 	Context("When creating a wrong RRset", func() {
 		It("should reconcile the resource with Failed status", Label("wrong-rrset", "wrong-format"), func() {
-			ic := countMetrics()
+			ic := countRrsetsMetrics()
 			ctx := context.Background()
 			// Specific test variables
 			badFormatResourceName := "wrong-format"
@@ -1240,7 +1240,7 @@ var _ = Describe("RRset Controller", func() {
 				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, FAILED_STATUS)
 			}, timeout, interval).Should(BeTrue())
 
-			Expect(countMetrics()-ic).To(Equal(1), "One more metric should have been created")
+			Expect(countRrsetsMetrics()-ic).To(Equal(1), "One more metric should have been created")
 			Expect(getRrsetMetricWithLabels(badFormatResourceDNSName+"."+zoneRef+".", badFormatResourceType, FAILED_STATUS, badFormatResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(DnsFqdn, badFormatResourceType)).To(Equal([]string{}), "RRset should not have been created in backend")
 			Expect(*createdResource.Status.SyncStatus).To(Equal(FAILED_STATUS), "RRset status should be 'Failed'")
@@ -1252,7 +1252,7 @@ var _ = Describe("RRset Controller", func() {
 
 	Context("When creating a wrong RRset", func() {
 		It("should reconcile the resource with Failed status", Label("wrong-rrset", "unquoted-txt"), func() {
-			ic := countMetrics()
+			ic := countRrsetsMetrics()
 			ctx := context.Background()
 			// Specific test variables
 			unquotedResourceName := "unquoted"
@@ -1303,7 +1303,7 @@ var _ = Describe("RRset Controller", func() {
 				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, FAILED_STATUS)
 			}, timeout, interval).Should(BeTrue())
 
-			Expect(countMetrics()-ic).To(Equal(1), "One more metric should have been created")
+			Expect(countRrsetsMetrics()-ic).To(Equal(1), "One more metric should have been created")
 			Expect(getRrsetMetricWithLabels(unquotedResourceDNSName+"."+zoneRef+".", unquotedResourceType, FAILED_STATUS, unquotedResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(DnsFqdn, unquotedResourceType)).To(Equal([]string{}), "RRset should not have been created in backend")
 			Expect(*createdResource.Status.SyncStatus).To(Equal(FAILED_STATUS), "RRset status should be 'Failed'")
@@ -1315,7 +1315,7 @@ var _ = Describe("RRset Controller", func() {
 
 	Context("When creating a RRset with an existing RRset with same FQDN", func() {
 		It("should reconcile the resource with Failed status", Label("wrong-rrset", "already-existing"), func() {
-			ic := countMetrics()
+			ic := countRrsetsMetrics()
 			ctx := context.Background()
 			// Specific test variables
 			existingResourceName := "existing.example2.org"
@@ -1366,7 +1366,7 @@ var _ = Describe("RRset Controller", func() {
 				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, FAILED_STATUS)
 			}, timeout, interval).Should(BeTrue())
 
-			Expect(countMetrics()-ic).To(Equal(1), "One more metric should have been created")
+			Expect(countRrsetsMetrics()-ic).To(Equal(1), "One more metric should have been created")
 			Expect(getRrsetMetricWithLabels(existingResourceDNSName+"."+zoneRef+".", existingResourceType, FAILED_STATUS, existingResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(*createdResource.Status.SyncStatus).To(Equal(FAILED_STATUS), "RRset status should be 'Failed'")
 			Expect(createdResource.GetFinalizers()).To(ContainElement(RESOURCES_FINALIZER_NAME), "RRset should contain the finalizer")
@@ -1376,7 +1376,7 @@ var _ = Describe("RRset Controller", func() {
 
 	Context("When creating a RRset with a non-existing Zone", func() {
 		It("should reconcile the resource with Pending status", Label("pending-rrset", "non-existing-zone"), func() {
-			ic := countMetrics()
+			ic := countRrsetsMetrics()
 			ctx := context.Background()
 			// Specific test variables
 			pendingZoneName := "example5.org"
@@ -1428,7 +1428,7 @@ var _ = Describe("RRset Controller", func() {
 				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, PENDING_STATUS)
 			}, timeout, interval).Should(BeTrue())
 
-			Expect(countMetrics()-ic).To(Equal(1), "One more metric should have been created")
+			Expect(countRrsetsMetrics()-ic).To(Equal(1), "One more metric should have been created")
 			Expect(getRrsetMetricWithLabels(pendingResourceDNSName+"."+pendingZoneName+".", pendingResourceType, PENDING_STATUS, pendingResourceName, pendingResourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(*createdResource.Status.SyncStatus).To(Equal(PENDING_STATUS), "RRset status should be 'Pending'")
 			Expect(createdResource.GetFinalizers()).To(ContainElement(METRICS_FINALIZER_NAME), "RRset should contain the metrics finalizer")

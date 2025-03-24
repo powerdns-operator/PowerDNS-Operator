@@ -103,6 +103,7 @@ var _ = Describe("Zone Controller", func() {
 
 	Context("When existing resource", func() {
 		It("should successfully retrieve the resource", Label("zone-initialization"), func() {
+			ic := countZonesMetrics()
 			ctx := context.Background()
 			By("Getting the existing resource")
 			zone := &dnsv1alpha2.Zone{}
@@ -110,6 +111,8 @@ var _ = Describe("Zone Controller", func() {
 				err := k8sClient.Get(ctx, typeNamespacedName, zone)
 				return err == nil && zone.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS)
 			}, timeout, interval).Should(BeTrue())
+			Expect(countZonesMetrics()-ic).To(Equal(0), "No more metric should have been created")
+			Expect(getZoneMetricWithLabels(SUCCEEDED_STATUS, resourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedKind(resourceName)).To(Equal(resourceKind), "Kind should be equal")
 			Expect(getMockedNameservers(resourceName)).To(Equal(resourceNameservers), "Nameservers should be equal")
 			Expect(getMockedCatalog(resourceName)).To(Equal(resourceCatalog), "Catalog should be equal")
