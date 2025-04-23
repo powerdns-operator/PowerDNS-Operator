@@ -70,7 +70,7 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 	// Initialize variable to represent RRset situation
 	isModified := rrset.Status.ObservedGeneration != nil && *rrset.Status.ObservedGeneration != rrset.GetGeneration()
-	isDeleted := !rrset.ObjectMeta.DeletionTimestamp.IsZero()
+	isDeleted := !rrset.DeletionTimestamp.IsZero()
 	lastUpdateTime := &metav1.Time{Time: time.Now().UTC()}
 	if rrset.Status.LastUpdateTime != nil {
 		lastUpdateTime = rrset.Status.LastUpdateTime

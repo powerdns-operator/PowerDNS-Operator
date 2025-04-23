@@ -1,17 +1,13 @@
+version: "2"
 run:
-  timeout: 5m
   allow-parallel-runners: true
-
 linters:
   enable:
+    - copyloopvar
     - dupl
     - errcheck
-    - copyloopvar
     - goconst
     - gocyclo
-    - gofmt
-    - goimports
-    - gosimple
     - govet
     - ineffassign
     - lll
@@ -19,12 +15,17 @@ linters:
     - nakedret
     - prealloc
     - staticcheck
-    - typecheck
     - unconvert
     - unparam
     - unused
   exclusions:
+    generated: lax
     warn-unused: false
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
     rules:
       - path: "api/*"
         linters:
@@ -40,6 +41,19 @@ linters:
           - dupl
           - gosec
     paths:
+      - third_party$
+      - builtin$
+      - examples$
       - .git
       - .github
       - test
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

@@ -73,7 +73,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 	// Initialize variable to represent Zone situation
 	isModified := zone.Status.ObservedGeneration != nil && *zone.Status.ObservedGeneration != zone.GetGeneration()
-	isDeleted := !zone.ObjectMeta.DeletionTimestamp.IsZero()
+	isDeleted := !zone.DeletionTimestamp.IsZero()
 
 	// Position metrics finalizer as soon as possible
 	if !isDeleted {

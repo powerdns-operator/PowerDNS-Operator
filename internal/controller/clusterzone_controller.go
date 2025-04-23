@@ -53,7 +53,7 @@ func (r *ClusterZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	// Initialize variable to represent RRset situation
 	isModified := zone.Status.ObservedGeneration != nil && *zone.Status.ObservedGeneration != zone.GetGeneration()
-	isDeleted := !zone.ObjectMeta.DeletionTimestamp.IsZero()
+	isDeleted := !zone.DeletionTimestamp.IsZero()
 
 	// Position metrics finalizer as soon as possible
 	if !isDeleted {
