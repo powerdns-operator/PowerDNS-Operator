@@ -146,4 +146,4 @@ jobs:
 
     with:
       image-name: ${{ needs.repo-slug.outputs.repo_slug }}
-      build-platform: "linux/amd64,linux/arm64,linux/s390x,linux/ppc64le"
+      build-platform: "linux/amd64,linux/arm64"
