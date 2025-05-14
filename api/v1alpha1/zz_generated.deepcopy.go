@@ -3,7 +3,8 @@
 /*
  * Software Name : PowerDNS-Operator
  *
- * SPDX-FileCopyrightText: Copyright (c) Orange Business Services SA
+ * SPDX-FileCopyrightText: Copyright (c) PowerDNS-Operator contributors
+ * SPDX-FileCopyrightText: Copyright (c) 2025 Orange Business Services SA
  * SPDX-License-Identifier: Apache-2.0
  *
  * This software is distributed under the Apache 2.0 License,

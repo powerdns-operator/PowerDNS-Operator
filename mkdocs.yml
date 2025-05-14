@@ -4,7 +4,9 @@ site_description: >-
   Manage PowerDNS from a Kubernetes cluster simple Custom Resources.
 repo_url: https://github.com/powerdns-operator/PowerDNS-Operator
 repo_name: PowerDNS Operator
-copyright: Copyright (c) Orange Business Services SA
+copyright: |
+  Copyright (c) PowerDNS-Operator contributors
+  Copyright (c) 2025 Orange Business Services SA
 theme:
   name: material
   features:
