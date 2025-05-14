@@ -18,7 +18,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/orange-opensource/powerdns-operator/test/utils"
+	"github.com/powerdns-operator/powerdns-operator/test/utils"
 )
 
 const namespace = "powerdns-operator-system"

@@ -1,7 +1,7 @@
 package controller
 
 import (
-	dnsv1alpha2 "github.com/orange-opensource/powerdns-operator/api/v1alpha2"
+	dnsv1alpha2 "github.com/powerdns-operator/powerdns-operator/api/v1alpha2"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 )

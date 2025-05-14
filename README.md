@@ -54,7 +54,7 @@ EOF
 Then, install the latest (or change `main` to the disired `tag`) operator using the following command:
 
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/orange-opensource/powerdns-operator/main/dist/install.yaml
+kubectl apply -f https://raw.githubusercontent.com/powerdns-operator/powerdns-operator/main/dist/install.yaml
 ```
 
 ### Usage

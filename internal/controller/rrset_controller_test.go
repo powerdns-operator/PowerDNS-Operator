@@ -24,7 +24,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	dnsv1alpha2 "github.com/orange-opensource/powerdns-operator/api/v1alpha2"
+	dnsv1alpha2 "github.com/powerdns-operator/powerdns-operator/api/v1alpha2"
 )
 
 var _ = Describe("RRset Controller", func() {

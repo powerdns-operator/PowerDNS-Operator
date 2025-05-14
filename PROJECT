@@ -6,14 +6,14 @@ domain: cav.enablers.ob
 layout:
 - go.kubebuilder.io/v4
 projectName: powerdns-operator
-repo: github.com/orange-opensource/powerdns-operator
+repo: github.com/powerdns-operator/powerdns-operator
 resources:
 - api:
     crdVersion: v1
   domain: cav.enablers.ob
   group: dns
   kind: Zone
-  path: github.com/orange-opensource/powerdns-operator/api/v1alpha1
+  path: github.com/powerdns-operator/powerdns-operator/api/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
@@ -21,7 +21,7 @@ resources:
   domain: cav.enablers.ob
   group: dns
   kind: RRset
-  path: github.com/orange-opensource/powerdns-operator/api/v1alpha1
+  path: github.com/powerdns-operator/powerdns-operator/api/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
@@ -30,7 +30,7 @@ resources:
   domain: cav.enablers.ob
   group: dns
   kind: Zone
-  path: github.com/orange-opensource/powerdns-operator/api/v1alpha2
+  path: github.com/powerdns-operator/powerdns-operator/api/v1alpha2
   version: v1alpha2
 - api:
     crdVersion: v1
@@ -39,7 +39,7 @@ resources:
   domain: cav.enablers.ob
   group: dns
   kind: RRset
-  path: github.com/orange-opensource/powerdns-operator/api/v1alpha2
+  path: github.com/powerdns-operator/powerdns-operator/api/v1alpha2
   version: v1alpha2
 - api:
     crdVersion: v1
@@ -47,7 +47,7 @@ resources:
   domain: cav.enablers.ob
   group: dns
   kind: ClusterZone
-  path: github.com/orange-opensource/powerdns-operator/api/v1alpha2
+  path: github.com/powerdns-operator/powerdns-operator/api/v1alpha2
   version: v1alpha2
 - api:
     crdVersion: v1
@@ -55,6 +55,6 @@ resources:
   domain: cav.enablers.ob
   group: dns
   kind: ClusterRRset
-  path: github.com/orange-opensource/powerdns-operator/api/v1alpha2
+  path: github.com/powerdns-operator/powerdns-operator/api/v1alpha2
   version: v1alpha2
 version: "3"

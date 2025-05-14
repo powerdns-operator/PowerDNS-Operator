@@ -25,7 +25,7 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	dnsv1alpha2 "github.com/orange-opensource/powerdns-operator/api/v1alpha2"
+	dnsv1alpha2 "github.com/powerdns-operator/powerdns-operator/api/v1alpha2"
 )
 
 var _ = Describe("Zone Controller", func() {

@@ -1,4 +1,4 @@
-module github.com/orange-opensource/powerdns-operator
+module github.com/powerdns-operator/powerdns-operator
 
 go 1.24.0
 

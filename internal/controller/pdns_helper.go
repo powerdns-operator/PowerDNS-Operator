@@ -17,7 +17,7 @@ import (
 	"strings"
 
 	"github.com/joeig/go-powerdns/v3"
-	dnsv1alpha2 "github.com/orange-opensource/powerdns-operator/api/v1alpha2"
+	dnsv1alpha2 "github.com/powerdns-operator/powerdns-operator/api/v1alpha2"
 	"k8s.io/utils/ptr"
 )
 

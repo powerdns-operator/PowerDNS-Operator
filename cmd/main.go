@@ -28,11 +28,11 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	"github.com/orange-opensource/powerdns-operator/internal/controller"
+	"github.com/powerdns-operator/powerdns-operator/internal/controller"
 
 	powerdns "github.com/joeig/go-powerdns/v3"
 
-	dnsv1alpha2 "github.com/orange-opensource/powerdns-operator/api/v1alpha2"
+	dnsv1alpha2 "github.com/powerdns-operator/powerdns-operator/api/v1alpha2"
 	//+kubebuilder:scaffold:imports
 )
 
