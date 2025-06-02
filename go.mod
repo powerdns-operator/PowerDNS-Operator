@@ -3,7 +3,7 @@ module github.com/powerdns-operator/powerdns-operator
 go 1.24.0
 
 require (
-	github.com/go-logr/logr v1.4.2
+	github.com/go-logr/logr v1.4.3
 	github.com/google/go-cmp v0.7.0
 	github.com/joeig/go-powerdns/v3 v3.16.0
 	github.com/onsi/ginkgo/v2 v2.23.4
