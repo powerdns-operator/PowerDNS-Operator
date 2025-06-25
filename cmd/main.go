@@ -12,9 +12,12 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"flag"
 	"os"
+	"strconv"
+	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -71,6 +74,15 @@ func main() {
 		apiVhost = "localhost"
 	}
 
+	// Parse API timeout from environment variable (in seconds)
+	apiTimeoutStr := os.Getenv("PDNS_API_TIMEOUT")
+	apiTimeoutSeconds := 10 // default timeout in seconds
+	if apiTimeoutStr != "" {
+		if timeout, err := strconv.Atoi(apiTimeoutStr); err == nil && timeout > 0 {
+			apiTimeoutSeconds = timeout
+		}
+	}
+
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
@@ -83,6 +95,8 @@ func main() {
 	flag.StringVar(&apiURL, "pdns-api-url", apiURL, "The URL of the PowerDNS API")
 	flag.StringVar(&apiKey, "pdns-api-key", apiKey, "The API key to authenticate with the PowerDNS API")
 	flag.StringVar(&apiVhost, "pdns-api-vhost", apiVhost, "The vhost of the PowerDNS API")
+	flag.IntVar(&apiTimeoutSeconds, "pdns-api-timeout", apiTimeoutSeconds,
+		"The timeout for PowerDNS API requests (in seconds)")
 	opts := zap.Options{
 		Development: false,
 	}
@@ -141,7 +155,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	pdnsClient := PDNSClientInitializer(apiURL, apiKey, apiVhost)
+	pdnsClient, err := PDNSClientInitializer(apiURL, apiKey, apiVhost, apiTimeoutSeconds)
 	if err != nil {
 		setupLog.Error(err, "unable to initialize connection with PowerDNS server")
 		os.Exit(1)
@@ -208,6 +222,35 @@ func main() {
 	}
 }
 
-func PDNSClientInitializer(baseURL string, key string, vhost string) *powerdns.Client {
-	return powerdns.New(baseURL, vhost, powerdns.WithAPIKey(key))
+func PDNSClientInitializer(baseURL string, key string, vhost string, timeoutSeconds int) (*powerdns.Client, error) {
+	client := powerdns.New(baseURL, vhost, powerdns.WithAPIKey(key))
+
+	// Test connectivity by attempting to get server information
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutSeconds)*time.Second)
+	defer cancel()
+
+	server, err := client.Servers.Get(ctx, vhost)
+	if err != nil {
+		return nil, err
+	}
+
+	// Log server information for operational visibility
+	if server.Version != nil {
+		setupLog.Info("Connected to PowerDNS server", "version", *server.Version)
+	}
+	if server.DaemonType != nil {
+		setupLog.Info("PowerDNS daemon type", "type", *server.DaemonType)
+		// Validate that we're connecting to an Authoritative server (not Recursor)
+		if *server.DaemonType != "authoritative" {
+			setupLog.Info("Warning: PowerDNS Operator is designed for Authoritative servers", "daemon_type", *server.DaemonType)
+		}
+	}
+	if server.ID != nil {
+		setupLog.Info("PowerDNS server ID", "id", *server.ID)
+	}
+
+	// Log successful connection with key details
+	setupLog.Info("PowerDNS connectivity test successful", "url", baseURL, "vhost", vhost)
+
+	return client, nil
 }
