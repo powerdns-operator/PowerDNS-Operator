@@ -59,22 +59,15 @@ func main() {
 	var secureMetrics bool
 	var enableHTTP2 bool
 
+	// Get environment variables for PowerDNS API configuration
 	apiURL := os.Getenv("PDNS_API_URL")
-	if apiURL == "" {
-		apiURL = "http://localhost:8081"
-	}
-
 	apiKey := os.Getenv("PDNS_API_KEY")
-	if apiKey == "" {
-		apiKey = "secret"
-	}
-
 	apiVhost := os.Getenv("PDNS_API_VHOST")
 	if apiVhost == "" {
 		apiVhost = "localhost"
 	}
 
-	// Parse API timeout from environment variable (in seconds)
+	// Parse PowerDNS API timeout from environment variable (in seconds)
 	apiTimeoutStr := os.Getenv("PDNS_API_TIMEOUT")
 	apiTimeoutSeconds := 10 // default timeout in seconds
 	if apiTimeoutStr != "" {
@@ -83,6 +76,7 @@ func main() {
 		}
 	}
 
+	// Parse command line flags
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
@@ -104,7 +98,18 @@ func main() {
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+
+	// Validate mandatory configuration
+	if apiURL == "" {
+		setupLog.Error(nil, "PDNS_API_URL environment variable or --pdns-api-url flag is required")
+		os.Exit(1)
+	}
 	setupLog.Info("PowerDNS API URL", "url", apiURL)
+
+	if apiKey == "" {
+		setupLog.Error(nil, "PDNS_API_KEY environment variable or --pdns-api-key flag is required")
+		os.Exit(1)
+	}
 	setupLog.Info("PowerDNS API vhost", "vhost", apiVhost)
 
 	// if the enable-http2 flag is false (the default), http/2 should be disabled
