@@ -48,3 +48,14 @@ kubectl apply -f https://github.com/powerdns-operator/PowerDNS-Operator/releases
 ## Installing with Helm
 
 A Helm chart is available on a [specific project](https://github.com/powerdns-operator/PowerDNS-Operator-helm-chart).
+
+## Environment Variables
+
+The PowerDNS Operator can be configured using the following environment variables:
+
+| Environment Variable | Description | Default Value | Required |
+|---------------------|-------------|---------------|----------|
+| `PDNS_API_URL` | The URL of the PowerDNS API server | `http://localhost:8081` | Yes |
+| `PDNS_API_KEY` | The API key for authenticating with PowerDNS | `secret` | Yes |
+| `PDNS_API_VHOST` | The virtual host name for the PowerDNS API | `localhost` | Yes |
+| `PDNS_API_TIMEOUT` | Timeout in seconds for PowerDNS API requests | `10` | No |
