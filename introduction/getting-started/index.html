@@ -506,6 +506,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      Environment Variables
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -899,6 +908,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      Environment Variables
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -953,6 +971,44 @@ kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> <
 </code></pre></div>
 <h2 id="installing-with-helm">Installing with Helm<a class="headerlink" href="#installing-with-helm" title="Permanent link">⚓</a></h2>
 <p>A Helm chart is available on a <a href="https://github.com/powerdns-operator/PowerDNS-Operator-helm-chart">specific project</a>.</p>
+<h2 id="environment-variables">Environment Variables<a class="headerlink" href="#environment-variables" title="Permanent link">⚓</a></h2>
+<p>The PowerDNS Operator can be configured using the following environment variables:</p>
+<table>
+<thead>
+<tr>
+<th>Environment Variable</th>
+<th>Description</th>
+<th>Default Value</th>
+<th>Required</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PDNS_API_URL</code></td>
+<td>The URL of the PowerDNS API server</td>
+<td><code>http://localhost:8081</code></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>PDNS_API_KEY</code></td>
+<td>The API key for authenticating with PowerDNS</td>
+<td><code>secret</code></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>PDNS_API_VHOST</code></td>
+<td>The virtual host name for the PowerDNS API</td>
+<td><code>localhost</code></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>PDNS_API_TIMEOUT</code></td>
+<td>Timeout in seconds for PowerDNS API requests</td>
+<td><code>10</code></td>
+<td>No</td>
+</tr>
+</tbody>
+</table>
 
 
 
