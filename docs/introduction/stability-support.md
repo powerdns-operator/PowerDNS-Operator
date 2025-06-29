@@ -1,17 +1,42 @@
 # Stability and Support
 
-## Breaking changes introduced in v0.4.x versions
+## Version Compatibility
 
-We noticed lacks of security and delegation possibilities with <=v0.3.x versions, so we decided to split previous `Zone` in 2 differents Custom Resources: 
+| Component | Supported Versions |
+|-----------|-------------------|
+| **PowerDNS Authoritative** | 4.7, 4.8, 4.9 |
+| **Kubernetes** | 1.31, 1.32, 1.33 |
+| **Go** (for development) | 1.24+ |
 
-* `ClusterZone` (cluster-wide resource)
-* `Zone` (namespaced resource)
+## Breaking Changes
 
-This decision introduces breaking changes
+### v0.4.x Breaking Changes
 
-* `Zone` was previously cluster-wide resource become namespace-scoped
-* `rrset.spec.zoneRef.kind` is a new mandatory field to indicate whereas the `RRset` depends on a `Zone` or a `ClusterZone`
-* `rrset.status.syncErrorDescription` is replaced by a `Status.Condition` field as adviced by the community[^1][^2]
+Version 0.4.x introduced security and delegation improvements by splitting the previous `Zone` resource into two separate resources:
 
-[^1]: https://heidloff.net/article/storing-state-status-kubernetes-resources-conditions-operators-go/
-[^2]: https://maelvls.dev/kubernetes-conditions/
+#### Changes Made
+- **`Zone`**: Changed from cluster-wide to namespace-scoped resource
+- **`ClusterZone`**: New cluster-wide resource for platform-level zones
+- **`zoneRef.kind`**: New mandatory field in RRset resources
+- **Status Conditions**: Replaced `syncErrorDescription` with standard Kubernetes conditions
+
+#### Migration Impact
+- Existing `Zone` resources need to be migrated to `ClusterZone` or updated with namespace
+- All `RRset` resources need the new `zoneRef.kind` field
+- Status field structure changed to use conditions
+
+!!! warning "Migration Required"
+    If upgrading from v0.3.x or earlier, review the migration guide and update your resources accordingly.
+
+## Support Policy
+
+- **Security Updates**: Backported to supported versions
+- **Bug Fixes**: Applied to current and previous minor versions
+- **New Features**: Only in current major version
+- **Deprecation**: Announced 2 versions in advance
+
+## Community Support
+
+- **GitHub Issues**: For bug reports and feature requests
+- **GitHub Discussions**: For questions and community help
+- **Documentation**: Comprehensive guides and examples available

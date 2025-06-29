@@ -1,42 +1,62 @@
-# PowerDNS-Operator
+# PowerDNS Operator
 
-**This project is a work in progress and is not yet ready for production use.**
+<div align="center">
 
-This project is a Kubernetes operator for PowerDNS.
+![PowerDNS Operator Logo](https://img.shields.io/badge/PowerDNS-Operator-blue?style=for-the-badge&logo=kubernetes)
 
-It provides a way to manage PowerDNS resources in a Kubernetes cluster using Custom Resources.
+[![GitHub Release](https://img.shields.io/github/v/release/powerdns-operator/powerdns-operator)](https://github.com/powerdns-operator/powerdns-operator/releases)
+[![Go Report Card](https://goreportcard.com/badge/github.com/powerdns-operator/powerdns-operator)](https://goreportcard.com/report/github.com/powerdns-operator/powerdns-operator)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Documentation](https://img.shields.io/badge/docs-powerdns--operator.github.io-blue)](https://powerdns-operator.github.io/powerdns-operator/)
 
-## Requirements
+**Declarative DNS Management for Kubernetes**
 
-#### Tested PowerDNS versions
+*A Kubernetes operator that manages PowerDNS zones and records through Custom Resource Definitions (CRDs)*
 
-Supported versions of PowerDNS Authoritative Server ("API v1"):
+</div>
 
-- 4.7
-- 4.8
-- 4.9
+## 🚀 Features
 
-It may work on other versions, but it has not been tested.
+- **Declarative DNS Management**: Manage PowerDNS zones and records using Kubernetes CRDs
+- **Flexible**: PowerDNS can be deployed inside or outside the Kubernetes cluster - the operator only needs API access
+- **Namespace Isolation**: Support for both cluster-wide and namespace-scoped resources
+- **RBAC Integration**: Fine-grained access control with Kubernetes RBAC
+- **Helm Support**: Easy deployment with Helm charts
+- **Metrics & Monitoring**: Built-in Prometheus metrics and Grafana dashboards
+- **GitOps Ready**: Perfect for GitOps workflows with ArgoCD, Flux, or similar tools
 
-#### Tested Kubernetes versions
+## 📋 Prerequisites
 
-- 1.29
-- 1.30
-- 1.31
+| Component | Supported Versions |
+|-----------|-------------------|
+| **PowerDNS Authoritative** | 4.7, 4.8, 4.9 |
+| **Kubernetes** | 1.31, 1.32, 1.33 |
+| **Go** (for development) | 1.24+ |
 
-It may work on other versions, but it has not been tested.
+## 🛠️ Installation
 
-## Quick Start
+### Option 1: Using Helm (Recommended)
 
-### Installation
+```bash
+# Add the Helm repository
+helm repo add powerdns-operator https://powerdns-operator.github.io/PowerDNS-Operator-helm-chart
+helm repo update
 
-To install the operator, run the following commands to setup the PowerDNS configuration:
-
-```sh
-kubectl create namespace powerdns-operator-system
+# Install the operator
+helm install powerdns-operator powerdns-operator/powerdns-operator \
+  --namespace powerdns-operator-system \
+  --create-namespace \
+  --set api.url=https://your-powerdns-server:8081 \
+  --set credentials.data.PDNS_API_KEY=you-api-key
 ```
 
-```sh
+### Option 2: Using Kustomize
+
+```bash
+# Create namespace
+kubectl create namespace powerdns-operator-system
+
+# Create PowerDNS configuration secret
 kubectl apply -f - <<EOF
 apiVersion: v1
 kind: Secret
@@ -45,32 +65,50 @@ metadata:
   namespace: powerdns-operator-system
 type: Opaque
 stringData:
-  PDNS_API_URL: https://powerdns.example.local:8081
-  PDNS_API_KEY: secret
+  PDNS_API_URL: https://your-powerdns-server:8081
+  PDNS_API_KEY: your-api-key
   PDNS_API_VHOST: localhost
 EOF
+
+# Install the operator
+kubectl apply -f https://github.com/powerdns-operator/PowerDNS-Operator/releases/latest/download/bundle.yaml
 ```
 
-Then, install the latest (or change `main` to the disired `tag`) operator using the following command:
+### Option 3: Direct Installation
 
-```sh
+```bash
+# Install from the main branch
 kubectl apply -f https://raw.githubusercontent.com/powerdns-operator/powerdns-operator/main/dist/install.yaml
+
+# Or install a specific version
+kubectl apply -f https://github.com/powerdns-operator/PowerDNS-Operator/releases/download/v0.1.0/bundle.yaml
 ```
 
-### Usage
+## 🔧 Configuration
 
-ClusterZone and Zone are critical resources and may be managed by a dedicated team, but Zone and RRSet may be managed by the application team.
+For detailed configuration options, environment variables, and advanced examples, please refer to our documentation:
 
-In either case, you can apply your own RBAC rules to restrict access to the resources.
+- **[Getting Started](docs/introduction/getting-started.md)** - Installation, configuration, and environment variables
+- **[Resource Guides](docs/guides/)** - Complete guides for zones, rrsets, and cluster resources
+- **[Examples](docs/snippets/)** - Practical examples for all resource types
+- **[FAQ](docs/introduction/faq.md)** - Common questions and troubleshooting
 
-To create a PowerDNS resource, you can use the following examples.
+## 📖 Quickstart Usage
 
-#### ClusterZone
+### Resource Types
 
-First, create a ClusterZone resource.
+The operator supports four main resource types:
+
+1. **ClusterZone** - Cluster-wide DNS zones
+2. **Zone** - Namespace-scoped DNS zones  
+3. **ClusterRRset** - Cluster-wide DNS records
+4. **RRset** - Namespace-scoped DNS records
+
+### Examples
+
+#### Creating a Cluster Zone
 
 ```yaml
----
 apiVersion: dns.cav.enablers.ob/v1alpha2
 kind: ClusterZone
 metadata:
@@ -82,16 +120,13 @@ spec:
     - ns2.example.org
 ```
 
-#### Zone
-
-Second, create a Zone resource.
+#### Creating a Namespace Zone
 
 ```yaml
----
 apiVersion: dns.cav.enablers.ob/v1alpha2
 kind: Zone
 metadata:
-  name: example.com
+  name: myapp.example.com
   namespace: default
 spec:
   kind: Native
@@ -100,77 +135,74 @@ spec:
     - ns2.example.com
 ```
 
-#### RRSet
-
-Then, you can create RRSets and reference the target Zone.
+#### Creating DNS Records
 
 ```yaml
----
+# A Record
 apiVersion: dns.cav.enablers.ob/v1alpha2
 kind: RRset
 metadata:
-  name: a.example.com
+  name: web.myapp.example.com
   namespace: default
 spec:
-  comment: nothing to tell
   type: A
   ttl: 300
+  name: web
   records:
-    - 1.1.1.1
-    - 8.8.8.8
+    - 192.168.1.10
+    - 192.168.1.11
   zoneRef:
-    name: example.com
+    name: myapp.example.com
     kind: Zone
 
----
+# CNAME Record
 apiVersion: dns.cav.enablers.ob/v1alpha2
 kind: RRset
 metadata:
-  name: cname.example.com
+  name: www.myapp.example.com
   namespace: default
 spec:
   type: CNAME
+  name: www
   ttl: 300
   records:
-    - a.example.com
+    - web.myapp.example.com
   zoneRef:
-    name: example.com
+    name: myapp.example.com
     kind: Zone
 ```
 
-The operator will manage the lifecycle of the resources and update the PowerDNS server accordingly.
-  * If you update the resources, the operator will update the PowerDNS server accordingly.
-  * If you delete the resources, the operator will delete the resources from PowerDNS.
+### Checking Resource Status
 
-Check the results
+```bash
+# List all DNS resources
+kubectl get clusterzones,zones,rrsets,clusterrrsets
 
-```sh
-kubectl get clusterzones,zones,rrsets -o wide
-
-NAMESPACE     NAME                                          SERIAL       ID              STATUS
-              clusterzone.dns.cav.enablers.ob/example.org   2025032001   example.org.    Succeeded
-
-NAMESPACE     NAME                                   SERIAL       ID              STATUS
-default       zone.dns.cav.enablers.ob/example.com   2024081304   example.com.    Succeeded
-
-NAMESPACE     NAME                                          ZONE           NAME                TYPE    TTL  STATUS     RECORDS
-default       rrset.dns.cav.enablers.ob/a.example.com       example.com.   a.example.com.      A       300  Succeeded  ["1.1.1.1","8.8.8.8"]
-default       rrset.dns.cav.enablers.ob/cname.example.com   example.com.   cname.example.com.  CNAME   300  Succeeded  ["a.example.com"]
+# Get detailed information
+kubectl describe zone myapp.example.com -n default
 ```
 
-Test the DNS resolution
+## 🔐 RBAC and Security
 
-```sh
-dig @resolver_ip cname.example.com +short
-a.example.com.
-8.8.8.8
-1.1.1.1
-```
+The operator provides granular RBAC roles for different use cases:
 
-## Contributing
+- **Viewer roles**: Read-only access to DNS resources
+- **Editor roles**: Full access to DNS resources within a namespace
+- **Cluster roles**: Cluster-wide DNS management
 
-If you'd like to contribute to the project, refer to the [CONTRIBUTING.md](CONTRIBUTING.md).
+## 🤝 Contributing
 
-## License
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
-See the [LICENSE](LICENSE) file for licensing information.
+## 📄 License
+
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+
+## ⭐️ GitHub Stars
+
+<div align="center">
+
+![GitHub Stars Over Time](https://starchart.cc/powerdns-operator/powerdns-operator.svg)
+
+</div>
+
