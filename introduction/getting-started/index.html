@@ -986,20 +986,20 @@ kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> <
 <tr>
 <td><code>PDNS_API_URL</code></td>
 <td>The URL of the PowerDNS API server</td>
-<td><code>http://localhost:8081</code></td>
+<td>None</td>
 <td>Yes</td>
 </tr>
 <tr>
 <td><code>PDNS_API_KEY</code></td>
 <td>The API key for authenticating with PowerDNS</td>
-<td><code>secret</code></td>
+<td>None</td>
 <td>Yes</td>
 </tr>
 <tr>
 <td><code>PDNS_API_VHOST</code></td>
 <td>The virtual host name for the PowerDNS API</td>
 <td><code>localhost</code></td>
-<td>Yes</td>
+<td>No</td>
 </tr>
 <tr>
 <td><code>PDNS_API_TIMEOUT</code></td>
@@ -1009,6 +1009,9 @@ kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> <
 </tr>
 </tbody>
 </table>
+<blockquote>
+<p><strong>Important</strong>: The operator will fail to start if any of the required environment variables is not provided.</p>
+</blockquote>
 
 
 
