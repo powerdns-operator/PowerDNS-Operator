@@ -200,6 +200,12 @@ $(HELMIFY): $(LOCALBIN)
 helm: manifests kustomize helmify
 	$(KUSTOMIZE) build config/default | $(HELMIFY) -crd-dir -image-pull-secrets
 
+##@ Documentation
+
+.PHONY: mkdocs-serve
+mkdocs-serve: ## Serve mkdocs documentation locally using Docker.
+	$(CONTAINER_TOOL) run --rm -it -p 8000:8000 -v $(PWD):/docs squidfunk/mkdocs-material
+
 ##@ Dependencies
 
 ## Location to install dependencies to

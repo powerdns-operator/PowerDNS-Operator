@@ -1,24 +1,18 @@
 # Getting Started
 
-PowerDNS Operator runs within your Kubernetes cluster as a deployment resource. It utilizes CustomResourceDefinitions (CRDs) to manage PowerDNS resources. The Operator communicates with the PowerDNS API to manage zones and records.
+## Prerequisites
 
-## Pre-requisites
+For detailed prerequisites and compatibility information, see the [Stability and Support](stability-support.md) documentation.
 
-Before you can install PowerDNS Operator, you need to have the following:
+## Installation
 
-* A Kubernetes cluster v1.29.0 or later
-* A PowerDNS server v4.7 or later
-
-> Note: The PowerDNS API must be enabled and accessible from the Kubernetes cluster where the operator is running.
-
-## Installing with Kustomize
-
-Create the namespace and create a Secret containing the needed PowerDNS variables but you can also create the Secret using External Secrets or any other secret management tool.
-
-Theses secrets are used to configure the PowerDNS Operator to connect to the PowerDNS API.
+### Option 1: Direct Installation (Recommended)
 
 ```bash
+# Create namespace
 kubectl create namespace powerdns-operator-system
+
+# Create PowerDNS configuration secret
 kubectl apply -f - <<EOF
 apiVersion: v1
 kind: Secret
@@ -27,37 +21,58 @@ metadata:
   namespace: powerdns-operator-system
 type: Opaque
 stringData:
-  PDNS_API_URL: https://powerdns.example.local:8081
-  PDNS_API_KEY: secret
+  PDNS_API_URL: https://your-powerdns-server:8081
+  PDNS_API_KEY: your-api-key
   PDNS_API_VHOST: localhost
 EOF
-```
 
-Install the latest version using the following command:
-
-```bash
+# Install the operator
 kubectl apply -f https://github.com/powerdns-operator/PowerDNS-Operator/releases/latest/download/bundle.yaml
 ```
 
-Or you can specify a specific version (e.g. `v0.1.0`):
+### Option 2: Helm Installation
 
 ```bash
-kubectl apply -f https://github.com/powerdns-operator/PowerDNS-Operator/releases/download/v0.1.0/bundle.yaml
+# Add the Helm repository
+helm repo add powerdns-operator https://powerdns-operator.github.io/PowerDNS-Operator-helm-chart
+helm repo update
+
+# Install the operator
+helm install powerdns-operator powerdns-operator/powerdns-operator \
+  --namespace powerdns-operator-system \
+  --create-namespace
 ```
 
-## Installing with Helm
+## Configuration
 
-A Helm chart is available on a [specific project](https://github.com/powerdns-operator/PowerDNS-Operator-helm-chart).
+### Environment Variables
 
-## Environment Variables
+| Variable | Description | Required | Default |
+|----------|-------------|----------|---------|
+| `PDNS_API_URL` | PowerDNS API server URL | Yes | None |
+| `PDNS_API_KEY` | PowerDNS API authentication key | Yes | None |
+| `PDNS_API_VHOST` | PowerDNS virtual host | No | `localhost` |
+| `PDNS_API_TIMEOUT` | PowerDNS API request timeout in seconds | No | `10` |
 
-The PowerDNS Operator can be configured using the following environment variables:
+### Verification
 
-| Environment Variable | Description | Default Value | Required |
-|---------------------|-------------|---------------|----------|
-| `PDNS_API_URL` | The URL of the PowerDNS API server | None | Yes |
-| `PDNS_API_KEY` | The API key for authenticating with PowerDNS | None | Yes |
-| `PDNS_API_VHOST` | The virtual host name for the PowerDNS API | `localhost` | No |
-| `PDNS_API_TIMEOUT` | Timeout in seconds for PowerDNS API requests | `10` | No |
+```bash
+# Check operator status
+kubectl get pods -n powerdns-operator-system
 
-> **Important**: The operator will fail to start if any of the required environment variables is not provided.
+# Verify CRDs are installed
+kubectl get crd | grep dns.cav.enablers.ob
+
+# Test with a simple zone
+kubectl apply -f - <<EOF
+apiVersion: dns.cav.enablers.ob/v1alpha2
+kind: ClusterZone
+metadata:
+  name: test.example.com
+spec:
+  kind: Native
+  nameservers:
+    - ns1.test.example.com
+    - ns2.test.example.com
+EOF
+```
