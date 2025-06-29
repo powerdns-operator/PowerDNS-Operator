@@ -55,7 +55,9 @@ The PowerDNS Operator can be configured using the following environment variable
 
 | Environment Variable | Description | Default Value | Required |
 |---------------------|-------------|---------------|----------|
-| `PDNS_API_URL` | The URL of the PowerDNS API server | `http://localhost:8081` | Yes |
-| `PDNS_API_KEY` | The API key for authenticating with PowerDNS | `secret` | Yes |
-| `PDNS_API_VHOST` | The virtual host name for the PowerDNS API | `localhost` | Yes |
+| `PDNS_API_URL` | The URL of the PowerDNS API server | None | Yes |
+| `PDNS_API_KEY` | The API key for authenticating with PowerDNS | None | Yes |
+| `PDNS_API_VHOST` | The virtual host name for the PowerDNS API | `localhost` | No |
 | `PDNS_API_TIMEOUT` | Timeout in seconds for PowerDNS API requests | `10` | No |
+
+> **Important**: The operator will fail to start if any of the required environment variables is not provided.
