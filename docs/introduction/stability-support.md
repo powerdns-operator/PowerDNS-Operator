@@ -1,6 +1,16 @@
 # Stability and Support
 
-## Breaking changes introduced in v0.4.x versions
+## Version Compatibility
+
+| Component | Supported Versions |
+|-----------|-------------------|
+| **PowerDNS Authoritative** | 4.7, 4.8, 4.9 |
+| **Kubernetes** | 1.31, 1.32, 1.33 |
+| **Go** (for development) | 1.24+ |
+
+## Breaking Changes
+
+### Breaking changes introduced in v0.4.x versions
 
 We noticed lacks of security and delegation possibilities with <=v0.3.x versions, so we decided to split previous `Zone` in 2 differents Custom Resources: 
 

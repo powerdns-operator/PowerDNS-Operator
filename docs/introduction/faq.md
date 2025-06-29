@@ -1,17 +1,48 @@
 # FAQ
 
-## Can I use PowerDNS-Admin and PowerDNS Operator together?
+## General Questions
 
-No, the operator only supports the official PowerDNS API. The PowerDNS-Admin project implements its own specific API on top of PowerDNS's API. There is no issue if you want to use both projects together, but the operator can only rely on the official API. You may notice issues if you try to use PowerDNS-Admin to manage the same resources as the operator.
+### Can I use PowerDNS-Admin and PowerDNS Operator together?
 
-## Can I manage multiple PowerDNS servers with a single operator?
+**Yes, but with caution.** The operator only supports the official PowerDNS API, while PowerDNS-Admin implements its own custom API. Both can coexist, but avoid managing the same resources with both tools to prevent conflicts.
 
-No, the operator is designed to manage a single PowerDNS server. If you need to manage multiple PowerDNS servers, you will have to deploy multiple instances of the operator in multiple Kubernetes clusters, each one managing a different PowerDNS server.
+### Can I manage multiple PowerDNS servers with a single operator?
 
-This may be technically possible in the future, but it is not a priority for the project.
+**No.** The operator is designed to manage a single PowerDNS server. For multiple servers, deploy separate operator instances in different clusters.
 
-## Can I set an interval to check for drifts between the PowerDNS server and the Kubernetes resources?
+### Does the operator check for configuration drift?
 
-The operator will not loop on each resource to check if it is in sync with the PowerDNS server. It will only react to events (create, update, delete) on the resources. If you update the resources, the operator will update the PowerDNS server accordingly. If you delete the resources, the operator will delete the resources from PowerDNS.
+**No.** The operator only reconciles on Kubernetes events (create, update, delete). It does not periodically check for drift between Kubernetes resources and PowerDNS. This feature may be added in future versions.
 
-This should be relatively easy to implement in the future if needed, allowing the user to choose a loop interval to remediate potential drifts.
+## Technical Questions
+
+### What happens if I delete a zone that has records?
+
+The operator will delete the zone from PowerDNS, which removes all records in that zone. Additionally, due to Kubernetes owner references, all RRSets and ClusterRRSets that reference the deleted zone will be automatically deleted from Kubernetes as well. This cascading deletion ensures that orphaned records don't remain in the cluster.
+
+### Can I use the operator with PowerDNS Recursor?
+
+**No.** The operator only works with PowerDNS Authoritative Server. The Recursor does not have the same API for zone and record management.
+
+### How do I handle DNS propagation delays?
+
+The operator manages the PowerDNS server configuration but does not control DNS propagation. Consider TTL values and upstream DNS server configurations for propagation timing.
+
+## Troubleshooting
+
+### My zone shows "Failed" status
+
+Check for:
+- Duplicate zones with the same FQDN
+- PowerDNS API connectivity issues
+- Invalid zone configuration (nameservers, etc.)
+- PowerDNS Operator logs
+
+### My records are not being created
+
+Check for:
+- Referenced zone exists and is healthy
+- No duplicate records with the same name and type
+- PowerDNS API permissions
+- Record format (especially for CNAME, MX, SRV records)
+- PowerDNS Operator logs
