@@ -1,48 +1,66 @@
-# Warnings on field format
+# Common Issues and Solutions
 
-## Deal with canonical names
+## Record Format Requirements
 
-For some resources such as CNAME, PTR, MX, SRV, the records field MUST be in canonical format (end with a dot "."). See following examples.
+### Canonical Names
 
-### CNAME
+Some record types require canonical format (ending with a dot `.`):
 
+#### CNAME Records
 ```yaml
 --8<-- "rrset-cname.yaml"
 ```
 
-### PTR
-
+#### PTR Records
 ```yaml
 --8<-- "rrset-ptr.yaml"
 ```
 
-### MX
-
+#### MX Records
 ```yaml
 --8<-- "rrset-mx.yaml"
 ```
 
-### SRV
-
+#### SRV Records
 ```yaml
 --8<-- "rrset-srv.yaml"
 ```
 
-## TXT Records
+### TXT Records
 
-Sometime, you may encounter the following error when applying a `RRset` custom resource:
-```yaml
-status:
-  syncErrorDescription: 'Record helloworld.com./TXT ''Welcome to the helloworld.com
-    domain'': Parsing record content (try ''pdnsutil check-zone''): Data field in
-    DNS should start with quote (") at position 0 of ''Welcome to the helloworld.com
-    domain'''
-  syncStatus: Failed
+TXT records must be properly quoted. If you see this error:
+
+```
+Parsing record content: Data field in DNS should start with quote (") at position 0
 ```
 
-This error is due to a wrong format for the `RRset`.  
-TXT records MUST start AND end with an escaped quote (\"). See following example.  
+**Solution**: Ensure TXT records start and end with escaped quotes:
 
 ```yaml
 --8<-- "rrset-txt.yaml"
 ```
+
+## Common Error Scenarios
+
+### Zone Conflicts
+- **Error**: Zone shows "Failed" status with "Already existing Zone" message
+- **Cause**: Multiple zones with the same FQDN
+- **Solution**: Remove duplicate zones or use different names
+
+### Missing Dependencies
+- **Error**: RRset shows "Pending" status
+- **Cause**: Referenced zone does not exist or is unhealthy
+- **Solution**: Create the zone first or fix zone issues
+
+### API Connectivity
+- **Error**: Resources stuck in "Pending" status
+- **Cause**: PowerDNS API unreachable or authentication failed
+- **Solution**: Check API URL, key, and network connectivity
+
+## Best Practices
+
+1. **Use canonical names** for CNAME, PTR, MX, and SRV records
+2. **Quote TXT records** properly with escaped quotes
+3. **Create zones before records** to avoid dependency issues
+4. **Check for duplicates** before creating resources
+5. **Monitor metrics** for failed reconciliations

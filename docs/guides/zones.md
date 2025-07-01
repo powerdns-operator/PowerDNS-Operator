@@ -2,7 +2,7 @@
 
 ## Specification
 
-The specification of the `Zone` contains the following fields:
+The `Zone` specification contains the following fields:
 
 | Field | Type | Required | Description |
 | ----- | ---- |:--------:| ----------- |
@@ -26,4 +26,62 @@ spec:
   kind: Master
   catalog: catalog.helloworld
   soa_edit_api: EPOCH
+```
+
+## Reconciliation Flow
+
+The following diagram illustrates the reconciliation flow for Zone resources:
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant K as Kubernetes API
+    participant C as Controller
+    participant P as PowerDNS API
+    participant M as Metrics
+    
+    U->>K: kubectl apply zone.yaml -n default
+    K->>C: Zone Created Event (namespace-scoped)
+    
+    Note over C: Reconciliation Loop Starts
+    C->>C: Check Deletion Timestamp
+    
+    alt Resource is being deleted
+        C->>P: DELETE /api/v1/servers/localhost/zones/example.com
+        P-->>C: Zone Deleted
+        C->>C: Remove Finalizers
+        C->>K: Update Zone
+        Note over C: Deletion Complete
+    else Resource is being created/updated
+        C->>C: Add Finalizers if missing
+        C->>C: Check for duplicate zones (namespace-aware)
+        
+        alt Duplicate zone found
+            C->>K: Set Failed Status
+            C->>K: Set Duplicated Condition
+            C->>M: Update Metrics
+            Note over C: Reconciliation Failed
+        else No duplicates
+            C->>P: GET /api/v1/servers/localhost/zones/example.com
+            
+            alt Zone doesn't exist in PowerDNS
+                C->>P: POST /api/v1/servers/localhost/zones
+                Note over P: Create Zone with NS records
+                P-->>C: Zone Created Successfully
+            else Zone exists in PowerDNS
+                C->>C: Compare desired vs actual state
+                alt Differences found
+                    C->>P: PATCH /api/v1/servers/localhost/zones/example.com
+                    P-->>C: Zone Updated Successfully
+                end
+            end
+            
+            C->>K: Update Zone Status
+            C->>K: Set Available Condition
+            C->>M: Update Metrics
+            Note over C: Reconciliation Succeeded
+        end
+    end
+    
+    K-->>U: Zone Status Updated
 ```
