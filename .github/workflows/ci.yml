@@ -8,7 +8,7 @@ on:
 
 env:
   GOLANGCI_VERSION: 'v2.1.2'
-  KUBERNETES_VERSION: '1.31.0'
+  KUBERNETES_VERSION: '1.33.0'
 
 permissions:
   contents: read
