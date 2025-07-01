@@ -40,7 +40,7 @@ jobs:
           body: |
             Image: `${{ steps.repo_slug.outputs.result }}:${{ github.event.inputs.version }}`
         env:
-          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          GITHUB_TOKEN: "${{ secrets.GHCR_TOKEN }}"
 
       - name: Configure Git
         run: |
@@ -94,7 +94,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GHCR_TOKEN }}
 
       - name: Promote Container Image
         run: make docker-promote
@@ -110,4 +110,4 @@ jobs:
           files: |
             deploy/bundle.yaml
         env:
-          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          GITHUB_TOKEN: "${{ secrets.GHCR_TOKEN }}"
