@@ -76,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#kubernetes-cluster-with-k3d-httpsk3diostable" class="md-skip">
+        <a href="#testing-environment-setup" class="md-skip">
           Skip to content
         </a>
       
@@ -783,18 +783,69 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#private-registry" class="md-nav__link">
+  <a href="#local-kubernetes-with-k3d" class="md-nav__link">
     <span class="md-ellipsis">
-      Private registry
+      Local Kubernetes with k3d
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#kubernetes-cluster" class="md-nav__link">
+  <a href="#prerequisites" class="md-nav__link">
     <span class="md-ellipsis">
-      Kubernetes Cluster
+      Prerequisites
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setup-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Setup Steps
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Setup Steps">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-create-local-registry-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Create Local Registry (Optional)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-create-kubernetes-cluster" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Create Kubernetes Cluster
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-verify-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Verify Setup
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Next Steps
     </span>
   </a>
   
@@ -864,18 +915,69 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#private-registry" class="md-nav__link">
+  <a href="#local-kubernetes-with-k3d" class="md-nav__link">
     <span class="md-ellipsis">
-      Private registry
+      Local Kubernetes with k3d
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#kubernetes-cluster" class="md-nav__link">
+  <a href="#prerequisites" class="md-nav__link">
     <span class="md-ellipsis">
-      Kubernetes Cluster
+      Prerequisites
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setup-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Setup Steps
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Setup Steps">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-create-local-registry-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Create Local Registry (Optional)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-create-kubernetes-cluster" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Create Kubernetes Cluster
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-verify-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Verify Setup
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Next Steps
     </span>
   </a>
   
@@ -899,20 +1001,27 @@
   
 
 
-<h1 id="kubernetes-cluster-with-k3d-httpsk3diostable">Kubernetes cluster with k3d (https://k3d.io/stable/)<a class="headerlink" href="#kubernetes-cluster-with-k3d-httpsk3diostable" title="Permanent link">⚓</a></h1>
-<p>Other solutions such as Talos, minikube, kind, ... can be used</p>
-<h2 id="private-registry">Private registry<a class="headerlink" href="#private-registry" title="Permanent link">⚓</a></h2>
-<p>To create a private local registry:
-<div class="highlight"><pre><span></span><code>k3d<span class="w"> </span>registry<span class="w"> </span>create<span class="w"> </span>registry.localhost<span class="w"> </span>--port<span class="w"> </span><span class="m">5000</span>
-</code></pre></div></p>
-<h2 id="kubernetes-cluster">Kubernetes Cluster<a class="headerlink" href="#kubernetes-cluster" title="Permanent link">⚓</a></h2>
-<p>The following configuration file is used to deploy a 3-node cluster for testing purposes with the below features:</p>
+<h1 id="testing-environment-setup">Testing Environment Setup<a class="headerlink" href="#testing-environment-setup" title="Permanent link">⚓</a></h1>
+<h2 id="local-kubernetes-with-k3d">Local Kubernetes with k3d<a class="headerlink" href="#local-kubernetes-with-k3d" title="Permanent link">⚓</a></h2>
+<p>This guide shows how to set up a local testing environment using k3d. Other solutions like minikube, kind, or Talos can also be used.</p>
+<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">⚓</a></h2>
 <ul>
-<li>Traefik ingress controller on http port 18081</li>
-<li>CSI default Storage on the Host directory <code>/mnt/k3d</code> (Usefaul to persist mariadb data)</li>
+<li><a href="https://k3d.io/stable/">k3d</a> installed</li>
+<li><a href="https://kubernetes.io/docs/tasks/tools/">kubectl</a> configured</li>
+<li><a href="https://docs.docker.com/get-docker/">Docker</a> running</li>
+</ul>
+<h2 id="setup-steps">Setup Steps<a class="headerlink" href="#setup-steps" title="Permanent link">⚓</a></h2>
+<h3 id="1-create-local-registry-optional">1. Create Local Registry (Optional)<a class="headerlink" href="#1-create-local-registry-optional" title="Permanent link">⚓</a></h3>
+<div class="highlight"><pre><span></span><code>k3d<span class="w"> </span>registry<span class="w"> </span>create<span class="w"> </span>registry.localhost<span class="w"> </span>--port<span class="w"> </span><span class="m">5000</span>
+</code></pre></div>
+<h3 id="2-create-kubernetes-cluster">2. Create Kubernetes Cluster<a class="headerlink" href="#2-create-kubernetes-cluster" title="Permanent link">⚓</a></h3>
+<p>Create a 3-node cluster with the following features:</p>
+<ul>
+<li>Traefik ingress controller on port 18081</li>
+<li>CSI storage on <code>/mnt/k3d</code> for data persistence</li>
 <li>Private registry access configured</li>
 </ul>
-<p><div class="highlight"><pre><span></span><code>cat<span class="w"> </span>&gt;<span class="w"> </span>~/.k3d/k3d-cluster.yaml<span class="w"> </span><span class="s">&lt;&lt;EOF</span>
+<div class="highlight"><pre><span></span><code>cat<span class="w"> </span>&gt;<span class="w"> </span>~/.k3d/k3d-cluster.yaml<span class="w"> </span><span class="s">&lt;&lt;EOF</span>
 <span class="s">apiVersion: k3d.io/v1alpha5</span>
 <span class="s">kind: Simple</span>
 <span class="s">metadata:</span>
@@ -933,9 +1042,25 @@
 <span class="s">  use:</span>
 <span class="s">    - k3d-registry.localhost:5000</span>
 <span class="s">EOF</span>
+
+k3d<span class="w"> </span>cluster<span class="w"> </span>create<span class="w"> </span>--config<span class="w"> </span>~/.k3d/k3d-cluster.yaml
 </code></pre></div>
-<div class="highlight"><pre><span></span><code>k3d<span class="w"> </span>cluster<span class="w"> </span>create<span class="w"> </span>--config<span class="w"> </span>~/.k3d/k3d-cluster.yaml
-</code></pre></div></p>
+<h3 id="3-verify-setup">3. Verify Setup<a class="headerlink" href="#3-verify-setup" title="Permanent link">⚓</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Check cluster status</span>
+kubectl<span class="w"> </span>cluster-info
+
+<span class="c1"># Check nodes</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>nodes
+
+<span class="c1"># Check ingress controller</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>traefik
+</code></pre></div>
+<h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">⚓</a></h2>
+<ul>
+<li><a href="https://github.com/powerdns-operator/powerdns-deployment">Install PowerDNS</a></li>
+<li><a href="../../introduction/getting-started/">Deploy PowerDNS Operator</a></li>
+<li><a href="../../guides/clusterzones/">Test with examples</a></li>
+</ul>
 
 
 

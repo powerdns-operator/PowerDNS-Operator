@@ -2,54 +2,54 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://powerdns-operator.github.io/powerdns-operator/</loc>
-         <lastmod>2025-06-29</lastmod>
+         <lastmod>2025-07-01</lastmod>
     </url>
     <url>
          <loc>https://powerdns-operator.github.io/powerdns-operator/guides/clusterrrsets/</loc>
-         <lastmod>2025-06-29</lastmod>
+         <lastmod>2025-07-01</lastmod>
     </url>
     <url>
          <loc>https://powerdns-operator.github.io/powerdns-operator/guides/clusterzones/</loc>
-         <lastmod>2025-06-29</lastmod>
+         <lastmod>2025-07-01</lastmod>
     </url>
     <url>
          <loc>https://powerdns-operator.github.io/powerdns-operator/guides/metrics/</loc>
-         <lastmod>2025-06-29</lastmod>
+         <lastmod>2025-07-01</lastmod>
     </url>
     <url>
          <loc>https://powerdns-operator.github.io/powerdns-operator/guides/rrsets/</loc>
-         <lastmod>2025-06-29</lastmod>
+         <lastmod>2025-07-01</lastmod>
     </url>
     <url>
          <loc>https://powerdns-operator.github.io/powerdns-operator/guides/warnings/</loc>
-         <lastmod>2025-06-29</lastmod>
+         <lastmod>2025-07-01</lastmod>
     </url>
     <url>
          <loc>https://powerdns-operator.github.io/powerdns-operator/guides/zones/</loc>
-         <lastmod>2025-06-29</lastmod>
+         <lastmod>2025-07-01</lastmod>
     </url>
     <url>
          <loc>https://powerdns-operator.github.io/powerdns-operator/introduction/faq/</loc>
-         <lastmod>2025-06-29</lastmod>
+         <lastmod>2025-07-01</lastmod>
     </url>
     <url>
          <loc>https://powerdns-operator.github.io/powerdns-operator/introduction/getting-started/</loc>
-         <lastmod>2025-06-29</lastmod>
+         <lastmod>2025-07-01</lastmod>
     </url>
     <url>
          <loc>https://powerdns-operator.github.io/powerdns-operator/introduction/overview/</loc>
-         <lastmod>2025-06-29</lastmod>
+         <lastmod>2025-07-01</lastmod>
     </url>
     <url>
          <loc>https://powerdns-operator.github.io/powerdns-operator/introduction/stability-support/</loc>
-         <lastmod>2025-06-29</lastmod>
+         <lastmod>2025-07-01</lastmod>
     </url>
     <url>
          <loc>https://powerdns-operator.github.io/powerdns-operator/testing_environment/k3d/</loc>
-         <lastmod>2025-06-29</lastmod>
+         <lastmod>2025-07-01</lastmod>
     </url>
     <url>
          <loc>https://powerdns-operator.github.io/powerdns-operator/testing_environment/powerdns/</loc>
-         <lastmod>2025-06-29</lastmod>
+         <lastmod>2025-07-01</lastmod>
     </url>
 </urlset>

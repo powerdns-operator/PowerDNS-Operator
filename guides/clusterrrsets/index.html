@@ -663,6 +663,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#reconciliation-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reconciliation Flow
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -881,6 +890,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#reconciliation-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reconciliation Flow
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -901,7 +919,7 @@
 
 <h1 id="clusterrrset-deployment">ClusterRRset deployment<a class="headerlink" href="#clusterrrset-deployment" title="Permanent link">⚓</a></h1>
 <h2 id="specification">Specification<a class="headerlink" href="#specification" title="Permanent link">⚓</a></h2>
-<p>The specification of the <code>ClusterRRset</code> contains the following fields:</p>
+<p>The <code>ClusterRRset</code> specification contains the following fields:</p>
 <table>
 <thead>
 <tr>
@@ -950,7 +968,7 @@
 </tr>
 </tbody>
 </table>
-<p>The specification of the <code>ZoneRef</code> contains the following fields:</p>
+<p>The <code>ZoneRef</code> specification contains the following fields:</p>
 <table>
 <thead>
 <tr>
@@ -995,6 +1013,78 @@
 <blockquote>
 <p>Note: The name can be canonical or not. If not, the name of the <code>ClusterZone</code>/<code>Zone</code> will be appended</p>
 </blockquote>
+<h2 id="reconciliation-flow">Reconciliation Flow<a class="headerlink" href="#reconciliation-flow" title="Permanent link">⚓</a></h2>
+<p>The following diagram illustrates the reconciliation flow for ClusterRRset resources:</p>
+<pre class="mermaid"><code>sequenceDiagram
+    participant U as User
+    participant K as Kubernetes API
+    participant C as Controller
+    participant P as PowerDNS API
+    participant M as Metrics
+
+    U-&gt;&gt;K: kubectl apply clusterrrset.yaml
+    K-&gt;&gt;C: ClusterRRset Created Event
+
+    Note over C: Reconciliation Loop Starts
+    C-&gt;&gt;C: Check Deletion Timestamp
+
+    alt Resource is being deleted
+        C-&gt;&gt;P: DELETE /api/v1/servers/localhost/zones/example.com/records
+        P--&gt;&gt;C: RRset Deleted
+        C-&gt;&gt;C: Remove Finalizers
+        C-&gt;&gt;K: Update ClusterRRset
+        Note over C: Deletion Complete
+    else Resource is being created/updated
+        C-&gt;&gt;C: Add Finalizers if missing
+        C-&gt;&gt;K: Get Referenced Zone (ClusterZone)
+
+        alt Zone not found
+            C-&gt;&gt;K: Set Pending Status
+            C-&gt;&gt;K: Set Zone Not Available Condition
+            C-&gt;&gt;M: Update Metrics
+            Note over C: Requeue after 2s
+        else Zone found
+            C-&gt;&gt;C: Check Zone Status
+
+            alt Zone in Failed Status
+                C-&gt;&gt;K: Set Failed Status
+                C-&gt;&gt;K: Set Zone Unavailable Condition
+                C-&gt;&gt;M: Update Metrics
+                Note over C: Reconciliation Failed
+            else Zone Available
+                C-&gt;&gt;C: Check for duplicate RRsets
+
+                alt Duplicate RRset found
+                    C-&gt;&gt;K: Set Failed Status
+                    C-&gt;&gt;K: Set Duplicated Condition
+                    C-&gt;&gt;M: Update Metrics
+                    Note over C: Reconciliation Failed
+                else No duplicates
+                    C-&gt;&gt;P: GET /api/v1/servers/localhost/zones/example.com/records
+
+                    alt RRset doesn't exist in PowerDNS
+                        C-&gt;&gt;P: POST /api/v1/servers/localhost/zones/example.com/records
+                        Note over P: Create RRset with records
+                        P--&gt;&gt;C: RRset Created Successfully
+                    else RRset exists in PowerDNS
+                        C-&gt;&gt;C: Compare desired vs actual state
+                        alt Differences found
+                            C-&gt;&gt;P: PATCH /api/v1/servers/localhost/zones/example.com/records
+                            P--&gt;&gt;C: RRset Updated Successfully
+                        end
+                    end
+
+                    C-&gt;&gt;K: Set Owner Reference
+                    C-&gt;&gt;K: Update ClusterRRset Status
+                    C-&gt;&gt;K: Set Available Condition
+                    C-&gt;&gt;M: Update Metrics
+                    Note over C: Reconciliation Succeeded
+                end
+            end
+        end
+    end
+
+    K--&gt;&gt;U: ClusterRRset Status Updated</code></pre>
 
 
 

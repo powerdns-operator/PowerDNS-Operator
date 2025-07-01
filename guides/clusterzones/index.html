@@ -621,6 +621,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#reconciliation-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reconciliation Flow
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -881,6 +890,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#reconciliation-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reconciliation Flow
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -901,7 +919,7 @@
 
 <h1 id="clusterzone-deployment">ClusterZone deployment<a class="headerlink" href="#clusterzone-deployment" title="Permanent link">⚓</a></h1>
 <h2 id="specification">Specification<a class="headerlink" href="#specification" title="Permanent link">⚓</a></h2>
-<p>The specification of the <code>ClusterZone</code> contains the following fields:</p>
+<p>The <code>ClusterZone</code> specification contains the following fields:</p>
 <table>
 <thead>
 <tr>
@@ -951,6 +969,59 @@
 <span class="w">  </span><span class="nt">catalog</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">catalog.helloworld</span>
 <span class="w">  </span><span class="nt">soa_edit_api</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">EPOCH</span>
 </code></pre></div>
+<h2 id="reconciliation-flow">Reconciliation Flow<a class="headerlink" href="#reconciliation-flow" title="Permanent link">⚓</a></h2>
+<p>The following diagram illustrates the reconciliation flow for ClusterZone resources:</p>
+<pre class="mermaid"><code>sequenceDiagram
+    participant U as User
+    participant K as Kubernetes API
+    participant C as Controller
+    participant P as PowerDNS API
+    participant M as Metrics
+
+    U-&gt;&gt;K: kubectl apply clusterzone.yaml
+    K-&gt;&gt;C: ClusterZone Created Event
+
+    Note over C: Reconciliation Loop Starts
+    C-&gt;&gt;C: Check Deletion Timestamp
+
+    alt Resource is being deleted
+        C-&gt;&gt;P: DELETE /api/v1/servers/localhost/zones/example.com
+        P--&gt;&gt;C: Zone Deleted
+        C-&gt;&gt;C: Remove Finalizers
+        C-&gt;&gt;K: Update ClusterZone
+        Note over C: Deletion Complete
+    else Resource is being created/updated
+        C-&gt;&gt;C: Add Finalizers if missing
+        C-&gt;&gt;C: Check for duplicate zones
+
+        alt Duplicate zone found
+            C-&gt;&gt;K: Set Failed Status
+            C-&gt;&gt;K: Set Duplicated Condition
+            C-&gt;&gt;M: Update Metrics
+            Note over C: Reconciliation Failed
+        else No duplicates
+            C-&gt;&gt;P: GET /api/v1/servers/localhost/zones/example.com
+
+            alt Zone doesn't exist in PowerDNS
+                C-&gt;&gt;P: POST /api/v1/servers/localhost/zones
+                Note over P: Create Zone with NS records
+                P--&gt;&gt;C: Zone Created Successfully
+            else Zone exists in PowerDNS
+                C-&gt;&gt;C: Compare desired vs actual state
+                alt Differences found
+                    C-&gt;&gt;P: PATCH /api/v1/servers/localhost/zones/example.com
+                    P--&gt;&gt;C: Zone Updated Successfully
+                end
+            end
+
+            C-&gt;&gt;K: Update ClusterZone Status
+            C-&gt;&gt;K: Set Available Condition
+            C-&gt;&gt;M: Update Metrics
+            Note over C: Reconciliation Succeeded
+        end
+    end
+
+    K--&gt;&gt;U: ClusterZone Status Updated</code></pre>
 
 
 

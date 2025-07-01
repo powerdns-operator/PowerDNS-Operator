@@ -480,38 +480,77 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#pre-requisites" class="md-nav__link">
+  <a href="#prerequisites" class="md-nav__link">
     <span class="md-ellipsis">
-      Pre-requisites
+      Prerequisites
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#installing-with-kustomize" class="md-nav__link">
+  <a href="#installation" class="md-nav__link">
     <span class="md-ellipsis">
-      Installing with Kustomize
+      Installation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#option-1-helm-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Option 1: Helm Installation
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#installing-with-helm" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#option-2-direct-installation" class="md-nav__link">
     <span class="md-ellipsis">
-      Installing with Helm
+      Option 2: Direct Installation
     </span>
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#environment-variables" class="md-nav__link">
     <span class="md-ellipsis">
       Environment Variables
     </span>
   </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      Verification
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -882,38 +921,77 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#pre-requisites" class="md-nav__link">
+  <a href="#prerequisites" class="md-nav__link">
     <span class="md-ellipsis">
-      Pre-requisites
+      Prerequisites
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#installing-with-kustomize" class="md-nav__link">
+  <a href="#installation" class="md-nav__link">
     <span class="md-ellipsis">
-      Installing with Kustomize
+      Installation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#option-1-helm-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Option 1: Helm Installation
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#installing-with-helm" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#option-2-direct-installation" class="md-nav__link">
     <span class="md-ellipsis">
-      Installing with Helm
+      Option 2: Direct Installation
     </span>
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#environment-variables" class="md-nav__link">
     <span class="md-ellipsis">
       Environment Variables
     </span>
   </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      Verification
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -936,20 +1014,31 @@
 
 
 <h1 id="getting-started">Getting Started<a class="headerlink" href="#getting-started" title="Permanent link">⚓</a></h1>
-<p>PowerDNS Operator runs within your Kubernetes cluster as a deployment resource. It utilizes CustomResourceDefinitions (CRDs) to manage PowerDNS resources. The Operator communicates with the PowerDNS API to manage zones and records.</p>
-<h2 id="pre-requisites">Pre-requisites<a class="headerlink" href="#pre-requisites" title="Permanent link">⚓</a></h2>
-<p>Before you can install PowerDNS Operator, you need to have the following:</p>
-<ul>
-<li>A Kubernetes cluster v1.29.0 or later</li>
-<li>A PowerDNS server v4.7 or later</li>
-</ul>
-<blockquote>
-<p>Note: The PowerDNS API must be enabled and accessible from the Kubernetes cluster where the operator is running.</p>
-</blockquote>
-<h2 id="installing-with-kustomize">Installing with Kustomize<a class="headerlink" href="#installing-with-kustomize" title="Permanent link">⚓</a></h2>
-<p>Create the namespace and create a Secret containing the needed PowerDNS variables but you can also create the Secret using External Secrets or any other secret management tool.</p>
-<p>Theses secrets are used to configure the PowerDNS Operator to connect to the PowerDNS API.</p>
-<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>create<span class="w"> </span>namespace<span class="w"> </span>powerdns-operator-system
+<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">⚓</a></h2>
+<p>For detailed prerequisites and compatibility information, see the <a href="../stability-support/">Stability and Support</a> documentation.</p>
+<h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">⚓</a></h2>
+<h3 id="option-1-helm-installation">Option 1: Helm Installation<a class="headerlink" href="#option-1-helm-installation" title="Permanent link">⚓</a></h3>
+<p>Check out the PowerDNS Operator Helm chart repository <a href="https://github.com/powerdns-operator/PowerDNS-Operator-helm-chart">here</a>.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Add the Helm repository</span>
+helm<span class="w"> </span>repo<span class="w"> </span>add<span class="w"> </span>powerdns-operator<span class="w"> </span>https://powerdns-operator.github.io/PowerDNS-Operator-helm-chart
+helm<span class="w"> </span>repo<span class="w"> </span>update
+
+<span class="c1"># Install the latest operator release</span>
+helm<span class="w"> </span>install<span class="w"> </span>powerdns-operator<span class="w"> </span>powerdns-operator/powerdns-operator<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--namespace<span class="w"> </span>powerdns-operator-system<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--create-namespace<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--set<span class="w"> </span>api.url<span class="o">=</span>https://your-powerdns-server:8081<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--set<span class="w"> </span>credentials.data.PDNS_API_KEY<span class="o">=</span>you-api-key
+</code></pre></div>
+<h3 id="option-2-direct-installation">Option 2: Direct Installation<a class="headerlink" href="#option-2-direct-installation" title="Permanent link">⚓</a></h3>
+<div class="admonition note">
+<p class="admonition-title">Custom Configuration</p>
+<p>The bundle installation method installs the operator with default configuration. If you need to customize the operator configuration (e.g., modify resource limits, add sidecars, or change deployment settings), you'll need to patch the bundle using tools like Kustomize.</p>
+</div>
+<div class="highlight"><pre><span></span><code><span class="c1"># Create namespace</span>
+kubectl<span class="w"> </span>create<span class="w"> </span>namespace<span class="w"> </span>powerdns-operator-system
+
+<span class="c1"># Create PowerDNS configuration secret</span>
 kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>-<span class="w"> </span><span class="s">&lt;&lt;EOF</span>
 <span class="s">apiVersion: v1</span>
 <span class="s">kind: Secret</span>
@@ -958,60 +1047,75 @@ kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> <
 <span class="s">  namespace: powerdns-operator-system</span>
 <span class="s">type: Opaque</span>
 <span class="s">stringData:</span>
-<span class="s">  PDNS_API_URL: https://powerdns.example.local:8081</span>
-<span class="s">  PDNS_API_KEY: secret</span>
+<span class="s">  PDNS_API_URL: https://your-powerdns-server:8081</span>
+<span class="s">  PDNS_API_KEY: your-api-key</span>
 <span class="s">  PDNS_API_VHOST: localhost</span>
 <span class="s">EOF</span>
+
+<span class="c1"># Install the operator</span>
+kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>https://github.com/powerdns-operator/PowerDNS-Operator/releases/latest/download/bundle.yaml
+
+<span class="c1"># Or, install specific version of the operator - replace v0.0.0 with your desired version</span>
+kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>https://github.com/powerdns-operator/PowerDNS-Operator/releases/download/v0.0.0/bundle.yaml
 </code></pre></div>
-<p>Install the latest version using the following command:</p>
-<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>https://github.com/powerdns-operator/PowerDNS-Operator/releases/latest/download/bundle.yaml
-</code></pre></div>
-<p>Or you can specify a specific version (e.g. <code>v0.1.0</code>):</p>
-<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>https://github.com/powerdns-operator/PowerDNS-Operator/releases/download/v0.1.0/bundle.yaml
-</code></pre></div>
-<h2 id="installing-with-helm">Installing with Helm<a class="headerlink" href="#installing-with-helm" title="Permanent link">⚓</a></h2>
-<p>A Helm chart is available on a <a href="https://github.com/powerdns-operator/PowerDNS-Operator-helm-chart">specific project</a>.</p>
-<h2 id="environment-variables">Environment Variables<a class="headerlink" href="#environment-variables" title="Permanent link">⚓</a></h2>
-<p>The PowerDNS Operator can be configured using the following environment variables:</p>
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">⚓</a></h2>
+<h3 id="environment-variables">Environment Variables<a class="headerlink" href="#environment-variables" title="Permanent link">⚓</a></h3>
 <table>
 <thead>
 <tr>
-<th>Environment Variable</th>
+<th>Variable</th>
 <th>Description</th>
-<th>Default Value</th>
 <th>Required</th>
+<th>Default</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>PDNS_API_URL</code></td>
-<td>The URL of the PowerDNS API server</td>
-<td>None</td>
+<td>PowerDNS API server URL</td>
 <td>Yes</td>
+<td>None</td>
 </tr>
 <tr>
 <td><code>PDNS_API_KEY</code></td>
-<td>The API key for authenticating with PowerDNS</td>
-<td>None</td>
+<td>PowerDNS API authentication key</td>
 <td>Yes</td>
+<td>None</td>
 </tr>
 <tr>
 <td><code>PDNS_API_VHOST</code></td>
-<td>The virtual host name for the PowerDNS API</td>
-<td><code>localhost</code></td>
+<td>PowerDNS virtual host</td>
 <td>No</td>
+<td><code>localhost</code></td>
 </tr>
 <tr>
 <td><code>PDNS_API_TIMEOUT</code></td>
-<td>Timeout in seconds for PowerDNS API requests</td>
-<td><code>10</code></td>
+<td>PowerDNS API request timeout in seconds</td>
 <td>No</td>
+<td><code>10</code></td>
 </tr>
 </tbody>
 </table>
-<blockquote>
-<p><strong>Important</strong>: The operator will fail to start if any of the required environment variables is not provided.</p>
-</blockquote>
+<h3 id="verification">Verification<a class="headerlink" href="#verification" title="Permanent link">⚓</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Check operator status</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>powerdns-operator-system
+
+<span class="c1"># Verify CRDs are installed</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>crd<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>dns.cav.enablers.ob
+
+<span class="c1"># Test with a simple zone</span>
+kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>-<span class="w"> </span><span class="s">&lt;&lt;EOF</span>
+<span class="s">apiVersion: dns.cav.enablers.ob/v1alpha2</span>
+<span class="s">kind: ClusterZone</span>
+<span class="s">metadata:</span>
+<span class="s">  name: test.example.com</span>
+<span class="s">spec:</span>
+<span class="s">  kind: Native</span>
+<span class="s">  nameservers:</span>
+<span class="s">    - ns1.test.example.com</span>
+<span class="s">    - ns2.test.example.com</span>
+<span class="s">EOF</span>
+</code></pre></div>
 
 
 

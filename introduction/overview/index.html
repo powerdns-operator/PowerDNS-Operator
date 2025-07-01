@@ -76,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#api-overview" class="md-skip">
+        <a href="#overview" class="md-skip">
           Skip to content
         </a>
       
@@ -474,23 +474,47 @@
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#behavior" class="md-nav__link">
+    <nav class="md-nav" aria-label="Resource Model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-clusterzone-cluster-wide" class="md-nav__link">
     <span class="md-ellipsis">
-      Behavior
+      1. ClusterZone (Cluster-wide)
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#roles-and-responsibilities" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2-clusterrrset-cluster-wide" class="md-nav__link">
     <span class="md-ellipsis">
-      Roles and responsibilities
+      2. ClusterRRset (Cluster-wide)
     </span>
   </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-zone-namespace-scoped" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Zone (Namespace-scoped)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-rrset-namespace-scoped" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. RRset (Namespace-scoped)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -897,23 +921,47 @@
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#behavior" class="md-nav__link">
+    <nav class="md-nav" aria-label="Resource Model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-clusterzone-cluster-wide" class="md-nav__link">
     <span class="md-ellipsis">
-      Behavior
+      1. ClusterZone (Cluster-wide)
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#roles-and-responsibilities" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2-clusterrrset-cluster-wide" class="md-nav__link">
     <span class="md-ellipsis">
-      Roles and responsibilities
+      2. ClusterRRset (Cluster-wide)
     </span>
   </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-zone-namespace-scoped" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Zone (Namespace-scoped)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-rrset-namespace-scoped" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. RRset (Namespace-scoped)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -935,15 +983,15 @@
   
 
 
-<h1 id="api-overview">API Overview<a class="headerlink" href="#api-overview" title="Permanent link">⚓</a></h1>
+<h1 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">⚓</a></h1>
 <h2 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">⚓</a></h2>
 <p><img alt="architecture" src="../../assets/architecture.png" /></p>
-<p>The PowerDNS-Operator extends Kubernetes with Custom Resources, which define <strong><font color="red">Zones</font></strong> and <strong><font color="red">Records</font></strong>. The controller fetches <strong><font color="green">ClusterZones</font></strong>, <strong><font color="green">Zones</font></strong>, <strong><font color="green">ClusterRRsets</font></strong> and <strong><font color="green">RRsets</font></strong> from the cluster and creates PowerDNS elements (<strong><font color="red">Zones</font></strong> and <strong><font color="red">Records</font></strong>). Each modification on these Custom Resources will be applied on PowerDNS instance accordingly.</p>
+<p>The PowerDNS Operator extends Kubernetes with Custom Resource Definitions (CRDs) to manage PowerDNS zones and records declaratively. The operator watches for changes to these resources and reconciles them with the PowerDNS API.</p>
 <h2 id="resource-model">Resource Model<a class="headerlink" href="#resource-model" title="Permanent link">⚓</a></h2>
 <p><img alt="example" src="../../assets/example.png" /></p>
-<p>To understand the mechanics of the operator let's start with an example.</p>
-<ol>
-<li>The <code>ClusterZone</code> resource, created by Platform Team, references a root Zone (example.org).
+<p>The operator supports four main resource types:</p>
+<h3 id="1-clusterzone-cluster-wide">1. ClusterZone (Cluster-wide)<a class="headerlink" href="#1-clusterzone-cluster-wide" title="Permanent link">⚓</a></h3>
+<p>Platform teams create cluster-wide zones that are available across all namespaces.</p>
 <div class="highlight"><pre><span></span><code><span class="nn">---</span>
 <span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dns.cav.enablers.ob/v1alpha2</span>
 <span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ClusterZone</span>
@@ -954,8 +1002,9 @@
 <span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ns1.example.org</span>
 <span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ns2.example.org</span>
 <span class="w">  </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Native</span>
-</code></pre></div></li>
-<li>Some <code>ClusterRRsets</code> resources, created by Platofrm Team, can reference records related to the <code>ClusterZone</code> (such nameservers IPs, mail servers, SOA, ...).
+</code></pre></div>
+<h3 id="2-clusterrrset-cluster-wide">2. ClusterRRset (Cluster-wide)<a class="headerlink" href="#2-clusterrrset-cluster-wide" title="Permanent link">⚓</a></h3>
+<p>Platform teams create cluster-wide records for infrastructure services.</p>
 <div class="highlight"><pre><span></span><code><span class="nn">---</span>
 <span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dns.cav.enablers.ob/v1alpha2</span>
 <span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ClusterRRset</span>
@@ -1013,8 +1062,9 @@
 <span class="w">  </span><span class="nt">zoneRef</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">example.org</span>
 <span class="w">    </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ClusterZone</span>
-</code></pre></div></li>
-<li>The <code>Zone</code>, in the <em>'myapp1'</em> namespace, can be created by Application Team or Platform Team depending on the Authorization model choosen, reference a Sub-Zone for Application purposes.
+</code></pre></div>
+<h3 id="3-zone-namespace-scoped">3. Zone (Namespace-scoped)<a class="headerlink" href="#3-zone-namespace-scoped" title="Permanent link">⚓</a></h3>
+<p>Application teams create namespace-scoped zones for their applications.</p>
 <div class="highlight"><pre><span></span><code><span class="nn">---</span>
 <span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dns.cav.enablers.ob/v1alpha2</span>
 <span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Zone</span>
@@ -1026,8 +1076,9 @@
 <span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ns1.example.org</span>
 <span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ns2.example.org</span>
 <span class="w">  </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Native</span>
-</code></pre></div></li>
-<li>The <code>RRsets</code> in the <em>'myapp1'</em> namespace, created by Application Team, reference services provided by the Application (frontend, backend, database, ...).
+</code></pre></div>
+<h3 id="4-rrset-namespace-scoped">4. RRset (Namespace-scoped)<a class="headerlink" href="#4-rrset-namespace-scoped" title="Permanent link">⚓</a></h3>
+<p>Application teams create records for their application services.</p>
 <div class="highlight"><pre><span></span><code><span class="nn">---</span>
 <span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dns.cav.enablers.ob/v1alpha2</span>
 <span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RRset</span>
@@ -1058,34 +1109,7 @@
 <span class="w">  </span><span class="nt">zoneRef</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">myapp1.example.org</span>
 <span class="w">    </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Zone</span>
-</code></pre></div></li>
-</ol>
-<p>Such a structure allows a separation of elements, the application team can only administer the <code>RRsets</code> linked to its services</p>
-<p>Each <code>RRset</code> refers to the ClusterZone/Zone it depends on.</p>
-<h2 id="behavior">Behavior<a class="headerlink" href="#behavior" title="Permanent link">⚓</a></h2>
-<p>The PowerDNS-Operator (PDNS-OP for brevity) reconciles <code>ClusterZones</code> or <code>Zones</code> in the following manner:</p>
-<ol>
-<li>PDNS-OP verifies that no other <code>Zone</code> or <code>ClusterZone</code> already exists with the same FQDN (Fully Qualified Domain Name), if exists, <code>Zone</code>/<code>ClusterZone</code> status is defined as 'Failed'</li>
-<li>PDNS-OP requests PowerDNS API to create/modify the corresponding resource</li>
-<li>PDNS-OP requests PowerDNS API to create/modify related 'Nameservers' entries</li>
-<li>PDNS-OP updates resource Status (including Serial) and its metrics</li>
-</ol>
-<p>The PowerDNS-Operator reconciles <code>ClusterRRsets</code> or <code>RRsets</code> in the following manner:</p>
-<ol>
-<li>PDNS-OP verifies that the corresponding <code>ClusterZone</code>/<code>Zone</code> already exists, if not, It schedule a new reconciliation later on</li>
-<li>PDNS-OP verifies that the corresponding <code>ClusterZone</code>/<code>Zone</code> is not in 'Failed' status, in that case , <code>RRset</code> or <code>ClusterRRset</code> status is defined as 'Failed'</li>
-<li>PDNS-OP requests PowerDNS API to create/modify the corresponding resource</li>
-<li>PDNS-OP updates resource Status and its metrics</li>
-<li>PDNS-OP schedule a reconciliation to update <code>ClusterZone</code>/<code>Zone</code> Status (including Serial)</li>
-</ol>
-<h2 id="roles-and-responsibilities">Roles and responsibilities<a class="headerlink" href="#roles-and-responsibilities" title="Permanent link">⚓</a></h2>
-<p>The PowerDNS-Operator is designed to target the following persona:</p>
-<ul>
-<li>Cluster Operator: The cluster operator is responsible for configuring PowerDNS instance, ,</li>
-<li>Platform Team: The Platform team is responsible for defining the architecture <code>ClusterZone</code>, <code>Zone</code>, <code>ClusterRRset</code> and <code>RRset</code>, setting the permissions for application team (e.g. permissions to create Zones in their namespaces),</li>
-<li>Application Team: The Application developer is responsible for defining <code>RRset</code> (eventually <code>Zone</code>) related to their services.</li>
-</ul>
-<p>Each persona will roughly map to a Kubernetes RBAC role. Depending on your environment these roles can map to a single user. Note: The PowerDNS Operator does not manage the PowerDNS instance lifecycle.</p>
+</code></pre></div>
 
 
 

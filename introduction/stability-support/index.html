@@ -522,11 +522,35 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#version-compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      Version Compatibility
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#breaking-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Breaking Changes
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Breaking Changes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#breaking-changes-introduced-in-v04x-versions" class="md-nav__link">
     <span class="md-ellipsis">
       Breaking changes introduced in v0.4.x versions
     </span>
   </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -855,11 +879,35 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#version-compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      Version Compatibility
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#breaking-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Breaking Changes
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Breaking Changes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#breaking-changes-introduced-in-v04x-versions" class="md-nav__link">
     <span class="md-ellipsis">
       Breaking changes introduced in v0.4.x versions
     </span>
   </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -882,7 +930,31 @@
 
 
 <h1 id="stability-and-support">Stability and Support<a class="headerlink" href="#stability-and-support" title="Permanent link">⚓</a></h1>
-<h2 id="breaking-changes-introduced-in-v04x-versions">Breaking changes introduced in v0.4.x versions<a class="headerlink" href="#breaking-changes-introduced-in-v04x-versions" title="Permanent link">⚓</a></h2>
+<h2 id="version-compatibility">Version Compatibility<a class="headerlink" href="#version-compatibility" title="Permanent link">⚓</a></h2>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Supported Versions</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>PowerDNS Authoritative</strong></td>
+<td>4.7, 4.8, 4.9</td>
+</tr>
+<tr>
+<td><strong>Kubernetes</strong></td>
+<td>1.31, 1.32, 1.33</td>
+</tr>
+<tr>
+<td><strong>Go</strong> (for development)</td>
+<td>1.24+</td>
+</tr>
+</tbody>
+</table>
+<h2 id="breaking-changes">Breaking Changes<a class="headerlink" href="#breaking-changes" title="Permanent link">⚓</a></h2>
+<h3 id="breaking-changes-introduced-in-v04x-versions">Breaking changes introduced in v0.4.x versions<a class="headerlink" href="#breaking-changes-introduced-in-v04x-versions" title="Permanent link">⚓</a></h3>
 <p>We noticed lacks of security and delegation possibilities with &lt;=v0.3.x versions, so we decided to split previous <code>Zone</code> in 2 differents Custom Resources: </p>
 <ul>
 <li><code>ClusterZone</code> (cluster-wide resource)</li>

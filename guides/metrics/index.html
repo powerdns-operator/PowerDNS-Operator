@@ -688,11 +688,62 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#example" class="md-nav__link">
+  <a href="#available-metrics" class="md-nav__link">
     <span class="md-ellipsis">
-      Example
+      Available Metrics
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#status-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      Status Values
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example Metrics
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#monitoring-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      Monitoring Setup
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Monitoring Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#servicemonitor" class="md-nav__link">
+    <span class="md-ellipsis">
+      ServiceMonitor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#grafana-dashboard-wip" class="md-nav__link">
+    <span class="md-ellipsis">
+      Grafana Dashboard (WIP)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -855,11 +906,62 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#example" class="md-nav__link">
+  <a href="#available-metrics" class="md-nav__link">
     <span class="md-ellipsis">
-      Example
+      Available Metrics
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#status-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      Status Values
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example Metrics
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#monitoring-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      Monitoring Setup
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Monitoring Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#servicemonitor" class="md-nav__link">
+    <span class="md-ellipsis">
+      ServiceMonitor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#grafana-dashboard-wip" class="md-nav__link">
+    <span class="md-ellipsis">
+      Grafana Dashboard (WIP)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -882,55 +984,102 @@
 
 
 <h1 id="metrics">Metrics<a class="headerlink" href="#metrics" title="Permanent link">⚓</a></h1>
-<p>PowerDNS-Operator exposes metrics in Prometheus format.  </p>
+<p>The PowerDNS Operator exposes Prometheus metrics for monitoring and observability.</p>
+<h2 id="available-metrics">Available Metrics<a class="headerlink" href="#available-metrics" title="Permanent link">⚓</a></h2>
 <table>
 <thead>
 <tr>
-<th>Name</th>
+<th>Metric</th>
 <th>Type</th>
 <th>Description</th>
-<th>Available labels</th>
+<th>Labels</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>clusterzones_status</td>
+<td><code>clusterzones_status</code></td>
 <td>gauge</td>
-<td>Statuses of ClusterZones processed</td>
-<td>name, status</td>
+<td>ClusterZone status</td>
+<td><code>name</code>, <code>status</code></td>
 </tr>
 <tr>
-<td>zones_status</td>
+<td><code>zones_status</code></td>
 <td>gauge</td>
-<td>Statuses of Zones processed</td>
-<td>name, namespace ,status</td>
+<td>Zone status</td>
+<td><code>name</code>, <code>namespace</code>, <code>status</code></td>
 </tr>
 <tr>
-<td>clusterrrsets_status</td>
+<td><code>clusterrrsets_status</code></td>
 <td>gauge</td>
-<td>Statuses of ClusterRRsets processed</td>
-<td>fqdn, name, status, type</td>
+<td>ClusterRRset status</td>
+<td><code>fqdn</code>, <code>name</code>, <code>status</code>, <code>type</code></td>
 </tr>
 <tr>
-<td>rrsets_status</td>
+<td><code>rrsets_status</code></td>
 <td>gauge</td>
-<td>Statuses of RRsets processed</td>
-<td>fqdn, name, namespace, status, type</td>
+<td>RRset status</td>
+<td><code>fqdn</code>, <code>name</code>, <code>namespace</code>, <code>status</code>, <code>type</code></td>
 </tr>
 </tbody>
 </table>
-<h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">⚓</a></h2>
-<p>The following metrics are based on the example defined <a href="/introduction/overview/#resource-model">here</a></p>
-<div class="highlight"><pre><span></span><code>clusterzones_status{name=&quot;example.org&quot;,status=&quot;Succeeded&quot;} 1
+<h2 id="status-values">Status Values<a class="headerlink" href="#status-values" title="Permanent link">⚓</a></h2>
+<ul>
+<li><strong><code>Succeeded</code></strong>: Resource successfully reconciled</li>
+<li><strong><code>Failed</code></strong>: Resource reconciliation failed</li>
+<li><strong><code>Pending</code></strong>: Resource waiting for dependencies</li>
+</ul>
+<h2 id="example-metrics">Example Metrics<a class="headerlink" href="#example-metrics" title="Permanent link">⚓</a></h2>
+<p>Based on the <a href="../introduction/overview/#resource-model">example configuration</a>:</p>
+<div class="highlight"><pre><span></span><code># Cluster zones
+clusterzones_status{name=&quot;example.org&quot;,status=&quot;Succeeded&quot;} 1
+
+# Cluster records
 clusterrrsets_status{fqdn=&quot;example.org.&quot;,name=&quot;mx.example.org&quot;,status=&quot;Succeeded&quot;,type=&quot;MX&quot;} 1
 clusterrrsets_status{fqdn=&quot;example.org.&quot;,name=&quot;soa.example.org&quot;,status=&quot;Succeeded&quot;,type=&quot;SOA&quot;} 1
 clusterrrsets_status{fqdn=&quot;ns1.example.org.&quot;,name=&quot;ns1.example.org&quot;,status=&quot;Succeeded&quot;,type=&quot;A&quot;} 1
 clusterrrsets_status{fqdn=&quot;ns2.example.org.&quot;,name=&quot;ns2.example.org&quot;,status=&quot;Succeeded&quot;,type=&quot;A&quot;} 1
 
+# Namespace zones
 zones_status{name=&quot;myapp1.example.org&quot;,namespace=&quot;myapp1&quot;,status=&quot;Succeeded&quot;} 1
+
+# Namespace records
 rrsets_status{fqdn=&quot;myapp1.example.org.&quot;,name=&quot;soa.myapp1.example.org&quot;,namespace=&quot;myapp1&quot;,status=&quot;Succeeded&quot;,type=&quot;SOA&quot;} 1
 rrsets_status{fqdn=&quot;front.myapp1.example.org.&quot;,name=&quot;front.myapp1.example.org&quot;,namespace=&quot;myapp1&quot;,status=&quot;Succeeded&quot;,type=&quot;A&quot;} 1
 </code></pre></div>
+<h2 id="monitoring-setup">Monitoring Setup<a class="headerlink" href="#monitoring-setup" title="Permanent link">⚓</a></h2>
+<h3 id="servicemonitor">ServiceMonitor<a class="headerlink" href="#servicemonitor" title="Permanent link">⚓</a></h3>
+<p>When using Prometheus Operator, the operator can be monitored using a ServiceMonitor resource. This is the recommended approach in Kubernetes environments:</p>
+<div class="admonition tip">
+<p class="admonition-title">Helm Chart Integration</p>
+<p>If you're using the Helm chart, ServiceMonitor creation can be enabled with:
+<div class="highlight"><pre><span></span><code><span class="nt">metrics</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">serviceMonitor</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</code></pre></div></p>
+</div>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">monitoring.coreos.com/v1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ServiceMonitor</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">powerdns-operator-metrics</span>
+<span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">powerdns-operator-system</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">endpoints</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">15s</span>
+<span class="w">    </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http-metrics</span>
+<span class="w">    </span><span class="nt">scheme</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http</span>
+<span class="w">    </span><span class="nt">scrapeTimeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10s</span>
+<span class="w">  </span><span class="nt">namespaceSelector</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">matchNames</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">powerdns-operator-system</span>
+<span class="w">  </span><span class="nt">selector</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">matchLabels</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">control-plane</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">controller-manager</span>
+</code></pre></div>
+<h3 id="grafana-dashboard-wip">Grafana Dashboard (WIP)<a class="headerlink" href="#grafana-dashboard-wip" title="Permanent link">⚓</a></h3>
+<div class="admonition note">
+<p class="admonition-title">Coming Soon</p>
+<p>Grafana dashboards for PowerDNS Operator metrics will be available in a future release. These dashboards will provide pre-configured visualizations for monitoring DNS zone and record status, reconciliation metrics, and operator performance.</p>
+</div>
 
 
 

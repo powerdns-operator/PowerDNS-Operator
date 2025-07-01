@@ -74,7 +74,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#powerdns-cluster-deployment" class="md-skip">
+        <a href="#powerdns-deployment" class="md-skip">
           Skip to content
         </a>
       
@@ -765,6 +765,17 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    PowerDNS
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -774,6 +785,76 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#deployment-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deployment Options
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Deployment Options">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#option-1-using-the-official-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      Option 1: Using the Official Deployment
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-2-manual-installation-debianubuntu" class="md-nav__link">
+    <span class="md-ellipsis">
+      Option 2: Manual Installation (Debian/Ubuntu)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-3-docker-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      Option 3: Docker Deployment
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Requirements
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -807,6 +888,65 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#deployment-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deployment Options
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Deployment Options">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#option-1-using-the-official-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      Option 1: Using the Official Deployment
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-2-manual-installation-debianubuntu" class="md-nav__link">
+    <span class="md-ellipsis">
+      Option 2: Manual Installation (Debian/Ubuntu)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-3-docker-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      Option 3: Docker Deployment
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Requirements
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -823,8 +963,46 @@
   
 
 
-<h1 id="powerdns-cluster-deployment">PowerDNS cluster deployment<a class="headerlink" href="#powerdns-cluster-deployment" title="Permanent link">⚓</a></h1>
-<p>For a full clustered powerdns instance, See <a href="https://github.com/powerdns-operator/powerdns-deployment">Here</a></p>
+<h1 id="powerdns-deployment">PowerDNS Deployment<a class="headerlink" href="#powerdns-deployment" title="Permanent link">⚓</a></h1>
+<h2 id="deployment-options">Deployment Options<a class="headerlink" href="#deployment-options" title="Permanent link">⚓</a></h2>
+<h3 id="option-1-using-the-official-deployment">Option 1: Using the Official Deployment<a class="headerlink" href="#option-1-using-the-official-deployment" title="Permanent link">⚓</a></h3>
+<p>For a full clustered PowerDNS setup, check this repository:</p>
+<p><strong><a href="https://github.com/powerdns-operator/powerdns-deployment">PowerDNS Deployment</a></strong></p>
+<p>This repository provides:</p>
+<ul>
+<li>Complete PowerDNS cluster setup</li>
+<li>MariaDB backend configuration</li>
+<li>High availability configuration</li>
+<li>Monitoring and logging setup</li>
+</ul>
+<h3 id="option-2-manual-installation-debianubuntu">Option 2: Manual Installation (Debian/Ubuntu)<a class="headerlink" href="#option-2-manual-installation-debianubuntu" title="Permanent link">⚓</a></h3>
+<p>For testing or simple setups, you can install PowerDNS manually:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Install PowerDNS on Ubuntu/Debian</span>
+apt<span class="w"> </span>update<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>pdns-server<span class="w"> </span>pdns-backend-mysql
+
+<span class="c1"># Configure PowerDNS</span>
+<span class="c1"># Edit /etc/powerdns/pdns.conf</span>
+</code></pre></div>
+<h3 id="option-3-docker-deployment">Option 3: Docker Deployment<a class="headerlink" href="#option-3-docker-deployment" title="Permanent link">⚓</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run PowerDNS with SQLite backend</span>
+docker<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--name<span class="w"> </span>powerdns<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-p<span class="w"> </span><span class="m">53</span>:53<span class="w"> </span>-p<span class="w"> </span><span class="m">53</span>:53/udp<span class="w"> </span>-p<span class="w"> </span><span class="m">8081</span>:8081<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-e<span class="w"> </span><span class="nv">PDNS_api</span><span class="o">=</span>yes<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-e<span class="w"> </span><span class="nv">PDNS_api_key</span><span class="o">=</span>your-secret-key<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-e<span class="w"> </span><span class="nv">PDNS_webserver</span><span class="o">=</span>yes<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-e<span class="w"> </span><span class="nv">PDNS_webserver_address</span><span class="o">=</span><span class="m">0</span>.0.0.0<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-e<span class="w"> </span><span class="nv">PDNS_webserver_allow_from</span><span class="o">=</span><span class="m">0</span>.0.0.0/0<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>pschiffe/pdns-mysql
+</code></pre></div>
+<h2 id="configuration-requirements">Configuration Requirements<a class="headerlink" href="#configuration-requirements" title="Permanent link">⚓</a></h2>
+<p>Ensure your PowerDNS instance has:</p>
+<ul>
+<li><strong>API enabled</strong>: <code>api=yes</code> in configuration</li>
+<li><strong>Web server enabled</strong>: <code>webserver=yes</code> for API access</li>
+<li><strong>API key configured</strong>: Secure authentication key</li>
+<li><strong>Network access</strong>: Accessible from Kubernetes cluster</li>
+</ul>
 
 
 
