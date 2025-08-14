@@ -14,7 +14,9 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"flag"
+	"net/http"
 	"os"
 	"strconv"
 	"time"
@@ -66,6 +68,14 @@ func main() {
 	if apiVhost == "" {
 		apiVhost = "localhost"
 	}
+	apiInsecureStr := os.Getenv("PDNS_API_INSECURE")
+	var apiInsecure bool
+	if apiInsecureStr != "" {
+		if insecure, err := strconv.ParseBool(apiInsecureStr); err == nil {
+			apiInsecure = insecure
+		}
+	}
+	apiCAPath := os.Getenv("PDNS_API_CA_PATH")
 
 	// Parse PowerDNS API timeout from environment variable (in seconds)
 	apiTimeoutStr := os.Getenv("PDNS_API_TIMEOUT")
@@ -91,6 +101,10 @@ func main() {
 	flag.StringVar(&apiVhost, "pdns-api-vhost", apiVhost, "The vhost of the PowerDNS API")
 	flag.IntVar(&apiTimeoutSeconds, "pdns-api-timeout", apiTimeoutSeconds,
 		"The timeout for PowerDNS API requests (in seconds)")
+	flag.BoolVar(&apiInsecure, "pdns-api-insecure", apiInsecure,
+		"Enable insecure connections to PowerDNS API")
+	flag.StringVar(&apiCAPath, "pdns-api-ca-path", apiCAPath, "The path to certificate authority")
+
 	opts := zap.Options{
 		Development: false,
 	}
@@ -160,7 +174,36 @@ func main() {
 		os.Exit(1)
 	}
 
-	pdnsClient, err := PDNSClientInitializer(apiURL, apiKey, apiVhost, apiTimeoutSeconds)
+	// Initialize a http.Client to communicate with PowerDNS API
+	var httpClient *http.Client
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: apiInsecure,
+	}
+	if apiInsecure {
+		setupLog.Info("the communication with PowerDNS API is set as insecure")
+	}
+
+	if apiCAPath != "" {
+		caCert, err := os.ReadFile(apiCAPath)
+		if err != nil {
+			setupLog.Error(err, "unable to load CA certificate")
+			os.Exit(1)
+		}
+		caCertPool := x509.NewCertPool()
+		ok := caCertPool.AppendCertsFromPEM(caCert)
+		if !ok {
+			setupLog.Error(err, "unable to parse CA certificate")
+			os.Exit(1)
+		}
+		setupLog.Info("CA certificate parsed successfully", "apiCAPath", apiCAPath)
+		tlsConfig.RootCAs = caCertPool
+	}
+
+	tr := &http.Transport{TLSClientConfig: tlsConfig}
+	httpClient = &http.Client{Transport: tr}
+
+	pdnsClient, err := PDNSClientInitializer(apiURL, apiKey, apiVhost, apiTimeoutSeconds,
+		httpClient)
 	if err != nil {
 		setupLog.Error(err, "unable to initialize connection with PowerDNS server")
 		os.Exit(1)
@@ -227,8 +270,9 @@ func main() {
 	}
 }
 
-func PDNSClientInitializer(baseURL string, key string, vhost string, timeoutSeconds int) (*powerdns.Client, error) {
-	client := powerdns.New(baseURL, vhost, powerdns.WithAPIKey(key))
+func PDNSClientInitializer(baseURL string, key string, vhost string, timeoutSeconds int,
+	httpClient *http.Client) (*powerdns.Client, error) {
+	client := powerdns.New(baseURL, vhost, powerdns.WithAPIKey(key), powerdns.WithHTTPClient(httpClient))
 
 	// Test connectivity by attempting to get server information
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutSeconds)*time.Second)

@@ -68,6 +68,9 @@ stringData:
   PDNS_API_URL: https://your-powerdns-server:8081
   PDNS_API_KEY: your-api-key
   PDNS_API_VHOST: localhost
+  # And optionally
+  # PDNS_API_CA_PATH="/tmp/caroot.crt"
+  # PDNS_API_INSECURE=true 
 EOF
 
 # Install the operator
