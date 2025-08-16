@@ -1050,6 +1050,9 @@ kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> <
 <span class="s">  PDNS_API_URL: https://your-powerdns-server:8081</span>
 <span class="s">  PDNS_API_KEY: your-api-key</span>
 <span class="s">  PDNS_API_VHOST: localhost</span>
+<span class="s">  # And optionally</span>
+<span class="s">  # PDNS_API_CA_PATH=&quot;/tmp/caroot.crt&quot;</span>
+<span class="s">  # PDNS_API_INSECURE=true </span>
 <span class="s">EOF</span>
 
 <span class="c1"># Install the operator</span>
@@ -1093,6 +1096,18 @@ kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> <
 <td>PowerDNS API request timeout in seconds</td>
 <td>No</td>
 <td><code>10</code></td>
+</tr>
+<tr>
+<td><code>PDNS_API_INSECURE</code></td>
+<td>Insecure connections with PowerDNS API</td>
+<td>No</td>
+<td>"False"</td>
+</tr>
+<tr>
+<td><code>PDNS_API_CA_PATH</code></td>
+<td>Path to Certificate Authority</td>
+<td>No</td>
+<td>None</td>
 </tr>
 </tbody>
 </table>
