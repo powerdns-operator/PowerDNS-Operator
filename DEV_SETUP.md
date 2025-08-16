@@ -24,6 +24,9 @@ make install
 export PDNS_API_URL=https://powerdns.example.local:8081
 export PDNS_API_KEY=secret
 export PDNS_API_VHOST=localhost
+# And optionally
+#export PDNS_API_CA_PATH="/tmp/caroot.crt"
+#export PDNS_API_INSECURE=true 
 make run
 ```
 

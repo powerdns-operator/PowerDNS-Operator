@@ -44,6 +44,9 @@ stringData:
   PDNS_API_URL: https://your-powerdns-server:8081
   PDNS_API_KEY: your-api-key
   PDNS_API_VHOST: localhost
+  # And optionally
+  # PDNS_API_CA_PATH="/tmp/caroot.crt"
+  # PDNS_API_INSECURE=true 
 EOF
 
 # Install the operator
@@ -63,6 +66,8 @@ kubectl apply -f https://github.com/powerdns-operator/PowerDNS-Operator/releases
 | `PDNS_API_KEY` | PowerDNS API authentication key | Yes | None |
 | `PDNS_API_VHOST` | PowerDNS virtual host | No | `localhost` |
 | `PDNS_API_TIMEOUT` | PowerDNS API request timeout in seconds | No | `10` |
+| `PDNS_API_INSECURE` | Insecure connections with PowerDNS API | No | "False" |
+| `PDNS_API_CA_PATH` | Path to Certificate Authority | No | None |
 
 ### Verification
 
