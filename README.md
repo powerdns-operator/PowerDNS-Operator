@@ -15,6 +15,10 @@
 
 </div>
 
+## 🎥 Demo
+
+https://github.com/user-attachments/assets/cc43b03e-ed0d-4112-941d-0b53cc2ad3be
+
 ## 🚀 Features
 
 - **Declarative DNS Management**: Manage PowerDNS zones and records using Kubernetes CRDs
