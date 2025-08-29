@@ -50,11 +50,11 @@ type RRsetStatus struct {
 	ObservedGeneration *int64             `json:"observedGeneration,omitempty"`
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:storageversion
-//+kubebuilder:conversion:hub
-//+kubebuilder:subresource:status
-//+kubebuilder:resource:scope=Namespaced
+// +kubebuilder:object:root=true
+// +kubebuilder:storageversion:deprecated
+// +kubebuilder:conversion:hub
+// +kubebuilder:subresource:status
+// +kubebuilder:resource:scope=Namespaced
 
 // +kubebuilder:printcolumn:name="Zone",type="string",JSONPath=".spec.zoneRef.name"
 // +kubebuilder:printcolumn:name="Name",type="string",JSONPath=".status.dnsEntryName"
@@ -71,7 +71,7 @@ type RRset struct {
 	Status RRsetStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // RRsetList contains a list of RRset
 type RRsetList struct {

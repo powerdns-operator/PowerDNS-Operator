@@ -13,12 +13,13 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/joeig/go-powerdns/v3"
-	dnsv1alpha2 "github.com/powerdns-operator/powerdns-operator/api/v1alpha2"
+	dnsv1alpha3 "github.com/powerdns-operator/powerdns-operator/api/v1alpha3"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,7 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-func zoneReconcile(ctx context.Context, gz dnsv1alpha2.GenericZone, isModified bool, isDeleted bool, cl client.Client, PDNSClient PdnsClienter, log logr.Logger) (ctrl.Result, error) {
+func zoneReconcile(ctx context.Context, gz dnsv1alpha3.GenericZone, isModified bool, isDeleted bool, cl client.Client, PDNSClient PdnsClienter, log logr.Logger) (ctrl.Result, error) {
 	isInFailedStatus := (gz.GetStatus().SyncStatus != nil && *gz.GetStatus().SyncStatus == FAILED_STATUS)
 
 	// examine DeletionTimestamp to determine if object is under deletion
@@ -74,21 +75,31 @@ func zoneReconcile(ctx context.Context, gz dnsv1alpha2.GenericZone, isModified b
 	}
 
 	// We cannot exit previously (at the early moments of reconcile), because we have to allow deletion process
+	// For failed resources, only skip reconciliation if it was very recent to avoid excessive retries
 	if isInFailedStatus && !isModified {
-		// Update resource metrics
-		updateZonesMetrics(gz)
-		return ctrl.Result{}, nil
+		// Check if we should retry based on last failure time
+		lastTransition := getLastConditionTransition(gz)
+		timeSinceLastFailure := time.Since(lastTransition)
+
+		// Only skip if the failure is very recent (less than 30 seconds)
+		// This prevents excessive retries while still allowing recovery
+		if timeSinceLastFailure < 30*time.Second {
+			// Update resource metrics
+			updateZonesMetrics(gz)
+			return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+		}
+		// If enough time has passed, continue with reconciliation to retry
 	}
 
 	// If a Zone already exists with the same DNS name:
 	// * Stop reconciliation
 	// * Append a Failed Status on Zone
-	var existingZones dnsv1alpha2.ZoneList
+	var existingZones dnsv1alpha3.ZoneList
 	if err := cl.List(ctx, &existingZones, client.MatchingFields{"Zone.Entry.Name": gz.GetName()}); err != nil {
 		log.Error(err, "unable to find Zone related to the DNS Name")
 		return ctrl.Result{}, err
 	}
-	var existingClusterZones dnsv1alpha2.ClusterZoneList
+	var existingClusterZones dnsv1alpha3.ClusterZoneList
 	if err := cl.List(ctx, &existingClusterZones, client.MatchingFields{"ClusterZone.Entry.Name": gz.GetName()}); err != nil {
 		log.Error(err, "unable to find ClusterZone related to the DNS Name")
 		return ctrl.Result{}, err
@@ -109,7 +120,7 @@ func zoneReconcile(ctx context.Context, gz dnsv1alpha2.GenericZone, isModified b
 			Reason:             ZoneReasonDuplicated,
 			Message:            ZoneMessageDuplicated,
 		})
-		gz.SetStatus(dnsv1alpha2.ZoneStatus{
+		gz.SetStatus(dnsv1alpha3.ZoneStatus{
 			SyncStatus:         ptr.To(FAILED_STATUS),
 			ObservedGeneration: &gz.GetObjectMeta().Generation,
 			Conditions:         conditions,
@@ -125,25 +136,36 @@ func zoneReconcile(ctx context.Context, gz dnsv1alpha2.GenericZone, isModified b
 		return ctrl.Result{}, nil
 	}
 
-	// Get zone
+	// Attempt to retrieve zone information from PowerDNS API
+	// This is where we actually test connectivity and sync with the PowerDNS backend.
+	// Connection failures are handled gracefully by updating the resource status rather than failing hard.
 	zoneRes, err := getZoneExternalResources(ctx, gz.GetObjectMeta().Name, PDNSClient, log)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
+	var syncStatus *string
+	var conditionMessage, conditionReason string
+	var conditionStatus metav1.ConditionStatus
 
-	syncStatus, conditionMessage, conditionReason, conditionStatus, err := zoneExternalResourcesReconcile(ctx, zoneRes, gz, PDNSClient, log)
 	if err != nil {
-		return ctrl.Result{}, err
+		// Connection failed - update status to reflect the failure
+		log.Error(err, "Failed to connect to PowerDNS API")
+		syncStatus = ptr.To(FAILED_STATUS)
+		conditionStatus = metav1.ConditionFalse
+		conditionReason = ZoneReasonSynchronizationFailed
+		conditionMessage = fmt.Sprintf("Failed to connect to PowerDNS API: %v", err)
+	} else {
+		// Connection successful - proceed with reconciliation
+		var reconcileErr error
+		syncStatus, conditionMessage, conditionReason, conditionStatus, reconcileErr = zoneExternalResourcesReconcile(ctx, zoneRes, gz, PDNSClient, log)
+		if reconcileErr != nil {
+			log.Error(reconcileErr, "Failed to reconcile zone external resources")
+			syncStatus = ptr.To(FAILED_STATUS)
+			conditionStatus = metav1.ConditionFalse
+			conditionReason = ZoneReasonSynchronizationFailed
+			conditionMessage = fmt.Sprintf("Reconciliation failed: %v", reconcileErr)
+		}
 	}
 
 	if syncStatus == nil {
 		syncStatus = ptr.To(SUCCEEDED_STATUS)
-	}
-
-	// Update ZoneStatus
-	zoneRes, err = getZoneExternalResources(ctx, gz.GetObjectMeta().Name, PDNSClient, log)
-	if err != nil {
-		return ctrl.Result{}, err
 	}
 
 	err = patchZoneStatus(ctx, gz, zoneRes, syncStatus, cl, metav1.Condition{
@@ -167,7 +189,7 @@ func zoneReconcile(ctx context.Context, gz dnsv1alpha2.GenericZone, isModified b
 	return ctrl.Result{}, nil
 }
 
-func rrsetReconcile(ctx context.Context, gr dnsv1alpha2.GenericRRset, zone dnsv1alpha2.GenericZone, isModified bool, isDeleted bool, lastUpdateTime *metav1.Time, scheme *runtime.Scheme, cl client.Client, PDNSClient PdnsClienter, log logr.Logger) (ctrl.Result, error) {
+func rrsetReconcile(ctx context.Context, gr dnsv1alpha3.GenericRRset, zone dnsv1alpha3.GenericZone, isModified bool, isDeleted bool, lastUpdateTime *metav1.Time, scheme *runtime.Scheme, cl client.Client, PDNSClient PdnsClienter, log logr.Logger) (ctrl.Result, error) {
 	isInFailedStatus := (gr.GetStatus().SyncStatus != nil && *gr.GetStatus().SyncStatus == FAILED_STATUS)
 
 	// initialize syncStatus
@@ -233,12 +255,12 @@ func rrsetReconcile(ctx context.Context, gr dnsv1alpha2.GenericRRset, zone dnsv1
 	// If a RRset already exists with the same DNS name:
 	// * Stop reconciliation
 	// * Append a Failed Status on RRset
-	var existingRRsets dnsv1alpha2.RRsetList
+	var existingRRsets dnsv1alpha3.RRsetList
 	if err := cl.List(ctx, &existingRRsets, client.MatchingFields{"RRset.Entry.Name": getRRsetName(gr) + "/" + gr.GetSpec().Type}); err != nil {
 		log.Error(err, "unable to find RRsets related to the DNS Name")
 		return ctrl.Result{}, err
 	}
-	var existingClusterRRsets dnsv1alpha2.ClusterRRsetList
+	var existingClusterRRsets dnsv1alpha3.ClusterRRsetList
 	if err := cl.List(ctx, &existingClusterRRsets, client.MatchingFields{"ClusterRRset.Entry.Name": getRRsetName(gr) + "/" + gr.GetSpec().Type}); err != nil {
 		log.Error(err, "unable to find RRsets related to the DNS Name")
 		return ctrl.Result{}, err
@@ -260,7 +282,7 @@ func rrsetReconcile(ctx context.Context, gr dnsv1alpha2.GenericRRset, zone dnsv1
 			Message:            RrsetMessageDuplicated,
 		})
 		name := getRRsetName(gr)
-		gr.SetStatus(dnsv1alpha2.RRsetStatus{
+		gr.SetStatus(dnsv1alpha3.RRsetStatus{
 			LastUpdateTime:     lastUpdateTime,
 			DnsEntryName:       &name,
 			SyncStatus:         ptr.To(FAILED_STATUS),
@@ -319,7 +341,7 @@ func rrsetReconcile(ctx context.Context, gr dnsv1alpha2.GenericRRset, zone dnsv1
 		Message:            conditionMessage,
 	})
 	name := getRRsetName(gr)
-	gr.SetStatus(dnsv1alpha2.RRsetStatus{
+	gr.SetStatus(dnsv1alpha3.RRsetStatus{
 		LastUpdateTime:     lastUpdateTime,
 		DnsEntryName:       &name,
 		SyncStatus:         syncStatus,
@@ -347,7 +369,7 @@ func getZoneExternalResources(ctx context.Context, domain string, PDNSClient Pdn
 	return zoneRes, nil
 }
 
-func createZoneExternalResources(ctx context.Context, zone dnsv1alpha2.GenericZone, PDNSClient PdnsClienter, log logr.Logger) error {
+func createZoneExternalResources(ctx context.Context, zone dnsv1alpha3.GenericZone, PDNSClient PdnsClienter, log logr.Logger) error {
 	// Make Nameservers canonical
 	for i, ns := range zone.GetSpec().Nameservers {
 		zone.GetSpec().Nameservers[i] = makeCanonical(ns)
@@ -378,7 +400,7 @@ func createZoneExternalResources(ctx context.Context, zone dnsv1alpha2.GenericZo
 	return nil
 }
 
-func updateZoneExternalResources(ctx context.Context, zone dnsv1alpha2.GenericZone, PDNSClient PdnsClienter, log logr.Logger) error {
+func updateZoneExternalResources(ctx context.Context, zone dnsv1alpha3.GenericZone, PDNSClient PdnsClienter, log logr.Logger) error {
 	zoneKind := powerdns.ZoneKind(zone.GetSpec().Kind)
 
 	// Make Catalog canonical
@@ -401,7 +423,7 @@ func updateZoneExternalResources(ctx context.Context, zone dnsv1alpha2.GenericZo
 	return nil
 }
 
-func updateNsOnZoneExternalResources(ctx context.Context, zone dnsv1alpha2.GenericZone, ttl uint32, PDNSClient PdnsClienter, log logr.Logger) error {
+func updateNsOnZoneExternalResources(ctx context.Context, zone dnsv1alpha3.GenericZone, ttl uint32, PDNSClient PdnsClienter, log logr.Logger) error {
 	nameserversCanonical := []string{}
 	for _, n := range zone.GetSpec().Nameservers {
 		nameserversCanonical = append(nameserversCanonical, makeCanonical(n))
@@ -415,7 +437,7 @@ func updateNsOnZoneExternalResources(ctx context.Context, zone dnsv1alpha2.Gener
 	return nil
 }
 
-func deleteZoneExternalResources(ctx context.Context, zone dnsv1alpha2.GenericZone, PDNSClient PdnsClienter, log logr.Logger) error {
+func deleteZoneExternalResources(ctx context.Context, zone dnsv1alpha3.GenericZone, PDNSClient PdnsClienter, log logr.Logger) error {
 	err := PDNSClient.Zones.Delete(ctx, zone.GetObjectMeta().Name)
 	// Zone may have already been deleted and it is not an error
 	if err != nil && err.Error() != ZONE_NOT_FOUND_MSG {
@@ -425,7 +447,7 @@ func deleteZoneExternalResources(ctx context.Context, zone dnsv1alpha2.GenericZo
 	return nil
 }
 
-func zoneExternalResourcesReconcile(ctx context.Context, zoneRes *powerdns.Zone, gz dnsv1alpha2.GenericZone, PDNSClient PdnsClienter, log logr.Logger) (*string, string, string, metav1.ConditionStatus, error) {
+func zoneExternalResourcesReconcile(ctx context.Context, zoneRes *powerdns.Zone, gz dnsv1alpha3.GenericZone, PDNSClient PdnsClienter, log logr.Logger) (*string, string, string, metav1.ConditionStatus, error) {
 	// Initialization
 	var syncStatus *string
 	conditionStatus := metav1.ConditionTrue
@@ -496,30 +518,38 @@ func zoneExternalResourcesReconcile(ctx context.Context, zoneRes *powerdns.Zone,
 	return syncStatus, conditionMessage, conditionReason, conditionStatus, nil
 }
 
-func patchZoneStatus(ctx context.Context, zone dnsv1alpha2.GenericZone, zoneRes *powerdns.Zone, status *string, cl client.Client, condition metav1.Condition) error {
+func patchZoneStatus(ctx context.Context, zone dnsv1alpha3.GenericZone, zoneRes *powerdns.Zone, status *string, cl client.Client, condition metav1.Condition) error {
 	original := zone.Copy()
 
-	kind := string(ptr.Deref(zoneRes.Kind, ""))
 	conditions := zone.GetStatus().Conditions
 	meta.SetStatusCondition(&conditions, condition)
-	zone.SetStatus(dnsv1alpha2.ZoneStatus{
-		ID:                 zoneRes.ID,
-		Name:               zoneRes.Name,
-		Kind:               &kind,
-		Serial:             zoneRes.Serial,
-		NotifiedSerial:     zoneRes.NotifiedSerial,
-		EditedSerial:       zoneRes.EditedSerial,
-		Masters:            zoneRes.Masters,
-		DNSsec:             zoneRes.DNSsec,
+
+	// Create base status with minimal required fields
+	zoneStatus := dnsv1alpha3.ZoneStatus{
 		SyncStatus:         status,
-		Catalog:            zoneRes.Catalog,
 		ObservedGeneration: ptr.To(zone.GetGeneration()),
 		Conditions:         conditions,
-	})
+	}
+
+	// If we have zone data from PowerDNS, include it in the status
+	if zoneRes != nil {
+		kind := string(ptr.Deref(zoneRes.Kind, ""))
+		zoneStatus.ID = zoneRes.ID
+		zoneStatus.Name = zoneRes.Name
+		zoneStatus.Kind = &kind
+		zoneStatus.Serial = zoneRes.Serial
+		zoneStatus.NotifiedSerial = zoneRes.NotifiedSerial
+		zoneStatus.EditedSerial = zoneRes.EditedSerial
+		zoneStatus.Masters = zoneRes.Masters
+		zoneStatus.DNSsec = zoneRes.DNSsec
+		zoneStatus.Catalog = zoneRes.Catalog
+	}
+
+	zone.SetStatus(zoneStatus)
 	return cl.Status().Patch(ctx, zone, client.MergeFrom(original))
 }
 
-func deleteRrsetExternalResources(ctx context.Context, zone dnsv1alpha2.GenericZone, rrset dnsv1alpha2.GenericRRset, PDNSClient PdnsClienter, log logr.Logger) error {
+func deleteRrsetExternalResources(ctx context.Context, zone dnsv1alpha3.GenericZone, rrset dnsv1alpha3.GenericRRset, PDNSClient PdnsClienter, log logr.Logger) error {
 	err := PDNSClient.Records.Delete(ctx, zone.GetObjectMeta().Name, getRRsetName(rrset), powerdns.RRType(rrset.GetSpec().Type))
 	if err != nil {
 		log.Error(err, "Failed to delete record")
@@ -529,7 +559,7 @@ func deleteRrsetExternalResources(ctx context.Context, zone dnsv1alpha2.GenericZ
 	return nil
 }
 
-func createOrUpdateRrsetExternalResources(ctx context.Context, zone dnsv1alpha2.GenericZone, rrset dnsv1alpha2.GenericRRset, PDNSClient PdnsClienter) (bool, error) {
+func createOrUpdateRrsetExternalResources(ctx context.Context, zone dnsv1alpha3.GenericZone, rrset dnsv1alpha3.GenericRRset, PDNSClient PdnsClienter) (bool, error) {
 	name := getRRsetName(rrset)
 	rrType := powerdns.RRType(rrset.GetSpec().Type)
 	// Looking for a record with same Name and Type
@@ -565,11 +595,59 @@ func createOrUpdateRrsetExternalResources(ctx context.Context, zone dnsv1alpha2.
 	return true, nil
 }
 
-func ownObject(ctx context.Context, zone dnsv1alpha2.GenericZone, rrset dnsv1alpha2.GenericRRset, scheme *runtime.Scheme, cl client.Client, log logr.Logger) error {
+func ownObject(ctx context.Context, zone dnsv1alpha3.GenericZone, rrset dnsv1alpha3.GenericRRset, scheme *runtime.Scheme, cl client.Client, log logr.Logger) error {
 	err := ctrl.SetControllerReference(zone, rrset, scheme)
 	if err != nil {
 		log.Error(err, "Failed to set owner reference. Is there already a controller managing this object?")
 		return err
 	}
 	return cl.Update(ctx, rrset)
+}
+
+// getLastConditionTransition returns the time when a Zone/ClusterZone last changed its condition status.
+func getLastConditionTransition(gz dnsv1alpha3.GenericZone) time.Time {
+	conditions := gz.GetStatus().Conditions
+	if len(conditions) == 0 {
+		// New resource with no status conditions yet - return old time to allow immediate retry
+		return time.Now().Add(-time.Hour)
+	}
+
+	// Find the most recent condition transition across all condition types
+	var latest time.Time
+	for _, condition := range conditions {
+		if condition.LastTransitionTime.After(latest) {
+			latest = condition.LastTransitionTime.Time
+		}
+	}
+
+	if latest.IsZero() {
+		// Safety fallback: if no valid timestamps found, return old time to allow retry
+		return time.Now().Add(-time.Hour)
+	}
+
+	return latest
+}
+
+// getLastRRsetConditionTransition returns the time when an RRset/ClusterRRset last changed its condition status.
+func getLastRRsetConditionTransition(gr dnsv1alpha3.GenericRRset) time.Time {
+	conditions := gr.GetStatus().Conditions
+	if len(conditions) == 0 {
+		// New resource with no status conditions yet - return old time to allow immediate retry
+		return time.Now().Add(-time.Hour)
+	}
+
+	// Find the most recent condition transition across all condition types
+	var latest time.Time
+	for _, condition := range conditions {
+		if condition.LastTransitionTime.After(latest) {
+			latest = condition.LastTransitionTime.Time
+		}
+	}
+
+	if latest.IsZero() {
+		// Safety fallback: if no valid timestamps found, return old time to allow retry
+		return time.Now().Add(-time.Hour)
+	}
+
+	return latest
 }
