@@ -102,7 +102,14 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 	}
 
-	return zoneReconcile(ctx, zone, isModified, isDeleted, r.Client, r.PDNSClient, log)
+	// Get the appropriate PowerDNS client
+	pdnsClient, err := GetPowerDNSClient(ctx, r.Client, zone.GetClusterRef(), r.PDNSClient)
+	if err != nil {
+		log.Error(err, "Failed to get PowerDNS client")
+		return ctrl.Result{}, err
+	}
+
+	return zoneReconcile(ctx, zone, isModified, isDeleted, r.Client, pdnsClient, log)
 }
 
 // SetupWithManager sets up the controller with the Manager.

@@ -113,18 +113,29 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	// Validate mandatory configuration
-	if apiURL == "" {
-		setupLog.Error(nil, "PDNS_API_URL environment variable or --pdns-api-url flag is required")
-		os.Exit(1)
-	}
-	setupLog.Info("PowerDNS API URL", "url", apiURL)
+	// Check for legacy PowerDNS configuration (now optional for backward compatibility)
+	legacyConfigProvided := apiURL != "" || apiKey != ""
 
-	if apiKey == "" {
-		setupLog.Error(nil, "PDNS_API_KEY environment variable or --pdns-api-key flag is required")
-		os.Exit(1)
+	if legacyConfigProvided {
+		// Validate legacy configuration if partially provided
+		if apiURL == "" {
+			setupLog.Error(nil, "PDNS_API_URL environment variable or --pdns-api-url flag is required when using legacy configuration")
+			os.Exit(1)
+		}
+		if apiKey == "" {
+			setupLog.Error(nil, "PDNS_API_KEY environment variable or --pdns-api-key flag is required when using legacy configuration")
+			os.Exit(1)
+		}
+
+		// Show deprecation warning
+		setupLog.Info("Starting in Standalone mode - PowerDNS configuration will be loaded from deprecated options")
+		setupLog.Info("⚠️  DEPRECATION WARNING: Legacy PowerDNS configuration via environment variables and flags is deprecated")
+		setupLog.Info("⚠️  Please migrate to using Cluster custom resources. Legacy support will be removed in a future release")
+		setupLog.Info("PowerDNS API URL (legacy)", "url", apiURL)
+		setupLog.Info("PowerDNS API vhost (legacy)", "vhost", apiVhost)
+	} else {
+		setupLog.Info("Starting in multi-cluster mode - PowerDNS configuration will be loaded from Cluster resources")
 	}
-	setupLog.Info("PowerDNS API vhost", "vhost", apiVhost)
 
 	// if the enable-http2 flag is false (the default), http/2 should be disabled
 	// due to its vulnerabilities. More specifically, disabling http/2 will
@@ -174,82 +185,91 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Initialize a http.Client to communicate with PowerDNS API
-	var httpClient *http.Client
-	tlsConfig := &tls.Config{
-		InsecureSkipVerify: apiInsecure,
-	}
-	if apiInsecure {
-		setupLog.Info("the communication with PowerDNS API is set as insecure")
-	}
+	// Initialize legacy PowerDNS client only if legacy configuration is provided
+	var legacyPDNSClient *powerdns.Client
+	if legacyConfigProvided {
+		// Initialize a http.Client to communicate with PowerDNS API
+		var httpClient *http.Client
+		tlsConfig := &tls.Config{
+			InsecureSkipVerify: apiInsecure,
+		}
+		if apiInsecure {
+			setupLog.Info("the communication with PowerDNS API is set as insecure (legacy)")
+		}
 
-	if apiCAPath != "" {
-		caCert, err := os.ReadFile(apiCAPath)
+		if apiCAPath != "" {
+			caCert, err := os.ReadFile(apiCAPath)
+			if err != nil {
+				setupLog.Error(err, "unable to load CA certificate (legacy)")
+				os.Exit(1)
+			}
+			caCertPool := x509.NewCertPool()
+			ok := caCertPool.AppendCertsFromPEM(caCert)
+			if !ok {
+				setupLog.Error(err, "unable to parse CA certificate (legacy)")
+				os.Exit(1)
+			}
+			setupLog.Info("CA certificate parsed successfully (legacy)", "apiCAPath", apiCAPath)
+			tlsConfig.RootCAs = caCertPool
+		}
+
+		tr := &http.Transport{TLSClientConfig: tlsConfig}
+		httpClient = &http.Client{Transport: tr}
+
+		var err error
+		legacyPDNSClient, err = PDNSClientInitializer(apiURL, apiKey, apiVhost, apiTimeoutSeconds,
+			httpClient)
 		if err != nil {
-			setupLog.Error(err, "unable to load CA certificate")
+			setupLog.Error(err, "unable to initialize connection with PowerDNS server (legacy)")
 			os.Exit(1)
 		}
-		caCertPool := x509.NewCertPool()
-		ok := caCertPool.AppendCertsFromPEM(caCert)
-		if !ok {
-			setupLog.Error(err, "unable to parse CA certificate")
-			os.Exit(1)
+	}
+	// Set up controllers with optional legacy PowerDNS client
+	var legacyPDNSClienter controller.PdnsClienter
+	if legacyPDNSClient != nil {
+		legacyPDNSClienter = controller.PdnsClienter{
+			Records: legacyPDNSClient.Records,
+			Zones:   legacyPDNSClient.Zones,
 		}
-		setupLog.Info("CA certificate parsed successfully", "apiCAPath", apiCAPath)
-		tlsConfig.RootCAs = caCertPool
 	}
 
-	tr := &http.Transport{TLSClientConfig: tlsConfig}
-	httpClient = &http.Client{Transport: tr}
-
-	pdnsClient, err := PDNSClientInitializer(apiURL, apiKey, apiVhost, apiTimeoutSeconds,
-		httpClient)
-	if err != nil {
-		setupLog.Error(err, "unable to initialize connection with PowerDNS server")
-		os.Exit(1)
-	}
 	if err = (&controller.ZoneReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-		PDNSClient: controller.PdnsClienter{
-			Records: pdnsClient.Records,
-			Zones:   pdnsClient.Zones,
-		},
+		Client:     mgr.GetClient(),
+		Scheme:     mgr.GetScheme(),
+		PDNSClient: legacyPDNSClienter,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Zone")
 		os.Exit(1)
 	}
 	if err = (&controller.RRsetReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-		PDNSClient: controller.PdnsClienter{
-			Records: pdnsClient.Records,
-			Zones:   pdnsClient.Zones,
-		},
+		Client:     mgr.GetClient(),
+		Scheme:     mgr.GetScheme(),
+		PDNSClient: legacyPDNSClienter,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "RRset")
 		os.Exit(1)
 	}
 	if err = (&controller.ClusterZoneReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-		PDNSClient: controller.PdnsClienter{
-			Records: pdnsClient.Records,
-			Zones:   pdnsClient.Zones,
-		},
+		Client:     mgr.GetClient(),
+		Scheme:     mgr.GetScheme(),
+		PDNSClient: legacyPDNSClienter,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ClusterZone")
 		os.Exit(1)
 	}
 	if err = (&controller.ClusterRRsetReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-		PDNSClient: controller.PdnsClienter{
-			Records: pdnsClient.Records,
-			Zones:   pdnsClient.Zones,
-		},
+		Client:     mgr.GetClient(),
+		Scheme:     mgr.GetScheme(),
+		PDNSClient: legacyPDNSClienter,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ClusterRRset")
+		os.Exit(1)
+	}
+	if err := (&controller.ClusterReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Cluster")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

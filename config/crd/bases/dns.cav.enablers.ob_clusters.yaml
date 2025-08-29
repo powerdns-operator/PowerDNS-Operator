@@ -4,33 +4,33 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.18.0
-  name: clusterzones.dns.cav.enablers.ob
+  name: clusters.dns.cav.enablers.ob
 spec:
   group: dns.cav.enablers.ob
   names:
-    kind: ClusterZone
-    listKind: ClusterZoneList
-    plural: clusterzones
-    singular: clusterzone
+    kind: Cluster
+    listKind: ClusterList
+    plural: clusters
+    singular: cluster
   scope: Cluster
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .spec.clusterRef
-      name: Cluster
+    - jsonPath: .spec.apiUrl
+      name: API URL
       type: string
-    - jsonPath: .status.serial
-      name: Serial
-      type: integer
-    - jsonPath: .status.id
-      name: ID
+    - jsonPath: .status.connectionStatus
+      name: Connection Status
       type: string
-    - jsonPath: .status.syncStatus
-      name: Status
+    - jsonPath: .status.powerDNSVersion
+      name: PowerDNS Version
       type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
     name: v1alpha2
     schema:
       openAPIV3Schema:
-        description: ClusterZone is the Schema for the clusterzones API
+        description: Cluster is the Schema for the clusters API
         properties:
           apiVersion:
             description: |-
@@ -50,52 +50,64 @@ spec:
           metadata:
             type: object
           spec:
-            description: ZoneSpec defines the desired state of Zone
+            description: spec defines the desired state of Cluster
             properties:
-              catalog:
-                description: The catalog this zone is a member of
+              apiCAPath:
+                description: |-
+                  ApiCAPath is the path to the certificate authority file for TLS verification
+                  This should be a path to a mounted secret or configmap in the operator pod
                 type: string
-              clusterRef:
-                description: ClusterRef is a reference to the Cluster resource that
-                  manages the PowerDNS instance
+              apiInsecure:
+                default: false
+                description: ApiInsecure enables insecure connections to PowerDNS
+                  API (skip TLS verification)
+                type: boolean
+              apiSecretRef:
+                description: |-
+                  ApiSecretRef is a reference to a Kubernetes Secret containing the PowerDNS API key
+                  The secret must contain a key named "apiKey"
+                properties:
+                  name:
+                    description: name is unique within a namespace to reference a
+                      secret resource.
+                    type: string
+                  namespace:
+                    description: namespace defines the space within which the secret
+                      name must be unique.
+                    type: string
+                type: object
+                x-kubernetes-map-type: atomic
+              apiTimeout:
+                default: 10
+                description: ApiTimeout is the timeout for PowerDNS API requests in
+                  seconds, defaults to 10
+                maximum: 300
+                minimum: 1
+                type: integer
+              apiUrl:
+                description: ApiURL is the URL of the PowerDNS API
+                pattern: ^https?://.*
                 type: string
-              kind:
-                description: Kind of the zone, one of "Native", "Master", "Slave",
-                  "Producer", "Consumer".
-                enum:
-                - Native
-                - Master
-                - Slave
-                - Producer
-                - Consumer
+              apiVhost:
+                default: localhost
+                description: ApiVhost is the vhost of the PowerDNS API, defaults to
+                  "localhost"
                 type: string
-              nameservers:
-                description: List of the nameservers of the zone.
-                items:
-                  pattern: ^([a-zA-Z0-9-]+\.)*[a-zA-Z0-9-]+$
-                  type: string
-                minItems: 1
-                type: array
-              soa_edit_api:
-                default: DEFAULT
-                description: The SOA-EDIT-API metadata item, one of "DEFAULT", "INCREASE",
-                  "EPOCH", defaults to "DEFAULT"
-                enum:
-                - DEFAULT
-                - INCREASE
-                - EPOCH
+              proxyUrl:
+                description: |-
+                  ProxyURL is the URL of the HTTP/HTTPS proxy to use for connecting to PowerDNS API
+                  Format: http://proxy.example.com:8080 or https://proxy.example.com:8080
                 type: string
             required:
-            - kind
-            - nameservers
+            - apiSecretRef
+            - apiUrl
             type: object
           status:
-            description: ZoneStatus defines the observed state of Zone
+            description: status defines the observed state of Cluster
             properties:
-              catalog:
-                description: The catalog this zone is a member of.
-                type: string
               conditions:
+                description: Conditions represent the latest available observations
+                  of the cluster's state
                 items:
                   description: Condition contains details for one aspect of the current
                     state of this API Resource.
@@ -151,43 +163,34 @@ spec:
                   - type
                   type: object
                 type: array
-              dnssec:
-                description: Whether or not this zone is DNSSEC signed.
-                type: boolean
-              edited_serial:
-                description: The SOA serial as seen in query responses.
-                format: int32
-                type: integer
-              id:
-                description: ID define the opaque zone id.
+              connectionStatus:
+                description: ConnectionStatus indicates the status of the connection
+                  to the PowerDNS API
                 type: string
-              kind:
-                description: Kind of the zone, one of "Native", "Master", "Slave",
-                  "Producer", "Consumer".
+              daemonType:
+                description: DaemonType is the type of PowerDNS daemon (should be
+                  "authoritative")
                 type: string
-              masters:
-                description: List of IP addresses configured as a master for this
-                  zone ("Slave" type zones only).
-                items:
-                  type: string
-                type: array
-              name:
-                description: Name of the zone (e.g. "example.com.")
+              lastConnectionTime:
+                description: LastConnectionTime is the last time a successful connection
+                  was established
+                format: date-time
                 type: string
-              notified_serial:
-                description: The SOA serial notifications have been sent out for
-                format: int32
-                type: integer
               observedGeneration:
+                description: ObservedGeneration is the most recent generation observed
+                  for this cluster
                 format: int64
                 type: integer
-              serial:
-                description: The SOA serial number.
-                format: int32
-                type: integer
-              syncStatus:
+              powerDNSVersion:
+                description: PowerDNSVersion is the version of the connected PowerDNS
+                  server
+                type: string
+              serverID:
+                description: ServerID is the ID of the PowerDNS server
                 type: string
             type: object
+        required:
+        - spec
         type: object
     served: true
     storage: true

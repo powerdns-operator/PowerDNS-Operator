@@ -13,6 +13,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -74,10 +75,20 @@ func zoneReconcile(ctx context.Context, gz dnsv1alpha2.GenericZone, isModified b
 	}
 
 	// We cannot exit previously (at the early moments of reconcile), because we have to allow deletion process
+	// For failed resources, only skip reconciliation if it was very recent to avoid excessive retries
 	if isInFailedStatus && !isModified {
-		// Update resource metrics
-		updateZonesMetrics(gz)
-		return ctrl.Result{}, nil
+		// Check if we should retry based on last failure time
+		lastTransition := getLastConditionTransition(gz)
+		timeSinceLastFailure := time.Since(lastTransition)
+
+		// Only skip if the failure is very recent (less than 30 seconds)
+		// This prevents excessive retries while still allowing recovery
+		if timeSinceLastFailure < 30*time.Second {
+			// Update resource metrics
+			updateZonesMetrics(gz)
+			return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+		}
+		// If enough time has passed, continue with reconciliation to retry
 	}
 
 	// If a Zone already exists with the same DNS name:
@@ -125,25 +136,36 @@ func zoneReconcile(ctx context.Context, gz dnsv1alpha2.GenericZone, isModified b
 		return ctrl.Result{}, nil
 	}
 
-	// Get zone
+	// Attempt to retrieve zone information from PowerDNS API
+	// This is where we actually test connectivity and sync with the PowerDNS backend.
+	// Connection failures are handled gracefully by updating the resource status rather than failing hard.
 	zoneRes, err := getZoneExternalResources(ctx, gz.GetObjectMeta().Name, PDNSClient, log)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
+	var syncStatus *string
+	var conditionMessage, conditionReason string
+	var conditionStatus metav1.ConditionStatus
 
-	syncStatus, conditionMessage, conditionReason, conditionStatus, err := zoneExternalResourcesReconcile(ctx, zoneRes, gz, PDNSClient, log)
 	if err != nil {
-		return ctrl.Result{}, err
+		// Connection failed - update status to reflect the failure
+		log.Error(err, "Failed to connect to PowerDNS API")
+		syncStatus = ptr.To(FAILED_STATUS)
+		conditionStatus = metav1.ConditionFalse
+		conditionReason = ZoneReasonSynchronizationFailed
+		conditionMessage = fmt.Sprintf("Failed to connect to PowerDNS API: %v", err)
+	} else {
+		// Connection successful - proceed with reconciliation
+		var reconcileErr error
+		syncStatus, conditionMessage, conditionReason, conditionStatus, reconcileErr = zoneExternalResourcesReconcile(ctx, zoneRes, gz, PDNSClient, log)
+		if reconcileErr != nil {
+			log.Error(reconcileErr, "Failed to reconcile zone external resources")
+			syncStatus = ptr.To(FAILED_STATUS)
+			conditionStatus = metav1.ConditionFalse
+			conditionReason = ZoneReasonSynchronizationFailed
+			conditionMessage = fmt.Sprintf("Reconciliation failed: %v", reconcileErr)
+		}
 	}
 
 	if syncStatus == nil {
 		syncStatus = ptr.To(SUCCEEDED_STATUS)
-	}
-
-	// Update ZoneStatus
-	zoneRes, err = getZoneExternalResources(ctx, gz.GetObjectMeta().Name, PDNSClient, log)
-	if err != nil {
-		return ctrl.Result{}, err
 	}
 
 	err = patchZoneStatus(ctx, gz, zoneRes, syncStatus, cl, metav1.Condition{
@@ -499,23 +521,31 @@ func zoneExternalResourcesReconcile(ctx context.Context, zoneRes *powerdns.Zone,
 func patchZoneStatus(ctx context.Context, zone dnsv1alpha2.GenericZone, zoneRes *powerdns.Zone, status *string, cl client.Client, condition metav1.Condition) error {
 	original := zone.Copy()
 
-	kind := string(ptr.Deref(zoneRes.Kind, ""))
 	conditions := zone.GetStatus().Conditions
 	meta.SetStatusCondition(&conditions, condition)
-	zone.SetStatus(dnsv1alpha2.ZoneStatus{
-		ID:                 zoneRes.ID,
-		Name:               zoneRes.Name,
-		Kind:               &kind,
-		Serial:             zoneRes.Serial,
-		NotifiedSerial:     zoneRes.NotifiedSerial,
-		EditedSerial:       zoneRes.EditedSerial,
-		Masters:            zoneRes.Masters,
-		DNSsec:             zoneRes.DNSsec,
+
+	// Create base status with minimal required fields
+	zoneStatus := dnsv1alpha2.ZoneStatus{
 		SyncStatus:         status,
-		Catalog:            zoneRes.Catalog,
 		ObservedGeneration: ptr.To(zone.GetGeneration()),
 		Conditions:         conditions,
-	})
+	}
+
+	// If we have zone data from PowerDNS, include it in the status
+	if zoneRes != nil {
+		kind := string(ptr.Deref(zoneRes.Kind, ""))
+		zoneStatus.ID = zoneRes.ID
+		zoneStatus.Name = zoneRes.Name
+		zoneStatus.Kind = &kind
+		zoneStatus.Serial = zoneRes.Serial
+		zoneStatus.NotifiedSerial = zoneRes.NotifiedSerial
+		zoneStatus.EditedSerial = zoneRes.EditedSerial
+		zoneStatus.Masters = zoneRes.Masters
+		zoneStatus.DNSsec = zoneRes.DNSsec
+		zoneStatus.Catalog = zoneRes.Catalog
+	}
+
+	zone.SetStatus(zoneStatus)
 	return cl.Status().Patch(ctx, zone, client.MergeFrom(original))
 }
 
@@ -572,4 +602,52 @@ func ownObject(ctx context.Context, zone dnsv1alpha2.GenericZone, rrset dnsv1alp
 		return err
 	}
 	return cl.Update(ctx, rrset)
+}
+
+// getLastConditionTransition returns the time when a Zone/ClusterZone last changed its condition status.
+func getLastConditionTransition(gz dnsv1alpha2.GenericZone) time.Time {
+	conditions := gz.GetStatus().Conditions
+	if len(conditions) == 0 {
+		// New resource with no status conditions yet - return old time to allow immediate retry
+		return time.Now().Add(-time.Hour)
+	}
+
+	// Find the most recent condition transition across all condition types
+	var latest time.Time
+	for _, condition := range conditions {
+		if condition.LastTransitionTime.Time.After(latest) {
+			latest = condition.LastTransitionTime.Time
+		}
+	}
+
+	if latest.IsZero() {
+		// Safety fallback: if no valid timestamps found, return old time to allow retry
+		return time.Now().Add(-time.Hour)
+	}
+
+	return latest
+}
+
+// getLastRRsetConditionTransition returns the time when an RRset/ClusterRRset last changed its condition status.
+func getLastRRsetConditionTransition(gr dnsv1alpha2.GenericRRset) time.Time {
+	conditions := gr.GetStatus().Conditions
+	if len(conditions) == 0 {
+		// New resource with no status conditions yet - return old time to allow immediate retry
+		return time.Now().Add(-time.Hour)
+	}
+
+	// Find the most recent condition transition across all condition types
+	var latest time.Time
+	for _, condition := range conditions {
+		if condition.LastTransitionTime.Time.After(latest) {
+			latest = condition.LastTransitionTime.Time
+		}
+	}
+
+	if latest.IsZero() {
+		// Safety fallback: if no valid timestamps found, return old time to allow retry
+		return time.Now().Add(-time.Hour)
+	}
+
+	return latest
 }

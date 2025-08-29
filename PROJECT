@@ -57,4 +57,12 @@ resources:
   kind: ClusterRRset
   path: github.com/powerdns-operator/powerdns-operator/api/v1alpha2
   version: v1alpha2
+- api:
+    crdVersion: v1
+  controller: true
+  domain: cav.enablers.ob
+  group: dns
+  kind: Cluster
+  path: github.com/powerdns-operator/powerdns-operator/api/v1alpha2
+  version: v1alpha2
 version: "3"
