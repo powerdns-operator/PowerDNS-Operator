@@ -17,6 +17,10 @@ import (
 
 // ZoneSpec defines the desired state of Zone
 type ZoneSpec struct {
+	// ClusterRef is a reference to the Cluster resource that manages the PowerDNS instance
+	// +optional
+	ClusterRef *string `json:"clusterRef,omitempty"`
+
 	// Kind of the zone, one of "Native", "Master", "Slave", "Producer", "Consumer".
 	// +kubebuilder:validation:Enum:=Native;Master;Slave;Producer;Consumer
 	Kind string `json:"kind"`
@@ -73,6 +77,7 @@ type ZoneStatus struct {
 //+kubebuilder:subresource:status
 //+kubebuilder:resource:scope=Namespaced
 
+// +kubebuilder:printcolumn:name="Cluster",type="string",JSONPath=".spec.clusterRef"
 // +kubebuilder:printcolumn:name="Serial",type="integer",JSONPath=".status.serial"
 // +kubebuilder:printcolumn:name="ID",type="string",JSONPath=".status.id"
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.syncStatus"
@@ -104,4 +109,9 @@ func (z *Zone) IsInExpectedStatus(expectedMinimumObservedGeneration int64, expec
 		*z.Status.ObservedGeneration >= expectedMinimumObservedGeneration &&
 		z.Status.SyncStatus != nil &&
 		*z.Status.SyncStatus == expectedSyncStatus
+}
+
+// GetClusterRef returns the cluster reference for this zone
+func (z *Zone) GetClusterRef() *string {
+	return z.Spec.ClusterRef
 }

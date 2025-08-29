@@ -19,6 +19,7 @@ import (
 //+kubebuilder:subresource:status
 // +kubebuilder:resource:scope=Cluster
 
+// +kubebuilder:printcolumn:name="Cluster",type="string",JSONPath=".spec.clusterRef"
 // +kubebuilder:printcolumn:name="Serial",type="integer",JSONPath=".status.serial"
 // +kubebuilder:printcolumn:name="ID",type="string",JSONPath=".status.id"
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.syncStatus"
@@ -50,4 +51,9 @@ func (z *ClusterZone) IsInExpectedStatus(expectedMinimumObservedGeneration int64
 		*z.Status.ObservedGeneration >= expectedMinimumObservedGeneration &&
 		z.Status.SyncStatus != nil &&
 		*z.Status.SyncStatus == expectedSyncStatus
+}
+
+// GetClusterRef returns the cluster reference for this cluster zone
+func (z *ClusterZone) GetClusterRef() *string {
+	return z.Spec.ClusterRef
 }

@@ -1,0 +1,70 @@
+apiVersion: dns.cav.enablers.ob/v1alpha2
+kind: Cluster
+metadata:
+  name: powerdns-cluster-sample
+spec:
+  # URL of the PowerDNS API
+  apiUrl: https://powerdns-server:8081
+  
+  # Reference to a Kubernetes Secret containing the PowerDNS API key
+  # The secret must contain a key named "apiKey"
+  apiSecretRef:
+    name: powerdns-api-secret
+    namespace: powerdns-operator-system
+  
+  # Optional: PowerDNS API vhost (defaults to "localhost")
+  apiVhost: localhost
+  
+  # Optional: API timeout in seconds (defaults to 10, min: 1, max: 300)
+  apiTimeout: 30
+  
+  # Optional: Skip TLS verification (defaults to false)
+  apiInsecure: false
+  
+  # Optional: Path to CA certificate for TLS verification
+  # This should be a path to a mounted secret or configmap in the operator pod
+  # apiCAPath: /etc/ssl/certs/ca-certificates.crt
+  
+  # Optional: HTTP/HTTPS proxy URL for connecting to PowerDNS API
+  # proxyUrl: http://proxy.example.com:8080
+---
+# Example Secret for PowerDNS API key
+apiVersion: v1
+kind: Secret
+metadata:
+  name: powerdns-api-secret
+  namespace: powerdns-operator-system
+type: Opaque
+stringData:
+  apiKey: your-powerdns-api-key-here
+---
+# Example Zone that references the Cluster
+apiVersion: dns.cav.enablers.ob/v1alpha2
+kind: Zone
+metadata:
+  name: example.com
+  namespace: default
+spec:
+  # Reference to the Cluster resource
+  clusterRef: powerdns-cluster-sample
+  
+  kind: Native
+  nameservers:
+    - ns1.example.com
+    - ns2.example.com
+  catalog: catalog.example.com.
+  soa_edit_api: DEFAULT
+---
+# Example ClusterZone that references the Cluster
+apiVersion: dns.cav.enablers.ob/v1alpha2
+kind: ClusterZone
+metadata:
+  name: cluster-example.com
+spec:
+  # Reference to the Cluster resource
+  clusterRef: powerdns-cluster-sample
+  
+  kind: Native
+  nameservers:
+    - ns1.cluster-example.com
+    - ns2.cluster-example.com
