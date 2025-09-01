@@ -615,7 +615,7 @@ func getLastConditionTransition(gz dnsv1alpha2.GenericZone) time.Time {
 	// Find the most recent condition transition across all condition types
 	var latest time.Time
 	for _, condition := range conditions {
-		if condition.LastTransitionTime.Time.After(latest) {
+		if condition.LastTransitionTime.After(latest) {
 			latest = condition.LastTransitionTime.Time
 		}
 	}
@@ -639,7 +639,7 @@ func getLastRRsetConditionTransition(gr dnsv1alpha2.GenericRRset) time.Time {
 	// Find the most recent condition transition across all condition types
 	var latest time.Time
 	for _, condition := range conditions {
-		if condition.LastTransitionTime.Time.After(latest) {
+		if condition.LastTransitionTime.After(latest) {
 			latest = condition.LastTransitionTime.Time
 		}
 	}

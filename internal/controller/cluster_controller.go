@@ -17,7 +17,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
+
 	"time"
 
 	"github.com/joeig/go-powerdns/v3"
@@ -101,7 +101,7 @@ func (r *ClusterReconciler) reconcileCluster(ctx context.Context, cluster *dnsv1
 	}
 
 	// Check PowerDNS connection
-	serverInfo, err := r.checkPowerDNSConnection(ctx, cluster, apiKey)
+	serverInfo, err := r.checkPowerDNSConnection(ctx, cluster, apiKey, "powerdns-operator-system")
 	if err != nil {
 		log.Error(err, "Failed to connect to PowerDNS")
 		r.updateClusterStatus(ctx, cluster, "Failed", nil, ClusterReasonConnectionFailed, err.Error())
@@ -110,14 +110,14 @@ func (r *ClusterReconciler) reconcileCluster(ctx context.Context, cluster *dnsv1
 
 	// Update status with success
 	r.updateClusterStatus(ctx, cluster, "Connected", serverInfo, ClusterReasonConnected, ClusterMessageConnected)
-	return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+	return ctrl.Result{RequeueAfter: cluster.GetInterval()}, nil
 }
 
 func (r *ClusterReconciler) getAPIKeyFromSecret(ctx context.Context, cluster *dnsv1alpha2.Cluster) (string, error) {
 	secret := &corev1.Secret{}
 	secretKey := types.NamespacedName{
-		Name:      cluster.Spec.ApiSecretRef.Name,
-		Namespace: cluster.Spec.ApiSecretRef.Namespace,
+		Name:      cluster.GetCredentialsSecretName(),
+		Namespace: cluster.GetCredentialsSecretNamespace(),
 	}
 
 	err := r.Get(ctx, secretKey, secret)
@@ -125,25 +125,27 @@ func (r *ClusterReconciler) getAPIKeyFromSecret(ctx context.Context, cluster *dn
 		return "", fmt.Errorf("failed to get secret %s/%s: %w", secretKey.Namespace, secretKey.Name, err)
 	}
 
-	apiKey, exists := secret.Data["apiKey"]
+	keyName := cluster.GetCredentialsSecretKey()
+	apiKey, exists := secret.Data[keyName]
 	if !exists {
-		return "", fmt.Errorf("apiKey not found in secret %s/%s", secretKey.Namespace, secretKey.Name)
+		return "", fmt.Errorf("%s not found in secret %s/%s", keyName, secretKey.Namespace, secretKey.Name)
 	}
 
 	return string(apiKey), nil
 }
 
-func (r *ClusterReconciler) checkPowerDNSConnection(ctx context.Context, cluster *dnsv1alpha2.Cluster, apiKey string) (map[string]*string, error) {
+func (r *ClusterReconciler) checkPowerDNSConnection(ctx context.Context, cluster *dnsv1alpha2.Cluster, apiKey string, clusterNamespace string) (map[string]*string, error) {
 	// Create HTTP client
-	tlsConfig := &tls.Config{InsecureSkipVerify: cluster.GetApiInsecure()}
+	tlsConfig := &tls.Config{InsecureSkipVerify: cluster.GetTLSInsecure()}
 
-	if cluster.Spec.ApiCAPath != nil && *cluster.Spec.ApiCAPath != "" {
-		caCert, err := os.ReadFile(*cluster.Spec.ApiCAPath)
+	// Handle CA bundle if specified
+	if cluster.Spec.TLS != nil && cluster.Spec.TLS.CABundleRef != nil {
+		caBundleData, err := r.getCABundleData(ctx, cluster, clusterNamespace)
 		if err != nil {
-			return nil, fmt.Errorf("failed to read CA certificate: %w", err)
+			return nil, fmt.Errorf("failed to get CA bundle: %w", err)
 		}
 		caCertPool := x509.NewCertPool()
-		if !caCertPool.AppendCertsFromPEM(caCert) {
+		if !caCertPool.AppendCertsFromPEM(caBundleData) {
 			return nil, fmt.Errorf("failed to parse CA certificate")
 		}
 		tlsConfig.RootCAs = caCertPool
@@ -152,8 +154,8 @@ func (r *ClusterReconciler) checkPowerDNSConnection(ctx context.Context, cluster
 	transport := &http.Transport{TLSClientConfig: tlsConfig}
 
 	// Configure proxy if specified
-	if cluster.Spec.ProxyURL != nil && *cluster.Spec.ProxyURL != "" {
-		proxyURL, err := url.Parse(*cluster.Spec.ProxyURL)
+	if cluster.Spec.Proxy != nil && *cluster.Spec.Proxy != "" {
+		proxyURL, err := url.Parse(*cluster.Spec.Proxy)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse proxy URL: %w", err)
 		}
@@ -162,17 +164,17 @@ func (r *ClusterReconciler) checkPowerDNSConnection(ctx context.Context, cluster
 
 	httpClient := &http.Client{
 		Transport: transport,
-		Timeout:   time.Duration(cluster.GetApiTimeout()) * time.Second,
+		Timeout:   cluster.GetTimeout(),
 	}
 
 	// Create PowerDNS client and check connection
-	pdnsClient := powerdns.New(cluster.Spec.ApiURL, cluster.GetApiVhost(),
+	pdnsClient := powerdns.New(cluster.Spec.URL, cluster.GetVhost(),
 		powerdns.WithAPIKey(apiKey), powerdns.WithHTTPClient(httpClient))
 
-	timeoutCtx, cancel := context.WithTimeout(ctx, time.Duration(cluster.GetApiTimeout())*time.Second)
+	timeoutCtx, cancel := context.WithTimeout(ctx, cluster.GetTimeout())
 	defer cancel()
 
-	server, err := pdnsClient.Servers.Get(timeoutCtx, cluster.GetApiVhost())
+	server, err := pdnsClient.Servers.Get(timeoutCtx, cluster.GetVhost())
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to PowerDNS: %w", err)
 	}
@@ -187,6 +189,51 @@ func (r *ClusterReconciler) checkPowerDNSConnection(ctx context.Context, cluster
 		"daemonType": server.DaemonType,
 		"serverID":   server.ID,
 	}, nil
+}
+
+func (r *ClusterReconciler) getCABundleData(ctx context.Context, cluster *dnsv1alpha2.Cluster, clusterNamespace string) ([]byte, error) {
+	if cluster.Spec.TLS == nil || cluster.Spec.TLS.CABundleRef == nil {
+		return nil, fmt.Errorf("CA bundle reference is nil")
+	}
+
+	caBundleRef := cluster.Spec.TLS.CABundleRef
+	kind := cluster.GetCABundleRefKind()
+	key := cluster.GetCABundleRefKey()
+
+	// Use the namespace from the CA bundle ref if specified, otherwise use the cluster's namespace
+	namespace := clusterNamespace
+	if caBundleRef.Namespace != nil {
+		namespace = *caBundleRef.Namespace
+	}
+
+	objKey := types.NamespacedName{
+		Name:      caBundleRef.Name,
+		Namespace: namespace,
+	}
+
+	if kind == "Secret" {
+		secret := &corev1.Secret{}
+		err := r.Get(ctx, objKey, secret)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get secret %s/%s: %w", objKey.Namespace, objKey.Name, err)
+		}
+		data, exists := secret.Data[key]
+		if !exists {
+			return nil, fmt.Errorf("%s not found in secret %s/%s", key, objKey.Namespace, objKey.Name)
+		}
+		return data, nil
+	} else {
+		configMap := &corev1.ConfigMap{}
+		err := r.Get(ctx, objKey, configMap)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get configmap %s/%s: %w", objKey.Namespace, objKey.Name, err)
+		}
+		data, exists := configMap.Data[key]
+		if !exists {
+			return nil, fmt.Errorf("%s not found in configmap %s/%s", key, objKey.Namespace, objKey.Name)
+		}
+		return []byte(data), nil
+	}
 }
 
 func (r *ClusterReconciler) updateClusterStatus(ctx context.Context, cluster *dnsv1alpha2.Cluster,

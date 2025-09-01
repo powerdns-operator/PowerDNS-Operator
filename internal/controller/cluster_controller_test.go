@@ -42,7 +42,8 @@ var _ = Describe("Cluster Controller", func() {
 	)
 
 	typeNamespacedName := types.NamespacedName{
-		Name: clusterName,
+		Name:      clusterName,
+		Namespace: secretNamespace,
 	}
 
 	secretNamespacedName := types.NamespacedName{
@@ -62,7 +63,7 @@ var _ = Describe("Cluster Controller", func() {
 				},
 				Type: corev1.SecretTypeOpaque,
 				StringData: map[string]string{
-					"PDNS_API_KEY": apiKey,
+					"apiKey": apiKey,
 				},
 			}
 			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, secret, func() error {
@@ -73,20 +74,25 @@ var _ = Describe("Cluster Controller", func() {
 			By("creating the Cluster resource")
 			cluster := &dnsv1alpha2.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: clusterName,
+					Name:      clusterName,
+					Namespace: secretNamespace,
 				},
 			}
 			cluster.SetResourceVersion("")
 			_, err = controllerutil.CreateOrUpdate(ctx, k8sClient, cluster, func() error {
 				cluster.Spec = dnsv1alpha2.ClusterSpec{
-					ApiURL: apiURL,
-					ApiSecretRef: corev1.SecretReference{
-						Name:      secretName,
-						Namespace: secretNamespace,
+					URL: apiURL,
+					Credentials: dnsv1alpha2.ClusterCredentials{
+						SecretRef: dnsv1alpha2.ClusterSecretRef{
+							Name:      secretName,
+							Namespace: ptr.To(secretNamespace),
+						},
 					},
-					ApiVhost:    ptr.To("localhost"),
-					ApiTimeout:  ptr.To(10),
-					ApiInsecure: ptr.To(false),
+					Vhost:   ptr.To("localhost"),
+					Timeout: ptr.To(metav1.Duration{Duration: 10 * time.Second}),
+					TLS: &dnsv1alpha2.ClusterTLSConfig{
+						Insecure: ptr.To(false),
+					},
 				}
 				return nil
 			})
@@ -130,12 +136,12 @@ var _ = Describe("Cluster Controller", func() {
 			}, timeout, interval).Should(Succeed())
 
 			By("Checking that the Cluster has the expected spec")
-			Expect(cluster.Spec.ApiURL).To(Equal(apiURL))
-			Expect(cluster.Spec.ApiSecretRef.Name).To(Equal(secretName))
-			Expect(cluster.Spec.ApiSecretRef.Namespace).To(Equal(secretNamespace))
-			Expect(cluster.GetApiVhost()).To(Equal("localhost"))
-			Expect(cluster.GetApiTimeout()).To(Equal(10))
-			Expect(cluster.GetApiInsecure()).To(BeFalse())
+			Expect(cluster.Spec.URL).To(Equal(apiURL))
+			Expect(cluster.GetCredentialsSecretName()).To(Equal(secretName))
+			Expect(cluster.GetCredentialsSecretNamespace()).To(Equal(secretNamespace))
+			Expect(cluster.GetVhost()).To(Equal("localhost"))
+			Expect(cluster.GetTimeout()).To(Equal(10 * time.Second))
+			Expect(cluster.GetTLSInsecure()).To(BeFalse())
 
 			By("Checking that helper methods work correctly")
 			Expect(cluster.IsConnectionHealthy()).To(BeFalse()) // Initially not connected
@@ -163,14 +169,18 @@ var _ = Describe("Cluster Controller", func() {
 					Name: "apikey-cluster",
 				},
 				Spec: dnsv1alpha2.ClusterSpec{
-					ApiURL: "https://test-powerdns-apikey:8081",
-					ApiSecretRef: corev1.SecretReference{
-						Name:      "apikey-secret",
-						Namespace: secretNamespace,
+					URL: "https://test-powerdns-apikey:8081",
+					Credentials: dnsv1alpha2.ClusterCredentials{
+						SecretRef: dnsv1alpha2.ClusterSecretRef{
+							Name:      "apikey-secret",
+							Namespace: ptr.To(secretNamespace),
+						},
 					},
-					ApiVhost:    ptr.To("localhost"),
-					ApiTimeout:  ptr.To(10),
-					ApiInsecure: ptr.To(true),
+					Vhost:   ptr.To("localhost"),
+					Timeout: ptr.To(metav1.Duration{Duration: 10 * time.Second}),
+					TLS: &dnsv1alpha2.ClusterTLSConfig{
+						Insecure: ptr.To(true),
+					},
 				},
 			}
 			Expect(k8sClient.Create(ctx, clusterWithApiKey)).To(Succeed())
@@ -200,10 +210,12 @@ var _ = Describe("Cluster Controller", func() {
 					Name: "minimal-cluster",
 				},
 				Spec: dnsv1alpha2.ClusterSpec{
-					ApiURL: apiURL,
-					ApiSecretRef: corev1.SecretReference{
-						Name:      secretName,
-						Namespace: secretNamespace,
+					URL: apiURL,
+					Credentials: dnsv1alpha2.ClusterCredentials{
+						SecretRef: dnsv1alpha2.ClusterSecretRef{
+							Name:      secretName,
+							Namespace: ptr.To(secretNamespace),
+						},
 					},
 				},
 			}
@@ -211,9 +223,9 @@ var _ = Describe("Cluster Controller", func() {
 			Expect(k8sClient.Create(ctx, minimalCluster)).To(Succeed())
 
 			By("Checking default values are applied")
-			Expect(minimalCluster.GetApiVhost()).To(Equal("localhost"))
-			Expect(minimalCluster.GetApiTimeout()).To(Equal(10))
-			Expect(minimalCluster.GetApiInsecure()).To(BeFalse())
+			Expect(minimalCluster.GetVhost()).To(Equal("localhost"))
+			Expect(minimalCluster.GetTimeout()).To(Equal(10 * time.Second))
+			Expect(minimalCluster.GetTLSInsecure()).To(BeFalse())
 
 			By("Cleanup minimal cluster")
 			Expect(k8sClient.Delete(ctx, minimalCluster)).To(Succeed())
@@ -228,12 +240,14 @@ var _ = Describe("Cluster Controller", func() {
 					Name: "proxy-cluster",
 				},
 				Spec: dnsv1alpha2.ClusterSpec{
-					ApiURL: apiURL,
-					ApiSecretRef: corev1.SecretReference{
-						Name:      secretName,
-						Namespace: secretNamespace,
+					URL: apiURL,
+					Credentials: dnsv1alpha2.ClusterCredentials{
+						SecretRef: dnsv1alpha2.ClusterSecretRef{
+							Name:      secretName,
+							Namespace: ptr.To(secretNamespace),
+						},
 					},
-					ProxyURL: ptr.To("http://proxy.example.com:8080"),
+					Proxy: ptr.To("http://proxy.example.com:8080"),
 				},
 			}
 
@@ -245,7 +259,7 @@ var _ = Describe("Cluster Controller", func() {
 				if err != nil {
 					return false
 				}
-				return proxyCluster.Spec.ProxyURL != nil && *proxyCluster.Spec.ProxyURL == "http://proxy.example.com:8080"
+				return proxyCluster.Spec.Proxy != nil && *proxyCluster.Spec.Proxy == "http://proxy.example.com:8080"
 			}, timeout, interval).Should(BeTrue())
 
 			By("Cleanup proxy cluster")
@@ -302,10 +316,12 @@ var _ = Describe("Cluster Controller", func() {
 					Name: "invalid-url-cluster",
 				},
 				Spec: dnsv1alpha2.ClusterSpec{
-					ApiURL: "invalid-url", // This should fail validation
-					ApiSecretRef: corev1.SecretReference{
-						Name:      secretName,
-						Namespace: secretNamespace,
+					URL: "invalid-url", // This should fail validation
+					Credentials: dnsv1alpha2.ClusterCredentials{
+						SecretRef: dnsv1alpha2.ClusterSecretRef{
+							Name:      secretName,
+							Namespace: ptr.To(secretNamespace),
+						},
 					},
 				},
 			}
@@ -316,28 +332,32 @@ var _ = Describe("Cluster Controller", func() {
 			Expect(err.Error()).To(ContainSubstring("should match"))
 		})
 
-		It("should reject invalid timeout values", func() {
+		It("should accept valid timeout duration", func() {
 			ctx := context.Background()
 
-			By("creating a Cluster with invalid timeout")
-			invalidCluster := &dnsv1alpha2.Cluster{
+			By("creating a Cluster with valid timeout duration")
+			validCluster := &dnsv1alpha2.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "invalid-timeout-cluster",
+					Name: "valid-timeout-cluster",
 				},
 				Spec: dnsv1alpha2.ClusterSpec{
-					ApiURL: apiURL,
-					ApiSecretRef: corev1.SecretReference{
-						Name:      secretName,
-						Namespace: secretNamespace,
+					URL: apiURL,
+					Credentials: dnsv1alpha2.ClusterCredentials{
+						SecretRef: dnsv1alpha2.ClusterSecretRef{
+							Name:      secretName,
+							Namespace: ptr.To(secretNamespace),
+						},
 					},
-					ApiTimeout: ptr.To(500), // This should fail validation (max 300)
+					Timeout: ptr.To(metav1.Duration{Duration: 30 * time.Second}),
 				},
 			}
 
-			By("Expecting creation to fail due to validation")
-			err := k8sClient.Create(ctx, invalidCluster)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("should be less than or equal to"))
+			By("Expecting creation to succeed")
+			err := k8sClient.Create(ctx, validCluster)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Cleanup valid timeout cluster")
+			Expect(k8sClient.Delete(ctx, validCluster)).To(Succeed())
 		})
 	})
 
@@ -362,13 +382,16 @@ var _ = Describe("Cluster Controller", func() {
 				// Create cluster if it doesn't exist
 				cluster = &dnsv1alpha2.Cluster{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: clusterName,
+						Name:      clusterName,
+						Namespace: secretNamespace,
 					},
 					Spec: dnsv1alpha2.ClusterSpec{
-						ApiURL: apiURL,
-						ApiSecretRef: corev1.SecretReference{
-							Name:      secretName,
-							Namespace: secretNamespace,
+						URL: apiURL,
+						Credentials: dnsv1alpha2.ClusterCredentials{
+							SecretRef: dnsv1alpha2.ClusterSecretRef{
+								Name:      secretName,
+								Namespace: ptr.To(secretNamespace),
+							},
 						},
 					},
 				}

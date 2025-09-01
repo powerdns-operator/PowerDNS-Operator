@@ -18,10 +18,10 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"time"
 
 	"github.com/joeig/go-powerdns/v3"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	dnsv1alpha2 "github.com/powerdns-operator/powerdns-operator/api/v1alpha2"
@@ -64,7 +64,7 @@ func getClusterClient(ctx context.Context, k8sClient client.Client, clusterName 
 	}
 
 	// Validate cluster configuration
-	if cluster.Spec.ApiURL == "" {
+	if cluster.Spec.URL == "" {
 		return PdnsClienter{}, fmt.Errorf("cluster '%s' has no API URL configured", clusterName)
 	}
 
@@ -75,12 +75,12 @@ func getClusterClient(ctx context.Context, k8sClient client.Client, clusterName 
 	}
 
 	// Create PowerDNS client
-	httpClient, err := createHTTPClient(cluster)
+	httpClient, err := createHTTPClientWithContext(ctx, k8sClient, cluster)
 	if err != nil {
 		return PdnsClienter{}, fmt.Errorf("failed to create HTTP client for cluster '%s': %w", clusterName, err)
 	}
 
-	pdnsClient := powerdns.New(cluster.Spec.ApiURL, cluster.GetApiVhost(),
+	pdnsClient := powerdns.New(cluster.Spec.URL, cluster.GetVhost(),
 		powerdns.WithAPIKey(apiKey), powerdns.WithHTTPClient(httpClient))
 
 	return PdnsClienter{Records: pdnsClient.Records, Zones: pdnsClient.Zones}, nil
@@ -88,62 +88,119 @@ func getClusterClient(ctx context.Context, k8sClient client.Client, clusterName 
 
 func getAPIKey(ctx context.Context, k8sClient client.Client, cluster *dnsv1alpha2.Cluster) (string, error) {
 	secret := &corev1.Secret{}
-	secretRef := cluster.Spec.ApiSecretRef
+	secretName := cluster.GetCredentialsSecretName()
+	secretNamespace := cluster.GetCredentialsSecretNamespace()
+	secretKey := cluster.GetCredentialsSecretKey()
 
-	if secretRef.Name == "" {
+	if secretName == "" {
 		return "", fmt.Errorf("no secret reference configured")
 	}
 
 	if err := k8sClient.Get(ctx, client.ObjectKey{
-		Name:      secretRef.Name,
-		Namespace: secretRef.Namespace,
+		Name:      secretName,
+		Namespace: secretNamespace,
 	}, secret); err != nil {
-		return "", fmt.Errorf("failed to get secret '%s/%s': %w", secretRef.Namespace, secretRef.Name, err)
+		return "", fmt.Errorf("failed to get secret '%s/%s': %w", secretNamespace, secretName, err)
 	}
 
-	apiKey, exists := secret.Data["apiKey"]
+	apiKey, exists := secret.Data[secretKey]
 	if !exists {
-		return "", fmt.Errorf("'apiKey' field not found in secret '%s/%s'", secretRef.Namespace, secretRef.Name)
+		return "", fmt.Errorf("'%s' field not found in secret '%s/%s'", secretKey, secretNamespace, secretName)
 	}
 
 	if len(apiKey) == 0 {
-		return "", fmt.Errorf("'apiKey' field is empty in secret '%s/%s'", secretRef.Namespace, secretRef.Name)
+		return "", fmt.Errorf("'%s' field is empty in secret '%s/%s'", secretKey, secretNamespace, secretName)
 	}
 
 	return string(apiKey), nil
 }
 
-func createHTTPClient(cluster *dnsv1alpha2.Cluster) (*http.Client, error) {
-	tlsConfig := &tls.Config{InsecureSkipVerify: cluster.GetApiInsecure()}
+func createHTTPClientWithContext(ctx context.Context, k8sClient client.Client, cluster *dnsv1alpha2.Cluster) (*http.Client, error) {
+	tlsConfig := &tls.Config{InsecureSkipVerify: cluster.GetTLSInsecure()}
 
-	// Handle CA certificate if provided
-	if cluster.Spec.ApiCAPath != nil && *cluster.Spec.ApiCAPath != "" {
-		caCert, err := os.ReadFile(*cluster.Spec.ApiCAPath)
+	// Handle CA certificate if provided via CA bundle reference
+	if cluster.Spec.TLS != nil && cluster.Spec.TLS.CABundleRef != nil {
+		caBundleData, err := getCABundleData(ctx, k8sClient, cluster)
 		if err != nil {
-			return nil, fmt.Errorf("failed to read CA certificate file '%s': %w", *cluster.Spec.ApiCAPath, err)
+			return nil, fmt.Errorf("failed to get CA bundle: %w", err)
 		}
-
 		caCertPool := x509.NewCertPool()
-		if !caCertPool.AppendCertsFromPEM(caCert) {
-			return nil, fmt.Errorf("failed to parse CA certificate from file '%s': invalid PEM format", *cluster.Spec.ApiCAPath)
+		if !caCertPool.AppendCertsFromPEM(caBundleData) {
+			return nil, fmt.Errorf("failed to parse CA certificate")
 		}
-
 		tlsConfig.RootCAs = caCertPool
 	}
 
 	transport := &http.Transport{TLSClientConfig: tlsConfig}
 
 	// Handle proxy configuration if provided
-	if cluster.Spec.ProxyURL != nil && *cluster.Spec.ProxyURL != "" {
-		proxyURL, err := url.Parse(*cluster.Spec.ProxyURL)
+	if cluster.Spec.Proxy != nil && *cluster.Spec.Proxy != "" {
+		proxyURL, err := url.Parse(*cluster.Spec.Proxy)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse proxy URL '%s': %w", *cluster.Spec.ProxyURL, err)
+			return nil, fmt.Errorf("failed to parse proxy URL '%s': %w", *cluster.Spec.Proxy, err)
 		}
 		transport.Proxy = http.ProxyURL(proxyURL)
 	}
 
 	return &http.Client{
 		Transport: transport,
-		Timeout:   time.Duration(cluster.GetApiTimeout()) * time.Second,
+		Timeout:   cluster.GetTimeout(),
 	}, nil
+}
+
+func getCABundleData(ctx context.Context, k8sClient client.Client, cluster *dnsv1alpha2.Cluster) ([]byte, error) {
+	if cluster.Spec.TLS == nil || cluster.Spec.TLS.CABundleRef == nil {
+		return nil, fmt.Errorf("CA bundle reference is nil")
+	}
+
+	caBundleRef := cluster.Spec.TLS.CABundleRef
+	kind := cluster.GetCABundleRefKind()
+	key := cluster.GetCABundleRefKey()
+
+	// Use the namespace from the CA bundle ref if specified, otherwise use operator namespace
+	// Note: Cluster is cluster-scoped so it has no namespace
+	namespace := getOperatorNamespace()
+	if caBundleRef.Namespace != nil {
+		namespace = *caBundleRef.Namespace
+	}
+
+	objKey := types.NamespacedName{
+		Name:      caBundleRef.Name,
+		Namespace: namespace,
+	}
+
+	if kind == "Secret" {
+		secret := &corev1.Secret{}
+		err := k8sClient.Get(ctx, objKey, secret)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get secret %s/%s: %w", objKey.Namespace, objKey.Name, err)
+		}
+		data, exists := secret.Data[key]
+		if !exists {
+			return nil, fmt.Errorf("%s not found in secret %s/%s", key, objKey.Namespace, objKey.Name)
+		}
+		return data, nil
+	} else {
+		configMap := &corev1.ConfigMap{}
+		err := k8sClient.Get(ctx, objKey, configMap)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get configmap %s/%s: %w", objKey.Namespace, objKey.Name, err)
+		}
+		data, exists := configMap.Data[key]
+		if !exists {
+			return nil, fmt.Errorf("%s not found in configmap %s/%s", key, objKey.Namespace, objKey.Name)
+		}
+		return []byte(data), nil
+	}
+}
+
+// getOperatorNamespace returns the operator's namespace
+// It first tries to read from OPERATOR_NAMESPACE environment variable,
+// then falls back to the default operator namespace
+func getOperatorNamespace() string {
+	if ns := os.Getenv("OPERATOR_NAMESPACE"); ns != "" {
+		return ns
+	}
+	// Default operator namespace
+	return "powerdns-operator-system"
 }

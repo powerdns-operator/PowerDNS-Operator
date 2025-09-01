@@ -1,38 +1,45 @@
 apiVersion: dns.cav.enablers.ob/v1alpha2
 kind: Cluster
 metadata:
-  name: powerdns-cluster-sample
+  name: powerdns1
 spec:
+  # Reconciliation interval (defaults to 5m)
+  interval: 5m
+  
   # URL of the PowerDNS API
-  apiUrl: https://powerdns-server:8081
+  url: https://pdns-public.example.com:8081
   
-  # Reference to a Kubernetes Secret containing the PowerDNS API key
-  # The secret must contain a key named "apiKey"
-  apiSecretRef:
-    name: powerdns-api-secret
-    namespace: powerdns-operator-system
+  # Server ID to target (defaults to "localhost")
+  vhost: localhost
   
-  # Optional: PowerDNS API vhost (defaults to "localhost")
-  apiVhost: localhost
+  # Request timeout (defaults to 10s)
+  timeout: 30s
   
-  # Optional: API timeout in seconds (defaults to 10, min: 1, max: 300)
-  apiTimeout: 30
+  # HTTP proxy (optional)
+  proxy: http://proxy:1234
   
-  # Optional: Skip TLS verification (defaults to false)
-  apiInsecure: false
+  # TLS configuration
+  tls:
+    # Skip TLS verification (defaults to false)
+    insecure: false
+    # Custom CA bundle (optional)
+    caBundleRef:
+      name: pdns-ca
+      kind: ConfigMap  # Secret or ConfigMap
+      key: ca.crt      # Key in the resource (optional)
   
-  # Optional: Path to CA certificate for TLS verification
-  # This should be a path to a mounted secret or configmap in the operator pod
-  # apiCAPath: /etc/ssl/certs/ca-certificates.crt
-  
-  # Optional: HTTP/HTTPS proxy URL for connecting to PowerDNS API
-  # proxyUrl: http://proxy.example.com:8080
+  # Credentials configuration
+  credentials:
+    secretRef:
+      name: pdns-public-credentials
+      namespace: powerdns-operator-system  # Optional, defaults to cluster namespace
+      key: apiKey                          # Optional, defaults to "apiKey"
 ---
 # Example Secret for PowerDNS API key
 apiVersion: v1
 kind: Secret
 metadata:
-  name: powerdns-api-secret
+  name: pdns-public-credentials
   namespace: powerdns-operator-system
 type: Opaque
 stringData:
@@ -46,7 +53,7 @@ metadata:
   namespace: default
 spec:
   # Reference to the Cluster resource
-  clusterRef: powerdns-cluster-sample
+  clusterRef: powerdns1
   
   kind: Native
   nameservers:
@@ -62,7 +69,7 @@ metadata:
   name: cluster-example.com
 spec:
   # Reference to the Cluster resource
-  clusterRef: powerdns-cluster-sample
+  clusterRef: powerdns1
   
   kind: Native
   nameservers:
