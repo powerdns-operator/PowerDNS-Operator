@@ -15,8 +15,8 @@ spec:
   scope: Cluster
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .spec.apiUrl
-      name: API URL
+    - jsonPath: .spec.url
+      name: URL
       type: string
     - jsonPath: .status.connectionStatus
       name: Connection Status
@@ -52,55 +52,96 @@ spec:
           spec:
             description: spec defines the desired state of Cluster
             properties:
-              apiCAPath:
-                description: |-
-                  ApiCAPath is the path to the certificate authority file for TLS verification
-                  This should be a path to a mounted secret or configmap in the operator pod
-                type: string
-              apiInsecure:
-                default: false
-                description: ApiInsecure enables insecure connections to PowerDNS
-                  API (skip TLS verification)
-                type: boolean
-              apiSecretRef:
-                description: |-
-                  ApiSecretRef is a reference to a Kubernetes Secret containing the PowerDNS API key
-                  The secret must contain a key named "apiKey"
+              credentials:
+                description: Credentials defines credentials configuration for PowerDNS
+                  API
                 properties:
-                  name:
-                    description: name is unique within a namespace to reference a
-                      secret resource.
-                    type: string
-                  namespace:
-                    description: namespace defines the space within which the secret
-                      name must be unique.
-                    type: string
+                  secretRef:
+                    description: SecretRef is a reference to a Kubernetes Secret containing
+                      the PowerDNS API key
+                    properties:
+                      key:
+                        default: apiKey
+                        description: Key is the key in the Secret containing the API
+                          key
+                        type: string
+                      name:
+                        description: Name is the name of the Secret
+                        type: string
+                      namespace:
+                        description: |-
+                          Namespace is the namespace of the Secret
+                          If not specified, defaults to the cluster resource namespace
+                        type: string
+                    required:
+                    - name
+                    type: object
+                required:
+                - secretRef
                 type: object
-                x-kubernetes-map-type: atomic
-              apiTimeout:
-                default: 10
-                description: ApiTimeout is the timeout for PowerDNS API requests in
-                  seconds, defaults to 10
-                maximum: 300
-                minimum: 1
-                type: integer
-              apiUrl:
-                description: ApiURL is the URL of the PowerDNS API
-                pattern: ^https?://.*
+              interval:
+                default: 5m
+                description: Interval is the reconciliation interval to check the
+                  connection to the PowerDNS API
                 type: string
-              apiVhost:
-                default: localhost
-                description: ApiVhost is the vhost of the PowerDNS API, defaults to
-                  "localhost"
-                type: string
-              proxyUrl:
+              proxy:
                 description: |-
-                  ProxyURL is the URL of the HTTP/HTTPS proxy to use for connecting to PowerDNS API
+                  Proxy is the URL of the HTTP/HTTPS proxy to use for connecting to PowerDNS API
                   Format: http://proxy.example.com:8080 or https://proxy.example.com:8080
                 type: string
+              timeout:
+                default: 10s
+                description: Timeout is the timeout for PowerDNS API requests, defaults
+                  to 10s
+                type: string
+              tls:
+                description: TLS defines TLS configuration for PowerDNS API connection
+                properties:
+                  caBundleRef:
+                    description: CABundleRef is a reference to a ConfigMap or Secret
+                      containing a CA bundle
+                    properties:
+                      key:
+                        default: ca.crt
+                        description: Key is the key in the ConfigMap or Secret containing
+                          the CA bundle
+                        type: string
+                      kind:
+                        default: ConfigMap
+                        description: Kind is the kind of resource (ConfigMap or Secret)
+                        enum:
+                        - ConfigMap
+                        - Secret
+                        type: string
+                      name:
+                        description: Name is the name of the ConfigMap or Secret
+                        type: string
+                      namespace:
+                        description: |-
+                          Namespace is the namespace of the ConfigMap or Secret
+                          If not specified, defaults to the operator namespace
+                        type: string
+                    required:
+                    - name
+                    type: object
+                  insecure:
+                    default: false
+                    description: Insecure enables insecure connections to PowerDNS
+                      API (skip TLS verification)
+                    type: boolean
+                type: object
+              url:
+                description: URL is the URL of the PowerDNS API
+                pattern: ^https?://.*
+                type: string
+              vhost:
+                default: localhost
+                description: Vhost is the vhost/server ID of the PowerDNS API, defaults
+                  to "localhost"
+                type: string
             required:
-            - apiSecretRef
-            - apiUrl
+            - credentials
+            - url
             type: object
           status:
             description: status defines the observed state of Cluster

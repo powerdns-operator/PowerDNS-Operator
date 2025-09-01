@@ -12,6 +12,7 @@ package controller
 
 import (
 	"context"
+	"time"
 
 	"github.com/joeig/go-powerdns/v3"
 	. "github.com/onsi/ginkgo/v2"
@@ -19,6 +20,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	dnsv1alpha2 "github.com/powerdns-operator/powerdns-operator/api/v1alpha2"
 )
@@ -58,14 +60,18 @@ var _ = Describe("PowerDNS Client Selection", func() {
 					Name: testClusterName,
 				},
 				Spec: dnsv1alpha2.ClusterSpec{
-					ApiURL: testAPIURL,
-					ApiSecretRef: corev1.SecretReference{
-						Name:      testSecretName,
-						Namespace: testSecretNamespace,
+					URL: testAPIURL,
+					Credentials: dnsv1alpha2.ClusterCredentials{
+						SecretRef: dnsv1alpha2.ClusterSecretRef{
+							Name:      testSecretName,
+							Namespace: ptr.To(testSecretNamespace),
+						},
 					},
-					ApiVhost:    ptr.To("localhost"),
-					ApiTimeout:  ptr.To(10),
-					ApiInsecure: ptr.To(true),
+					Vhost:   ptr.To("localhost"),
+					Timeout: ptr.To(metav1.Duration{Duration: 10 * time.Second}),
+					TLS: &dnsv1alpha2.ClusterTLSConfig{
+						Insecure: ptr.To(true),
+					},
 				},
 				Status: dnsv1alpha2.ClusterStatus{
 					ConnectionStatus: &[]string{"Connected"}[0],
@@ -74,15 +80,26 @@ var _ = Describe("PowerDNS Client Selection", func() {
 			Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
 
 			By("calling GetPowerDNSClient with cluster reference")
-			client, err := GetPowerDNSClient(ctx, k8sClient, &testClusterName, PdnsClienter{})
+			pdnsClient, err := GetPowerDNSClient(ctx, k8sClient, &testClusterName, PdnsClienter{})
 
 			Expect(err).NotTo(HaveOccurred())
-			Expect(client.Records).NotTo(BeNil())
-			Expect(client.Zones).NotTo(BeNil())
+			Expect(pdnsClient.Records).NotTo(BeNil())
+			Expect(pdnsClient.Zones).NotTo(BeNil())
 
 			By("cleaning up")
 			Expect(k8sClient.Delete(ctx, cluster)).To(Succeed())
+			// Wait for cluster deletion to complete
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, client.ObjectKey{Name: cluster.Name}, &dnsv1alpha2.Cluster{})
+				return err != nil
+			}, time.Second*10, time.Millisecond*100).Should(BeTrue())
+
 			Expect(k8sClient.Delete(ctx, secret)).To(Succeed())
+			// Wait for secret deletion to complete
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, client.ObjectKey{Name: secret.Name, Namespace: secret.Namespace}, &corev1.Secret{})
+				return err != nil
+			}, time.Second*10, time.Millisecond*100).Should(BeTrue())
 		})
 
 		It("should return error when cluster does not exist", func() {
@@ -98,33 +115,41 @@ var _ = Describe("PowerDNS Client Selection", func() {
 			By("creating a cluster without secret")
 			cluster := &dnsv1alpha2.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: testClusterName,
+					Name: testClusterName + "-missing-secret",
 				},
 				Spec: dnsv1alpha2.ClusterSpec{
-					ApiURL: testAPIURL,
-					ApiSecretRef: corev1.SecretReference{
-						Name:      "missing-secret",
-						Namespace: testSecretNamespace,
+					URL: testAPIURL,
+					Credentials: dnsv1alpha2.ClusterCredentials{
+						SecretRef: dnsv1alpha2.ClusterSecretRef{
+							Name:      "missing-secret",
+							Namespace: ptr.To(testSecretNamespace),
+						},
 					},
 				},
 			}
 			Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
 
 			By("calling GetPowerDNSClient")
-			_, err := GetPowerDNSClient(ctx, k8sClient, &testClusterName, PdnsClienter{})
+			clusterName := testClusterName + "-missing-secret"
+			_, err := GetPowerDNSClient(ctx, k8sClient, &clusterName, PdnsClienter{})
 
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to get secret"))
 
 			By("cleaning up")
 			Expect(k8sClient.Delete(ctx, cluster)).To(Succeed())
+			// Wait for deletion to complete
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, client.ObjectKey{Name: cluster.Name}, &dnsv1alpha2.Cluster{})
+				return err != nil
+			}, time.Second*10, time.Millisecond*100).Should(BeTrue())
 		})
 
 		It("should return error when secret exists but apiKey is missing", func() {
 			By("creating a secret without apiKey")
 			secret := &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      testSecretName,
+					Name:      testSecretName + "-no-apikey",
 					Namespace: testSecretNamespace,
 				},
 				Type: corev1.SecretTypeOpaque,
@@ -137,27 +162,41 @@ var _ = Describe("PowerDNS Client Selection", func() {
 			By("creating a cluster")
 			cluster := &dnsv1alpha2.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: testClusterName,
+					Name: testClusterName + "-no-apikey",
 				},
 				Spec: dnsv1alpha2.ClusterSpec{
-					ApiURL: testAPIURL,
-					ApiSecretRef: corev1.SecretReference{
-						Name:      testSecretName,
-						Namespace: testSecretNamespace,
+					URL: testAPIURL,
+					Credentials: dnsv1alpha2.ClusterCredentials{
+						SecretRef: dnsv1alpha2.ClusterSecretRef{
+							Name:      testSecretName + "-no-apikey",
+							Namespace: ptr.To(testSecretNamespace),
+						},
 					},
 				},
 			}
 			Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
 
 			By("calling GetPowerDNSClient")
-			_, err := GetPowerDNSClient(ctx, k8sClient, &testClusterName, PdnsClienter{})
+			clusterName := testClusterName + "-no-apikey"
+			_, err := GetPowerDNSClient(ctx, k8sClient, &clusterName, PdnsClienter{})
 
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("'apiKey' field not found"))
 
 			By("cleaning up")
 			Expect(k8sClient.Delete(ctx, cluster)).To(Succeed())
+			// Wait for deletion to complete
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, client.ObjectKey{Name: cluster.Name}, &dnsv1alpha2.Cluster{})
+				return err != nil
+			}, time.Second*10, time.Millisecond*100).Should(BeTrue())
+
 			Expect(k8sClient.Delete(ctx, secret)).To(Succeed())
+			// Wait for secret deletion to complete
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, client.ObjectKey{Name: secret.Name, Namespace: secret.Namespace}, &corev1.Secret{})
+				return err != nil
+			}, time.Second*10, time.Millisecond*100).Should(BeTrue())
 		})
 
 		It("should handle cluster with proxy URL", func() {
@@ -180,30 +219,45 @@ var _ = Describe("PowerDNS Client Selection", func() {
 					Name: "proxy-cluster",
 				},
 				Spec: dnsv1alpha2.ClusterSpec{
-					ApiURL: testAPIURL,
-					ApiSecretRef: corev1.SecretReference{
-						Name:      "proxy-secret",
-						Namespace: testSecretNamespace,
+					URL: testAPIURL,
+					Credentials: dnsv1alpha2.ClusterCredentials{
+						SecretRef: dnsv1alpha2.ClusterSecretRef{
+							Name:      "proxy-secret",
+							Namespace: ptr.To(testSecretNamespace),
+						},
 					},
-					ApiVhost:    ptr.To("localhost"),
-					ApiTimeout:  ptr.To(10),
-					ApiInsecure: ptr.To(true),
-					ProxyURL:    ptr.To("http://proxy.example.com:8080"),
+					Vhost:   ptr.To("localhost"),
+					Timeout: ptr.To(metav1.Duration{Duration: 10 * time.Second}),
+					TLS: &dnsv1alpha2.ClusterTLSConfig{
+						Insecure: ptr.To(true),
+					},
+					Proxy: ptr.To("http://proxy.example.com:8080"),
 				},
 			}
 			Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
 
 			By("calling GetPowerDNSClient with proxy cluster")
 			proxyClusterName := "proxy-cluster"
-			client, err := GetPowerDNSClient(ctx, k8sClient, &proxyClusterName, PdnsClienter{})
+			pdnsClient, err := GetPowerDNSClient(ctx, k8sClient, &proxyClusterName, PdnsClienter{})
 
 			Expect(err).NotTo(HaveOccurred())
-			Expect(client.Records).NotTo(BeNil())
-			Expect(client.Zones).NotTo(BeNil())
+			Expect(pdnsClient.Records).NotTo(BeNil())
+			Expect(pdnsClient.Zones).NotTo(BeNil())
 
 			By("cleaning up")
 			Expect(k8sClient.Delete(ctx, cluster)).To(Succeed())
+			// Wait for cluster deletion to complete
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, client.ObjectKey{Name: cluster.Name}, &dnsv1alpha2.Cluster{})
+				return err != nil
+			}, time.Second*10, time.Millisecond*100).Should(BeTrue())
+
 			Expect(k8sClient.Delete(ctx, secret)).To(Succeed())
+			// Wait for secret deletion to complete
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, client.ObjectKey{Name: secret.Name, Namespace: secret.Namespace}, &corev1.Secret{})
+				return err != nil
+			}, time.Second*10, time.Millisecond*100).Should(BeTrue())
 		})
 
 		It("should handle cluster with empty API URL", func() {
@@ -226,10 +280,12 @@ var _ = Describe("PowerDNS Client Selection", func() {
 					Name: "empty-url-cluster",
 				},
 				Spec: dnsv1alpha2.ClusterSpec{
-					ApiURL: "", // Empty URL
-					ApiSecretRef: corev1.SecretReference{
-						Name:      "empty-url-secret",
-						Namespace: testSecretNamespace,
+					URL: "", // Empty URL
+					Credentials: dnsv1alpha2.ClusterCredentials{
+						SecretRef: dnsv1alpha2.ClusterSecretRef{
+							Name:      "empty-url-secret",
+							Namespace: ptr.To(testSecretNamespace),
+						},
 					},
 				},
 			}
@@ -237,7 +293,7 @@ var _ = Describe("PowerDNS Client Selection", func() {
 			By("verifying that empty URL is rejected by CRD validation")
 			err := k8sClient.Create(ctx, cluster)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("spec.apiUrl in body should match"))
+			Expect(err.Error()).To(ContainSubstring("spec.url in body should match"))
 
 			By("cleaning up")
 			Expect(k8sClient.Delete(ctx, secret)).To(Succeed())
@@ -294,15 +350,19 @@ var _ = Describe("PowerDNS Client Selection", func() {
 					Name: "invalid-proxy-cluster",
 				},
 				Spec: dnsv1alpha2.ClusterSpec{
-					ApiURL: testAPIURL,
-					ApiSecretRef: corev1.SecretReference{
-						Name:      "invalid-proxy-secret",
-						Namespace: testSecretNamespace,
+					URL: testAPIURL,
+					Credentials: dnsv1alpha2.ClusterCredentials{
+						SecretRef: dnsv1alpha2.ClusterSecretRef{
+							Name:      "invalid-proxy-secret",
+							Namespace: ptr.To(testSecretNamespace),
+						},
 					},
-					ApiVhost:    ptr.To("localhost"),
-					ApiTimeout:  ptr.To(10),
-					ApiInsecure: ptr.To(true),
-					ProxyURL:    ptr.To("://invalid-proxy-url"), // Invalid URL format
+					Vhost:   ptr.To("localhost"),
+					Timeout: ptr.To(metav1.Duration{Duration: 10 * time.Second}),
+					TLS: &dnsv1alpha2.ClusterTLSConfig{
+						Insecure: ptr.To(true),
+					},
+					Proxy: ptr.To("://invalid-proxy-url"), // Invalid URL format
 				},
 			}
 			Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
@@ -317,7 +377,18 @@ var _ = Describe("PowerDNS Client Selection", func() {
 
 			By("cleaning up")
 			Expect(k8sClient.Delete(ctx, cluster)).To(Succeed())
+			// Wait for cluster deletion to complete
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, client.ObjectKey{Name: cluster.Name}, &dnsv1alpha2.Cluster{})
+				return err != nil
+			}, time.Second*10, time.Millisecond*100).Should(BeTrue())
+
 			Expect(k8sClient.Delete(ctx, secret)).To(Succeed())
+			// Wait for secret deletion to complete
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, client.ObjectKey{Name: secret.Name, Namespace: secret.Namespace}, &corev1.Secret{})
+				return err != nil
+			}, time.Second*10, time.Millisecond*100).Should(BeTrue())
 		})
 	})
 })

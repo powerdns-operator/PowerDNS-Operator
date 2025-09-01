@@ -119,18 +119,22 @@ func main() {
 	if legacyConfigProvided {
 		// Validate legacy configuration if partially provided
 		if apiURL == "" {
-			setupLog.Error(nil, "PDNS_API_URL environment variable or --pdns-api-url flag is required when using legacy configuration")
+			setupLog.Error(nil, "PDNS_API_URL environment variable or --pdns-api-url flag is required when using "+
+				"legacy configuration")
 			os.Exit(1)
 		}
 		if apiKey == "" {
-			setupLog.Error(nil, "PDNS_API_KEY environment variable or --pdns-api-key flag is required when using legacy configuration")
+			setupLog.Error(nil, "PDNS_API_KEY environment variable or --pdns-api-key flag is required when using "+
+				"legacy configuration")
 			os.Exit(1)
 		}
 
 		// Show deprecation warning
 		setupLog.Info("Starting in Standalone mode - PowerDNS configuration will be loaded from deprecated options")
-		setupLog.Info("⚠️  DEPRECATION WARNING: Legacy PowerDNS configuration via environment variables and flags is deprecated")
-		setupLog.Info("⚠️  Please migrate to using Cluster custom resources. Legacy support will be removed in a future release")
+		setupLog.Info("⚠️  DEPRECATION WARNING: Legacy PowerDNS configuration via environment variables and " +
+			"flags is deprecated")
+		setupLog.Info("⚠️  Please migrate to using Cluster custom resources. Legacy support will be removed in a " +
+			"future release")
 		setupLog.Info("PowerDNS API URL (legacy)", "url", apiURL)
 		setupLog.Info("PowerDNS API vhost (legacy)", "vhost", apiVhost)
 	} else {
