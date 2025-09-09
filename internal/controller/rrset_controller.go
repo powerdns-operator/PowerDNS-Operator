@@ -166,6 +166,20 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	// If a Zone/ClusterZone exists but is in Failed Status
 	zoneIsInFailedStatus := (zone.GetStatus().SyncStatus != nil && *zone.GetStatus().SyncStatus == FAILED_STATUS)
 	if zoneIsInFailedStatus {
+		// Check if we should retry based on last failure time of the RRset itself (not the zone)
+		// This prevents the RRset from being stuck if the zone status is stale or hasn't been updated
+		rrsetLastTransition := getLastRRsetConditionTransition(rrset)
+		timeSinceLastFailure := time.Since(rrsetLastTransition)
+
+		// Only skip if the RRset failure is very recent (less than 30 seconds)
+		// This prevents excessive retries while still allowing recovery when parent zone recovers
+		if timeSinceLastFailure < 30*time.Second && !isModified {
+			// Update metrics and requeue
+			updateRrsetsMetrics(getRRsetName(rrset), rrset)
+			return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+		}
+
+		// If enough time has passed or RRset was modified, update status but continue to try
 		original = rrset.DeepCopy()
 		rrset.Status.SyncStatus = ptr.To(FAILED_STATUS)
 		rrset.Status.ObservedGeneration = &rrset.Generation
@@ -194,12 +208,23 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 					return ctrl.Result{}, err
 				}
 			}
+			return ctrl.Result{}, nil
 		}
 
-		return ctrl.Result{}, nil
+		// Continue with full reconciliation attempt despite parent zone being in Failed state
+		// This allows the RRset to recover if the parent zone has actually recovered but its status
+		// hasn't been updated yet, or if enough time has passed to warrant a retry attempt.
+		// We fall through to the normal PowerDNS client creation and reconciliation logic below.
 	}
 
-	return rrsetReconcile(ctx, rrset, zone, isModified, isDeleted, lastUpdateTime, r.Scheme, r.Client, r.PDNSClient, log)
+	// Get the appropriate PowerDNS client
+	pdnsClient, err := GetPowerDNSClient(ctx, r.Client, zone.GetSpec().ClusterRef, r.PDNSClient)
+	if err != nil {
+		log.Error(err, "Failed to get PowerDNS client")
+		return ctrl.Result{}, err
+	}
+
+	return rrsetReconcile(ctx, rrset, zone, isModified, isDeleted, lastUpdateTime, r.Scheme, r.Client, pdnsClient, log)
 }
 
 // SetupWithManager sets up the controller with the Manager.

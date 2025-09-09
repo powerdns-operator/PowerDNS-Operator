@@ -187,6 +187,9 @@ spec:
     subresources:
       status: {}
   - additionalPrinterColumns:
+    - jsonPath: .spec.clusterRef
+      name: Cluster
+      type: string
     - jsonPath: .status.serial
       name: Serial
       type: integer
@@ -223,6 +226,10 @@ spec:
             properties:
               catalog:
                 description: The catalog this zone is a member of
+                type: string
+              clusterRef:
+                description: ClusterRef is a reference to the Cluster resource that
+                  manages the PowerDNS instance
                 type: string
               kind:
                 description: Kind of the zone, one of "Native", "Master", "Slave",

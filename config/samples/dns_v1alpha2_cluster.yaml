@@ -1,0 +1,77 @@
+apiVersion: dns.cav.enablers.ob/v1alpha2
+kind: Cluster
+metadata:
+  name: powerdns1
+spec:
+  # Reconciliation interval (defaults to 5m)
+  interval: 5m
+  
+  # URL of the PowerDNS API
+  url: https://pdns-public.example.com:8081
+  
+  # Server ID to target (defaults to "localhost")
+  vhost: localhost
+  
+  # Request timeout (defaults to 10s)
+  timeout: 30s
+  
+  # HTTP proxy (optional)
+  proxy: http://proxy:1234
+  
+  # TLS configuration
+  tls:
+    # Skip TLS verification (defaults to false)
+    insecure: false
+    # Custom CA bundle (optional)
+    caBundleRef:
+      name: pdns-ca
+      kind: ConfigMap  # Secret or ConfigMap
+      key: ca.crt      # Key in the resource (optional)
+  
+  # Credentials configuration
+  credentials:
+    secretRef:
+      name: pdns-public-credentials
+      namespace: powerdns-operator-system  # Optional, defaults to cluster namespace
+      key: apiKey                          # Optional, defaults to "apiKey"
+---
+# Example Secret for PowerDNS API key
+apiVersion: v1
+kind: Secret
+metadata:
+  name: pdns-public-credentials
+  namespace: powerdns-operator-system
+type: Opaque
+stringData:
+  apiKey: your-powerdns-api-key-here
+---
+# Example Zone that references the Cluster
+apiVersion: dns.cav.enablers.ob/v1alpha2
+kind: Zone
+metadata:
+  name: example.com
+  namespace: default
+spec:
+  # Reference to the Cluster resource
+  clusterRef: powerdns1
+  
+  kind: Native
+  nameservers:
+    - ns1.example.com
+    - ns2.example.com
+  catalog: catalog.example.com.
+  soa_edit_api: DEFAULT
+---
+# Example ClusterZone that references the Cluster
+apiVersion: dns.cav.enablers.ob/v1alpha2
+kind: ClusterZone
+metadata:
+  name: cluster-example.com
+spec:
+  # Reference to the Cluster resource
+  clusterRef: powerdns1
+  
+  kind: Native
+  nameservers:
+    - ns1.cluster-example.com
+    - ns2.cluster-example.com
