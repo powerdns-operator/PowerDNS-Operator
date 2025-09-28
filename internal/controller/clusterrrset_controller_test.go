@@ -24,16 +24,17 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	dnsv1alpha2 "github.com/powerdns-operator/powerdns-operator/api/v1alpha2"
+	dnsv1alpha3 "github.com/powerdns-operator/powerdns-operator/api/v1alpha3"
 )
 
 var _ = Describe("ClusterRRset Controller", func() {
 	const (
 		// Zone
-		zoneName = "example6.org"
-		zoneKind = NATIVE_KIND_ZONE
-		zoneNS1  = "ns1.example6.org"
-		zoneNS2  = "ns2.example6.org"
+		zoneName        = "example6.org"
+		zoneKind        = NATIVE_KIND_ZONE
+		zoneProviderRef = "test-powerdns"
+		zoneNS1         = "ns1.example6.org"
+		zoneNS2         = "ns2.example6.org"
 
 		// RRset
 		resourceName     = "test.example6.org"
@@ -67,14 +68,15 @@ var _ = Describe("ClusterRRset Controller", func() {
 	BeforeEach(func() {
 		ctx := context.Background()
 		By("Creating the Zone resource")
-		zone := &dnsv1alpha2.ClusterZone{
+		zone := &dnsv1alpha3.ClusterZone{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: zoneName,
 			},
 		}
 		zone.SetResourceVersion("")
 		_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, zone, func() error {
-			zone.Spec = dnsv1alpha2.ZoneSpec{
+			zone.Spec = dnsv1alpha3.ZoneSpec{
+				ProviderRef: zoneProviderRef,
 				Kind:        zoneKind,
 				Nameservers: []string{zoneNS1, zoneNS2},
 			}
@@ -92,12 +94,12 @@ var _ = Describe("ClusterRRset Controller", func() {
 		}, timeout, interval).Should(BeTrue())
 
 		By("Ensuring the resource does not already exists")
-		emptyResource := &dnsv1alpha2.ClusterRRset{}
+		emptyResource := &dnsv1alpha3.ClusterRRset{}
 		err = k8sClient.Get(ctx, clusterRrsetLookupKey, emptyResource)
 		Expect(err).To(HaveOccurred())
 
 		By("Creating the ClusterRRset resource")
-		resource := &dnsv1alpha2.ClusterRRset{
+		resource := &dnsv1alpha3.ClusterRRset{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: resourceName,
 			},
@@ -105,8 +107,8 @@ var _ = Describe("ClusterRRset Controller", func() {
 		resource.SetResourceVersion("")
 		comment := resourceComment
 		_, err = controllerutil.CreateOrUpdate(ctx, k8sClient, resource, func() error {
-			resource.Spec = dnsv1alpha2.RRsetSpec{
-				ZoneRef: dnsv1alpha2.ZoneRef{
+			resource.Spec = dnsv1alpha3.RRsetSpec{
+				ZoneRef: dnsv1alpha3.ZoneRef{
 					Name: zoneRef,
 					Kind: resourceZoneKind,
 				},
@@ -136,7 +138,7 @@ var _ = Describe("ClusterRRset Controller", func() {
 
 	AfterEach(func() {
 		ctx := context.Background()
-		resource := &dnsv1alpha2.ClusterRRset{}
+		resource := &dnsv1alpha3.ClusterRRset{}
 		err := k8sClient.Get(ctx, clusterRrsetLookupKey, resource)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -150,7 +152,7 @@ var _ = Describe("ClusterRRset Controller", func() {
 		}, timeout, interval).Should(BeTrue())
 
 		By("Cleaning up the specific resource instance Zone")
-		zone := &dnsv1alpha2.ClusterZone{}
+		zone := &dnsv1alpha3.ClusterZone{}
 		err = k8sClient.Get(ctx, clusterZoneLookupKey, zone)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(k8sClient.Delete(ctx, zone)).To(Succeed())
@@ -172,7 +174,7 @@ var _ = Describe("ClusterRRset Controller", func() {
 			ic := countClusterRrsetsMetrics()
 			ctx := context.Background()
 			By("Getting the existing resource")
-			createdResource := &dnsv1alpha2.ClusterRRset{}
+			createdResource := &dnsv1alpha3.ClusterRRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, clusterRrsetLookupKey, createdResource)
 				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS)
@@ -204,7 +206,7 @@ var _ = Describe("ClusterRRset Controller", func() {
 			recreationResourceZoneName := zoneName
 
 			By("Creating a RRset")
-			resource := &dnsv1alpha2.RRset{
+			resource := &dnsv1alpha3.RRset{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      recreationResourceName,
 					Namespace: recreationResourceNamespace,
@@ -212,13 +214,13 @@ var _ = Describe("ClusterRRset Controller", func() {
 			}
 			resource.SetResourceVersion("")
 			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, resource, func() error {
-				resource.Spec = dnsv1alpha2.RRsetSpec{
+				resource.Spec = dnsv1alpha3.RRsetSpec{
 					Type:    recreationResourceType,
 					Name:    recreationResourceDNSName,
 					TTL:     recreationResourceTTL,
 					Records: recreationResourceRecords,
 					Comment: &recreationResourceComment,
-					ZoneRef: dnsv1alpha2.ZoneRef{
+					ZoneRef: dnsv1alpha3.ZoneRef{
 						Name: recreationResourceZoneName,
 						Kind: recreationResourceZoneKind,
 					},
@@ -228,7 +230,7 @@ var _ = Describe("ClusterRRset Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Getting the resource")
-			recreatedRrset := &dnsv1alpha2.RRset{}
+			recreatedRrset := &dnsv1alpha3.RRset{}
 			typeNamespacedName := types.NamespacedName{
 				Name:      recreationResourceName,
 				Namespace: recreationResourceNamespace,

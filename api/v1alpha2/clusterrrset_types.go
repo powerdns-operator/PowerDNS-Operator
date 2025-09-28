@@ -15,9 +15,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
-//+kubebuilder:resource:scope=Cluster
+// +kubebuilder:object:root=true
+// +kubebuilder:storageversion:deprecated
+// +kubebuilder:subresource:status
+// +kubebuilder:resource:scope=Cluster
 
 // +kubebuilder:printcolumn:name="Zone",type="string",JSONPath=".spec.zoneRef.name"
 // +kubebuilder:printcolumn:name="Name",type="string",JSONPath=".status.dnsEntryName"
@@ -34,7 +35,7 @@ type ClusterRRset struct {
 	Status RRsetStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // ClusterRRsetList contains a list of ClusterRRset
 type ClusterRRsetList struct {

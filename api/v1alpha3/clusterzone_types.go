@@ -9,17 +9,18 @@
  * see the "LICENSE" file for more details
  */
 
-package v1alpha2
+package v1alpha3
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // +kubebuilder:object:root=true
-// +kubebuilder:storageversion:deprecated
+// +kubebuilder:storageversion
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:scope=Cluster
 
+// +kubebuilder:printcolumn:name="PDNSProvider",type="string",JSONPath=".spec.providerRef"
 // +kubebuilder:printcolumn:name="Serial",type="integer",JSONPath=".status.serial"
 // +kubebuilder:printcolumn:name="ID",type="string",JSONPath=".status.id"
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.syncStatus"

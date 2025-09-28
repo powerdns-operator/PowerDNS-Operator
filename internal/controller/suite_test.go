@@ -41,12 +41,17 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	dnsv1alpha2 "github.com/powerdns-operator/powerdns-operator/api/v1alpha2"
+	dnsv1alpha3 "github.com/powerdns-operator/powerdns-operator/api/v1alpha3"
 	//+kubebuilder:scaffold:imports
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
+
+const (
+	// Test constants for consistent provider reference
+	testProviderRef = "test-powerdns"
+)
 
 var (
 	cfg       *rest.Config
@@ -164,7 +169,7 @@ var _ = BeforeSuite(func() {
 		// Note that you must have the required binaries setup under the bin directory to perform
 		// the tests directly. When we run make test it will be setup and used automatically.
 		BinaryAssetsDirectory: filepath.Join("..", "..", "bin", "k8s",
-			fmt.Sprintf("1.31.0-%s-%s", runtime.GOOS, runtime.GOARCH)),
+			fmt.Sprintf("1.33.0-%s-%s", runtime.GOOS, runtime.GOARCH)),
 	}
 
 	var err error
@@ -173,7 +178,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(cfg).NotTo(BeNil())
 
-	err = dnsv1alpha2.AddToScheme(scheme.Scheme)
+	err = dnsv1alpha3.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
 	//+kubebuilder:scaffold:scheme
@@ -187,45 +192,42 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	// Initialize mockClient
-	m := NewMockClient()
+	// Override newPDNSClientFunc to return the global test PDNSClient
+	newPDNSClientFunc = func(ctx context.Context, k8sClient client.Client, providerRef string) (PdnsClienter, error) {
+		// Validate that the PDNSProvider exists
+		pdnsprovider := &dnsv1alpha3.PDNSProvider{}
+		if err := k8sClient.Get(ctx, client.ObjectKey{Name: providerRef}, pdnsprovider); err != nil {
+			return PdnsClienter{}, fmt.Errorf("pdnsprovider '%s' not found: %w", providerRef, err)
+		}
+		return PDNSClient, nil
+	}
 	err = (&RRsetReconciler{
 		Client: k8sManager.GetClient(),
 		Scheme: k8sManager.GetScheme(),
-		PDNSClient: PdnsClienter{
-			Records: m.Records,
-			Zones:   m.Zones,
-		},
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
 	err = (&ClusterRRsetReconciler{
 		Client: k8sManager.GetClient(),
 		Scheme: k8sManager.GetScheme(),
-		PDNSClient: PdnsClienter{
-			Records: m.Records,
-			Zones:   m.Zones,
-		},
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
 	err = (&ZoneReconciler{
 		Client: k8sManager.GetClient(),
 		Scheme: k8sManager.GetScheme(),
-		PDNSClient: PdnsClienter{
-			Records: m.Records,
-			Zones:   m.Zones,
-		},
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
 	err = (&ClusterZoneReconciler{
 		Client: k8sManager.GetClient(),
 		Scheme: k8sManager.GetScheme(),
-		PDNSClient: PdnsClienter{
-			Records: m.Records,
-			Zones:   m.Zones,
-		},
+	}).SetupWithManager(k8sManager)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = (&PDNSProviderReconciler{
+		Client: k8sManager.GetClient(),
+		Scheme: k8sManager.GetScheme(),
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
@@ -262,6 +264,47 @@ var _ = BeforeSuite(func() {
 		})
 		Expect(err).Should(Succeed())
 	}
+
+	/*
+		#####################################################################################
+		#  Test PowerDNS PDNSProvider and Secret creation
+		#####################################################################################
+	*/
+	By("creating test PowerDNS secret")
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-powerdns-secret",
+			Namespace: "default",
+		},
+		Data: map[string][]byte{
+			"apikey": []byte("test-api-key"),
+		},
+	}
+	_, err = controllerutil.CreateOrUpdate(ctx, k8sClient, secret, func() error {
+		return nil
+	})
+	Expect(err).Should(Succeed())
+
+	By("creating test PowerDNS pdnsprovider")
+	pdnsprovider := &dnsv1alpha3.PDNSProvider{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: testProviderRef,
+		},
+		Spec: dnsv1alpha3.PDNSProviderSpec{
+			URL: "http://localhost:8081/api/v1",
+			Credentials: dnsv1alpha3.PDNSProviderCredentials{
+				SecretRef: dnsv1alpha3.PDNSProviderSecretRef{
+					Name:      "test-powerdns-secret",
+					Namespace: ptr.To("default"),
+					Key:       ptr.To("apikey"),
+				},
+			},
+		},
+	}
+	_, err = controllerutil.CreateOrUpdate(ctx, k8sClient, pdnsprovider, func() error {
+		return nil
+	})
+	Expect(err).Should(Succeed())
 
 })
 

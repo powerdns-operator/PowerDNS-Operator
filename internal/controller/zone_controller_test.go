@@ -26,16 +26,17 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	dnsv1alpha2 "github.com/powerdns-operator/powerdns-operator/api/v1alpha2"
+	dnsv1alpha3 "github.com/powerdns-operator/powerdns-operator/api/v1alpha3"
 )
 
 var _ = Describe("Zone Controller", func() {
 
 	const (
-		resourceName      = "example1.org"
-		resourceNamespace = "example1"
-		resourceKind      = NATIVE_KIND_ZONE
-		resourceCatalog   = "catalog.example1.org."
+		resourceName        = "example1.org"
+		resourceNamespace   = "example1"
+		resourceKind        = NATIVE_KIND_ZONE
+		resourceCatalog     = "catalog.example1.org."
+		resourceProviderRef = "test-powerdns"
 
 		timeout  = time.Second * 5
 		interval = time.Millisecond * 250
@@ -50,7 +51,7 @@ var _ = Describe("Zone Controller", func() {
 	BeforeEach(func() {
 		ctx := context.Background()
 		By("creating the Zone resource")
-		resource := &dnsv1alpha2.Zone{
+		resource := &dnsv1alpha3.Zone{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      resourceName,
 				Namespace: resourceNamespace,
@@ -58,7 +59,8 @@ var _ = Describe("Zone Controller", func() {
 		}
 		resource.SetResourceVersion("")
 		_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, resource, func() error {
-			resource.Spec = dnsv1alpha2.ZoneSpec{
+			resource.Spec = dnsv1alpha3.ZoneSpec{
+				ProviderRef: resourceProviderRef,
 				Kind:        resourceKind,
 				Nameservers: resourceNameservers,
 				Catalog:     ptr.To(resourceCatalog),
@@ -82,7 +84,7 @@ var _ = Describe("Zone Controller", func() {
 
 	AfterEach(func() {
 		ctx := context.Background()
-		resource := &dnsv1alpha2.Zone{}
+		resource := &dnsv1alpha3.Zone{}
 		err := k8sClient.Get(ctx, typeNamespacedName, resource)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -107,7 +109,7 @@ var _ = Describe("Zone Controller", func() {
 			ic := countZonesMetrics()
 			ctx := context.Background()
 			By("Getting the existing resource")
-			zone := &dnsv1alpha2.Zone{}
+			zone := &dnsv1alpha3.Zone{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, zone)
 				return err == nil && zone.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS)
@@ -129,7 +131,7 @@ var _ = Describe("Zone Controller", func() {
 			modifiedResourceNameservers := []string{"ns1.example1.org", "ns2.example1.org", "ns3.example1.org"}
 
 			By("Getting the initial Serial of the resource")
-			zone := &dnsv1alpha2.Zone{}
+			zone := &dnsv1alpha3.Zone{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, zone)
 				return err == nil && zone.Status.Serial != nil
@@ -137,7 +139,7 @@ var _ = Describe("Zone Controller", func() {
 			initialSerial := *zone.Status.Serial
 
 			By("Modifying the resource")
-			resource := &dnsv1alpha2.Zone{
+			resource := &dnsv1alpha3.Zone{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      resourceName,
 					Namespace: resourceNamespace,
@@ -150,7 +152,7 @@ var _ = Describe("Zone Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Getting the modified resource")
-			modifiedZone := &dnsv1alpha2.Zone{}
+			modifiedZone := &dnsv1alpha3.Zone{}
 			// Waiting for the resource to be fully modified
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, modifiedZone)
@@ -169,7 +171,7 @@ var _ = Describe("Zone Controller", func() {
 			var modifiedResourceKind = []string{MASTER_KIND_ZONE, NATIVE_KIND_ZONE, SLAVE_KIND_ZONE, PRODUCER_KIND_ZONE, CONSUMER_KIND_ZONE}
 
 			By("Getting the initial Serial of the resource")
-			zone := &dnsv1alpha2.Zone{}
+			zone := &dnsv1alpha3.Zone{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, zone)
 				return err == nil && zone.Status.Serial != nil
@@ -177,7 +179,7 @@ var _ = Describe("Zone Controller", func() {
 			initialSerial := zone.Status.Serial
 
 			By("Modifying the resource")
-			resource := &dnsv1alpha2.Zone{
+			resource := &dnsv1alpha3.Zone{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      resourceName,
 					Namespace: resourceNamespace,
@@ -192,7 +194,7 @@ var _ = Describe("Zone Controller", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				By("Getting the modified resource")
-				modifiedZone := &dnsv1alpha2.Zone{}
+				modifiedZone := &dnsv1alpha3.Zone{}
 				// Waiting for the resource to be fully modified
 				Eventually(func() bool {
 					err := k8sClient.Get(ctx, typeNamespacedName, modifiedZone)
@@ -218,7 +220,7 @@ var _ = Describe("Zone Controller", func() {
 			var modifiedResourceCatalog = []string{"", "catalog.other-domain.org.", ""}
 
 			By("Getting the initial Serial of the resource")
-			zone := &dnsv1alpha2.Zone{}
+			zone := &dnsv1alpha3.Zone{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, zone)
 				return err == nil && zone.Status.Serial != nil
@@ -226,7 +228,7 @@ var _ = Describe("Zone Controller", func() {
 			initialSerial := zone.Status.Serial
 
 			By("Modifying the resource")
-			resource := &dnsv1alpha2.Zone{
+			resource := &dnsv1alpha3.Zone{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      resourceName,
 					Namespace: resourceNamespace,
@@ -242,7 +244,7 @@ var _ = Describe("Zone Controller", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				By("Getting the modified resource")
-				modifiedZone := &dnsv1alpha2.Zone{}
+				modifiedZone := &dnsv1alpha3.Zone{}
 				// Waiting for the resource to be fully modified
 				Eventually(func() bool {
 					err := k8sClient.Get(ctx, typeNamespacedName, modifiedZone)
@@ -263,14 +265,14 @@ var _ = Describe("Zone Controller", func() {
 			var modifiedResourceSOAEditAPI = "EPOCH"
 
 			By("Getting the initial Serial of the resource")
-			zone := &dnsv1alpha2.Zone{}
+			zone := &dnsv1alpha3.Zone{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, zone)
 				return err == nil && zone.Status.Serial != nil
 			}, timeout, interval).Should(BeTrue())
 
 			By("Modifying the resource")
-			resource := &dnsv1alpha2.Zone{
+			resource := &dnsv1alpha3.Zone{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      resourceName,
 					Namespace: resourceNamespace,
@@ -284,7 +286,7 @@ var _ = Describe("Zone Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Getting the modified resource")
-			modifiedZone := &dnsv1alpha2.Zone{}
+			modifiedZone := &dnsv1alpha3.Zone{}
 			// Waiting for the resource to be fully modified
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, modifiedZone)
@@ -315,7 +317,7 @@ var _ = Describe("Zone Controller", func() {
 			})
 
 			By("Recreating a Zone")
-			resource := &dnsv1alpha2.Zone{
+			resource := &dnsv1alpha3.Zone{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      recreationResourceName,
 					Namespace: resourceNamespace,
@@ -323,7 +325,8 @@ var _ = Describe("Zone Controller", func() {
 			}
 			resource.SetResourceVersion("")
 			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, resource, func() error {
-				resource.Spec = dnsv1alpha2.ZoneSpec{
+				resource.Spec = dnsv1alpha3.ZoneSpec{
+					ProviderRef: resourceProviderRef,
 					Kind:        recreationResourceKind,
 					Nameservers: recreationResourceNameservers,
 				}
@@ -332,7 +335,7 @@ var _ = Describe("Zone Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Getting the resource")
-			updatedZone := &dnsv1alpha2.Zone{}
+			updatedZone := &dnsv1alpha3.Zone{}
 			typeNamespacedName := types.NamespacedName{
 				Name:      recreationResourceName,
 				Namespace: resourceNamespace,
@@ -381,7 +384,7 @@ var _ = Describe("Zone Controller", func() {
 			}, timeout, interval).Should(BeTrue())
 
 			By("Modifying the deleted Zone")
-			resource := &dnsv1alpha2.Zone{
+			resource := &dnsv1alpha3.Zone{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      resourceName,
 					Namespace: resourceNamespace,
@@ -395,7 +398,7 @@ var _ = Describe("Zone Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Getting the resource")
-			updatedZone := &dnsv1alpha2.Zone{}
+			updatedZone := &dnsv1alpha3.Zone{}
 			// Waiting for the resource to be fully modified
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, updatedZone)
@@ -415,7 +418,7 @@ var _ = Describe("Zone Controller", func() {
 			fakeResourceName := "fake.org"
 			fakeResourceKind := NATIVE_KIND_ZONE
 			fakeResourceNameservers := []string{"ns1.fake.org", "ns2.fake.org"}
-			fakeResource := &dnsv1alpha2.Zone{
+			fakeResource := &dnsv1alpha3.Zone{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      fakeResourceName,
 					Namespace: resourceNamespace,
@@ -423,7 +426,8 @@ var _ = Describe("Zone Controller", func() {
 			}
 			fakeResource.SetResourceVersion("")
 			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, fakeResource, func() error {
-				fakeResource.Spec = dnsv1alpha2.ZoneSpec{
+				fakeResource.Spec = dnsv1alpha3.ZoneSpec{
+					ProviderRef: resourceProviderRef,
 					Kind:        fakeResourceKind,
 					Nameservers: fakeResourceNameservers,
 				}
@@ -467,7 +471,7 @@ var _ = Describe("Zone Controller", func() {
 			recreationResourceNameservers := []string{"ns1.example1.org", "ns2.example1.org"}
 
 			By("Creating a Zone")
-			resource := &dnsv1alpha2.Zone{
+			resource := &dnsv1alpha3.Zone{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      recreationResourceName,
 					Namespace: recreationResourceNamespace,
@@ -475,7 +479,8 @@ var _ = Describe("Zone Controller", func() {
 			}
 			resource.SetResourceVersion("")
 			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, resource, func() error {
-				resource.Spec = dnsv1alpha2.ZoneSpec{
+				resource.Spec = dnsv1alpha3.ZoneSpec{
+					ProviderRef: resourceProviderRef,
 					Kind:        recreationResourceKind,
 					Nameservers: recreationResourceNameservers,
 					Catalog:     ptr.To(recreationResourceCatalog),
@@ -485,7 +490,7 @@ var _ = Describe("Zone Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Getting the resource")
-			updatedZone := &dnsv1alpha2.Zone{}
+			updatedZone := &dnsv1alpha3.Zone{}
 			typeNamespacedName := types.NamespacedName{
 				Name:      recreationResourceName,
 				Namespace: recreationResourceNamespace,
@@ -507,24 +512,25 @@ var _ = Describe("Zone Controller", func() {
 			recreationResourceNameservers := []string{"ns1.example1.org", "ns2.example1.org"}
 
 			By("Creating a Zone")
-			resource := &dnsv1alpha2.ClusterZone{
+			resource := &dnsv1alpha3.ClusterZone{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: recreationResourceName,
 				},
 			}
 			resource.SetResourceVersion("")
 			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, resource, func() error {
-				resource.Spec = dnsv1alpha2.ZoneSpec{
+				resource.Spec = dnsv1alpha3.ZoneSpec{
 					Kind:        recreationResourceKind,
 					Nameservers: recreationResourceNameservers,
 					Catalog:     ptr.To(recreationResourceCatalog),
+					ProviderRef: resourceProviderRef,
 				}
 				return nil
 			})
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Getting the resource")
-			updatedZone := &dnsv1alpha2.ClusterZone{}
+			updatedZone := &dnsv1alpha3.ClusterZone{}
 			typeNamespacedName := types.NamespacedName{
 				Name: recreationResourceName,
 			}

@@ -28,7 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
-	dnsv1alpha2 "github.com/powerdns-operator/powerdns-operator/api/v1alpha2"
+	dnsv1alpha3 "github.com/powerdns-operator/powerdns-operator/api/v1alpha3"
 )
 
 const (
@@ -45,8 +45,7 @@ const (
 // RRsetReconciler reconciles a RRset object
 type RRsetReconciler struct {
 	client.Client
-	Scheme     *runtime.Scheme
-	PDNSClient PdnsClienter
+	Scheme *runtime.Scheme
 }
 
 func init() {
@@ -63,7 +62,7 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	log.Info("Reconcile RRset", "Zone.RRset.Name", req.Name)
 
 	// RRset
-	rrset := &dnsv1alpha2.RRset{}
+	rrset := &dnsv1alpha3.RRset{}
 	err := r.Get(ctx, req.NamespacedName, rrset)
 	if err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
@@ -104,14 +103,14 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	}
 
 	// Zone
-	var zone dnsv1alpha2.GenericZone
+	var zone dnsv1alpha3.GenericZone
 	switch rrset.Spec.ZoneRef.Kind {
 	//nolint:goconst
 	case "Zone":
-		zone = &dnsv1alpha2.Zone{}
+		zone = &dnsv1alpha3.Zone{}
 	//nolint:goconst
 	case "ClusterZone":
-		zone = &dnsv1alpha2.ClusterZone{}
+		zone = &dnsv1alpha3.ClusterZone{}
 	}
 	err = r.Get(ctx, client.ObjectKey{Namespace: rrset.Namespace, Name: rrset.Spec.ZoneRef.Name}, zone)
 	if err != nil {
@@ -166,6 +165,20 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	// If a Zone/ClusterZone exists but is in Failed Status
 	zoneIsInFailedStatus := (zone.GetStatus().SyncStatus != nil && *zone.GetStatus().SyncStatus == FAILED_STATUS)
 	if zoneIsInFailedStatus {
+		// Check if we should retry based on last failure time of the RRset itself (not the zone)
+		// This prevents the RRset from being stuck if the zone status is stale or hasn't been updated
+		rrsetLastTransition := getLastRRsetConditionTransition(rrset)
+		timeSinceLastFailure := time.Since(rrsetLastTransition)
+
+		// Only skip if the RRset failure is very recent (less than 30 seconds)
+		// This prevents excessive retries while still allowing recovery when parent zone recovers
+		if timeSinceLastFailure < 30*time.Second && !isModified {
+			// Update metrics and requeue
+			updateRrsetsMetrics(getRRsetName(rrset), rrset)
+			return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+		}
+
+		// If enough time has passed or RRset was modified, update status but continue to try
 		original = rrset.DeepCopy()
 		rrset.Status.SyncStatus = ptr.To(FAILED_STATUS)
 		rrset.Status.ObservedGeneration = &rrset.Generation
@@ -194,28 +207,39 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 					return ctrl.Result{}, err
 				}
 			}
+			return ctrl.Result{}, nil
 		}
 
-		return ctrl.Result{}, nil
+		// Continue with full reconciliation attempt despite parent zone being in Failed state
+		// This allows the RRset to recover if the parent zone has actually recovered but its status
+		// hasn't been updated yet, or if enough time has passed to warrant a retry attempt.
+		// We fall through to the normal PowerDNS client creation and reconciliation logic below.
 	}
 
-	return rrsetReconcile(ctx, rrset, zone, isModified, isDeleted, lastUpdateTime, r.Scheme, r.Client, r.PDNSClient, log)
+	// Get the appropriate PowerDNS client
+	pdnsClient, err := GetPDNSClient(ctx, r.Client, zone.GetSpec().ProviderRef)
+	if err != nil {
+		log.Error(err, "Failed to get PowerDNS client")
+		return ctrl.Result{}, err
+	}
+
+	return rrsetReconcile(ctx, rrset, zone, isModified, isDeleted, lastUpdateTime, r.Scheme, r.Client, pdnsClient, log)
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *RRsetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// We use indexer to ensure that only one RRset exists for DNS entry
-	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &dnsv1alpha2.RRset{}, "RRset.Entry.Name", func(rawObj client.Object) []string {
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &dnsv1alpha3.RRset{}, "RRset.Entry.Name", func(rawObj client.Object) []string {
 		// grab the RRset object, extract its name...
 		var RRsetName string
-		if rawObj.(*dnsv1alpha2.RRset).Status.SyncStatus == nil || *rawObj.(*dnsv1alpha2.RRset).Status.SyncStatus == SUCCEEDED_STATUS {
-			RRsetName = getRRsetName(rawObj.(*dnsv1alpha2.RRset)) + "/" + rawObj.(*dnsv1alpha2.RRset).Spec.Type
+		if rawObj.(*dnsv1alpha3.RRset).Status.SyncStatus == nil || *rawObj.(*dnsv1alpha3.RRset).Status.SyncStatus == SUCCEEDED_STATUS {
+			RRsetName = getRRsetName(rawObj.(*dnsv1alpha3.RRset)) + "/" + rawObj.(*dnsv1alpha3.RRset).Spec.Type
 		}
 		return []string{RRsetName}
 	}); err != nil {
 		return err
 	}
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&dnsv1alpha2.RRset{}).
+		For(&dnsv1alpha3.RRset{}).
 		Complete(r)
 }

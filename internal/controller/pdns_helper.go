@@ -18,7 +18,7 @@ import (
 	"strings"
 
 	"github.com/joeig/go-powerdns/v3"
-	dnsv1alpha2 "github.com/powerdns-operator/powerdns-operator/api/v1alpha2"
+	dnsv1alpha3 "github.com/powerdns-operator/powerdns-operator/api/v1alpha3"
 	"k8s.io/utils/ptr"
 )
 
@@ -48,7 +48,7 @@ type PdnsClienter struct {
 
 // zoneIsIdenticalToExternalZone return True, True if respectively kind, soa_edit_api and catalog are identical
 // and nameservers are identical between Zone and External Resource
-func zoneIsIdenticalToExternalZone(zone dnsv1alpha2.GenericZone, externalZone *powerdns.Zone, ns []string) (bool, bool) {
+func zoneIsIdenticalToExternalZone(zone dnsv1alpha3.GenericZone, externalZone *powerdns.Zone, ns []string) (bool, bool) {
 	zoneCatalog := makeCanonical(ptr.Deref(zone.GetSpec().Catalog, ""))
 	externalZoneCatalog := ptr.Deref(externalZone.Catalog, "")
 	zoneSOAEditAPI := ptr.Deref(zone.GetSpec().SOAEditAPI, "")
@@ -57,7 +57,7 @@ func zoneIsIdenticalToExternalZone(zone dnsv1alpha2.GenericZone, externalZone *p
 }
 
 // rrsetIsIdenticalToExternalRRset return True if Comments, Name, Type, TTL and Records are identical between RRSet and External Resource
-func rrsetIsIdenticalToExternalRRset(rrset dnsv1alpha2.GenericRRset, externalRecord powerdns.RRset) bool {
+func rrsetIsIdenticalToExternalRRset(rrset dnsv1alpha3.GenericRRset, externalRecord powerdns.RRset) bool {
 	commentsIdentical := true
 	if len(externalRecord.Comments) != 0 {
 		if rrset.GetSpec().Comment != nil {
@@ -87,7 +87,7 @@ func makeCanonical(in string) string {
 	return result
 }
 
-func getRRsetName(rrset dnsv1alpha2.GenericRRset) string {
+func getRRsetName(rrset dnsv1alpha3.GenericRRset) string {
 	if !strings.HasSuffix(rrset.GetSpec().Name, ".") {
 		return makeCanonical(rrset.GetSpec().Name + "." + rrset.GetSpec().ZoneRef.Name)
 	}

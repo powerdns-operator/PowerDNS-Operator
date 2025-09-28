@@ -26,14 +26,15 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	dnsv1alpha2 "github.com/powerdns-operator/powerdns-operator/api/v1alpha2"
+	dnsv1alpha3 "github.com/powerdns-operator/powerdns-operator/api/v1alpha3"
 )
 
 var _ = Describe("ClusterZone Controller", func() {
 	const (
-		resourceName    = "example4.org"
-		resourceKind    = NATIVE_KIND_ZONE
-		resourceCatalog = "catalog.example4.org."
+		resourceName        = "example4.org"
+		resourceKind        = NATIVE_KIND_ZONE
+		resourceCatalog     = "catalog.example4.org."
+		resourceProviderRef = "test-powerdns"
 
 		timeout  = time.Second * 5
 		interval = time.Millisecond * 250
@@ -48,14 +49,15 @@ var _ = Describe("ClusterZone Controller", func() {
 		ctx := context.Background()
 
 		By("creating the ClusterZone resource")
-		resource := &dnsv1alpha2.ClusterZone{
+		resource := &dnsv1alpha3.ClusterZone{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: resourceName,
 			},
 		}
 		resource.SetResourceVersion("")
 		_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, resource, func() error {
-			resource.Spec = dnsv1alpha2.ZoneSpec{
+			resource.Spec = dnsv1alpha3.ZoneSpec{
+				ProviderRef: resourceProviderRef,
 				Kind:        resourceKind,
 				Nameservers: resourceNameservers,
 				Catalog:     ptr.To(resourceCatalog),
@@ -79,7 +81,7 @@ var _ = Describe("ClusterZone Controller", func() {
 
 	AfterEach(func() {
 		ctx := context.Background()
-		resource := &dnsv1alpha2.ClusterZone{}
+		resource := &dnsv1alpha3.ClusterZone{}
 		err := k8sClient.Get(ctx, typeNamespacedName, resource)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -104,7 +106,7 @@ var _ = Describe("ClusterZone Controller", func() {
 			ic := countClusterZonesMetrics()
 			ctx := context.Background()
 			By("Getting the existing resource")
-			clusterzone := &dnsv1alpha2.ClusterZone{}
+			clusterzone := &dnsv1alpha3.ClusterZone{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, clusterzone)
 				return err == nil && clusterzone.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS)
@@ -129,7 +131,7 @@ var _ = Describe("ClusterZone Controller", func() {
 			recreationResourceNameservers := []string{"ns1.example4.org", "ns2.example4.org"}
 
 			By("Creating a Zone")
-			resource := &dnsv1alpha2.Zone{
+			resource := &dnsv1alpha3.Zone{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      recreationResourceName,
 					Namespace: recreationResourceNamespace,
@@ -137,7 +139,8 @@ var _ = Describe("ClusterZone Controller", func() {
 			}
 			resource.SetResourceVersion("")
 			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, resource, func() error {
-				resource.Spec = dnsv1alpha2.ZoneSpec{
+				resource.Spec = dnsv1alpha3.ZoneSpec{
+					ProviderRef: resourceProviderRef,
 					Kind:        recreationResourceKind,
 					Nameservers: recreationResourceNameservers,
 					Catalog:     ptr.To(recreationResourceCatalog),
@@ -147,7 +150,7 @@ var _ = Describe("ClusterZone Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Getting the resource")
-			updatedZone := &dnsv1alpha2.Zone{}
+			updatedZone := &dnsv1alpha3.Zone{}
 			typeNamespacedName := types.NamespacedName{
 				Name:      recreationResourceName,
 				Namespace: recreationResourceNamespace,
