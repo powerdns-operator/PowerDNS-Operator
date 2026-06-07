@@ -110,7 +110,7 @@ var _ = Describe("Zone Controller", func() {
 			zone := &dnsv1alpha2.Zone{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, zone)
-				return err == nil && zone.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS)
+				return err == nil && zone.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS, metav1.ConditionTrue)
 			}, timeout, interval).Should(BeTrue())
 			Expect(countZonesMetrics()-ic).To(Equal(0), "No more metric should have been created")
 			Expect(getZoneMetricWithLabels(SUCCEEDED_STATUS, resourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
@@ -154,7 +154,7 @@ var _ = Describe("Zone Controller", func() {
 			// Waiting for the resource to be fully modified
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, modifiedZone)
-				return err == nil && modifiedZone.IsInExpectedStatus(MODIFIED_GENERATION, SUCCEEDED_STATUS)
+				return err == nil && modifiedZone.IsInExpectedStatus(MODIFIED_GENERATION, SUCCEEDED_STATUS, metav1.ConditionTrue)
 			}, timeout, interval).Should(BeTrue())
 			expectedSerial := initialSerial + uint32(1)
 			Expect(getMockedNameservers(resourceName)).To(Equal(modifiedResourceNameservers), "Nameservers should be equal")
@@ -288,7 +288,7 @@ var _ = Describe("Zone Controller", func() {
 			// Waiting for the resource to be fully modified
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, modifiedZone)
-				return err == nil && modifiedZone.IsInExpectedStatus(MODIFIED_GENERATION, SUCCEEDED_STATUS)
+				return err == nil && modifiedZone.IsInExpectedStatus(MODIFIED_GENERATION, SUCCEEDED_STATUS, metav1.ConditionTrue)
 			}, timeout, interval).Should(BeTrue())
 			Expect(getMockedSOAEditAPI(resourceName)).To(Equal(modifiedResourceSOAEditAPI), "SOA-Edit-API should have changed")
 			Expect(*(modifiedZone.Status.Serial)).To(Equal(epochSerial), "Serial should have changed")
@@ -340,7 +340,7 @@ var _ = Describe("Zone Controller", func() {
 			// Waiting for the resource to be fully modified
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, updatedZone)
-				return err == nil && updatedZone.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS)
+				return err == nil && updatedZone.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS, metav1.ConditionTrue)
 			}, timeout, interval).Should(BeTrue())
 
 			Eventually(func() bool {
@@ -493,7 +493,7 @@ var _ = Describe("Zone Controller", func() {
 			// Waiting for the resource to be fully modified
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, updatedZone)
-				return err == nil && updatedZone.IsInExpectedStatus(FIRST_GENERATION, FAILED_STATUS)
+				return err == nil && updatedZone.IsInExpectedStatus(FIRST_GENERATION, FAILED_STATUS, metav1.ConditionFalse)
 			}, timeout, interval).Should(BeTrue())
 		})
 	})
@@ -531,7 +531,7 @@ var _ = Describe("Zone Controller", func() {
 			// Waiting for the resource to be fully modified
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, updatedZone)
-				return err == nil && updatedZone.IsInExpectedStatus(FIRST_GENERATION, FAILED_STATUS)
+				return err == nil && updatedZone.IsInExpectedStatus(FIRST_GENERATION, FAILED_STATUS, metav1.ConditionFalse)
 			}, timeout, interval).Should(BeTrue())
 		})
 	})
