@@ -324,6 +324,7 @@ func rrsetReconcile(ctx context.Context, gr dnsv1alpha2.GenericRRset, zone dnsv1
 		DnsEntryName:       &name,
 		SyncStatus:         syncStatus,
 		ObservedGeneration: &gr.GetObjectMeta().Generation,
+		Conditions:         conditions,
 	})
 	if err := cl.Status().Patch(ctx, gr, client.MergeFrom(original)); err != nil {
 		log.Error(err, "unable to patch RRSet status")
