@@ -115,7 +115,7 @@ func zoneReconcile(ctx context.Context, gz dnsv1alpha2.GenericZone, isModified b
 			Conditions:         conditions,
 		})
 		if err := cl.Status().Patch(ctx, gz, client.MergeFrom(original)); err != nil {
-			log.Error(err, "unable to patch RRSet status")
+			log.Error(err, "unable to patch ClusterZone/Zone status")
 			return ctrl.Result{}, err
 		}
 
