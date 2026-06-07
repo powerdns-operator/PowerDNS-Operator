@@ -175,7 +175,7 @@ var _ = Describe("ClusterRRset Controller", func() {
 			createdResource := &dnsv1alpha2.ClusterRRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, clusterRrsetLookupKey, createdResource)
-				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS)
+				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS, metav1.ConditionTrue)
 			}, timeout, interval).Should(BeTrue())
 
 			Expect(countClusterRrsetsMetrics()-ic).To(Equal(0), "No more metric should have been created")
@@ -236,7 +236,7 @@ var _ = Describe("ClusterRRset Controller", func() {
 			// Waiting for the resource to be fully modified
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, recreatedRrset)
-				return err == nil && recreatedRrset.IsInExpectedStatus(FIRST_GENERATION, FAILED_STATUS)
+				return err == nil && recreatedRrset.IsInExpectedStatus(FIRST_GENERATION, FAILED_STATUS, metav1.ConditionFalse)
 			}, timeout, interval).Should(BeTrue())
 		})
 	})
