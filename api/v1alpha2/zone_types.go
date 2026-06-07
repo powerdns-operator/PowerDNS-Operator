@@ -12,6 +12,7 @@
 package v1alpha2
 
 import (
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -99,9 +100,16 @@ func init() {
 }
 
 // IsInExpectedStatus returns true if Status.SyncStatus and Status.ObservedGeneration are, at least, at expected value
-func (z *Zone) IsInExpectedStatus(expectedMinimumObservedGeneration int64, expectedSyncStatus string) bool {
+func (z *Zone) IsInExpectedStatus(
+	expectedMinimumObservedGeneration int64,
+	expectedSyncStatus string,
+	expectedConditionStatus metav1.ConditionStatus,
+) bool {
+	currentAvailableCondition := meta.FindStatusCondition(z.Status.Conditions, "Available")
 	return z.Status.ObservedGeneration != nil &&
 		*z.Status.ObservedGeneration >= expectedMinimumObservedGeneration &&
 		z.Status.SyncStatus != nil &&
-		*z.Status.SyncStatus == expectedSyncStatus
+		*z.Status.SyncStatus == expectedSyncStatus &&
+		currentAvailableCondition != nil &&
+		currentAvailableCondition.Status == expectedConditionStatus
 }
