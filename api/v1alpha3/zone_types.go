@@ -9,7 +9,7 @@
  * see the "LICENSE" file for more details
  */
 
-package v1alpha1
+package v1alpha3
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,6 +17,10 @@ import (
 
 // ZoneSpec defines the desired state of Zone
 type ZoneSpec struct {
+	// ProviderRef is a reference to the PDNSProvider resource that manages the PowerDNS instance
+	// +kubebuilder:validation:Required
+	ProviderRef string `json:"providerRef"`
+
 	// Kind of the zone, one of "Native", "Master", "Slave", "Producer", "Consumer".
 	// +kubebuilder:validation:Enum:=Native;Master;Slave;Producer;Consumer
 	Kind string `json:"kind"`
@@ -69,10 +73,11 @@ type ZoneStatus struct {
 }
 
 // +kubebuilder:object:root=true
-// +kubebuilder:storageversion:deprecated
+// +kubebuilder:storageversion
 // +kubebuilder:subresource:status
-// +kubebuilder:unservedversion
+// +kubebuilder:resource:scope=Namespaced
 
+// +kubebuilder:printcolumn:name="Provider",type="string",JSONPath=".spec.providerRef"
 // +kubebuilder:printcolumn:name="Serial",type="integer",JSONPath=".status.serial"
 // +kubebuilder:printcolumn:name="ID",type="string",JSONPath=".status.id"
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.syncStatus"

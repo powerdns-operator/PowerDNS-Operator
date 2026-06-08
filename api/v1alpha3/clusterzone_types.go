@@ -9,18 +9,18 @@
  * see the "LICENSE" file for more details
  */
 
-package v1alpha2
+package v1alpha3
 
 import (
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // +kubebuilder:object:root=true
-// +kubebuilder:storageversion:deprecated
+// +kubebuilder:storageversion
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:scope=Cluster
 
+// +kubebuilder:printcolumn:name="PDNSProvider",type="string",JSONPath=".spec.providerRef"
 // +kubebuilder:printcolumn:name="Serial",type="integer",JSONPath=".status.serial"
 // +kubebuilder:printcolumn:name="ID",type="string",JSONPath=".status.id"
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.syncStatus"
@@ -47,16 +47,9 @@ func init() {
 }
 
 // IsInExpectedStatus returns true if Status.SyncStatus and Status.ObservedGeneration are, at least, at expected value
-func (z *ClusterZone) IsInExpectedStatus(
-	expectedMinimumObservedGeneration int64,
-	expectedSyncStatus string,
-	expectedConditionStatus metav1.ConditionStatus,
-) bool {
-	currentAvailableCondition := meta.FindStatusCondition(z.Status.Conditions, "Available")
+func (z *ClusterZone) IsInExpectedStatus(expectedMinimumObservedGeneration int64, expectedSyncStatus string) bool {
 	return z.Status.ObservedGeneration != nil &&
 		*z.Status.ObservedGeneration >= expectedMinimumObservedGeneration &&
 		z.Status.SyncStatus != nil &&
-		*z.Status.SyncStatus == expectedSyncStatus &&
-		currentAvailableCondition != nil &&
-		currentAvailableCondition.Status == expectedConditionStatus
+		*z.Status.SyncStatus == expectedSyncStatus
 }

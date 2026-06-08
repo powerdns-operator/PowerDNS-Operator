@@ -22,7 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
-	dnsv1alpha2 "github.com/powerdns-operator/powerdns-operator/api/v1alpha2"
+	dnsv1alpha3 "github.com/powerdns-operator/powerdns-operator/api/v1alpha3"
 )
 
 const (
@@ -48,8 +48,7 @@ const (
 // ZoneReconciler reconciles a Zone object
 type ZoneReconciler struct {
 	client.Client
-	Scheme     *runtime.Scheme
-	PDNSClient PdnsClienter
+	Scheme *runtime.Scheme
 }
 
 func init() {
@@ -66,7 +65,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	log.Info("Reconcile Zone", "Zone.Name", req.Name)
 
 	// Get Zone
-	zone := &dnsv1alpha2.Zone{}
+	zone := &dnsv1alpha3.Zone{}
 	err := r.Get(ctx, req.NamespacedName, zone)
 	if err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
@@ -102,25 +101,32 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 	}
 
-	return zoneReconcile(ctx, zone, isModified, isDeleted, r.Client, r.PDNSClient, log)
+	// Get the appropriate PowerDNS client
+	pdnsClient, err := GetPDNSClient(ctx, r.Client, zone.GetProviderRef())
+	if err != nil {
+		log.Error(err, "Failed to get PowerDNS client")
+		return ctrl.Result{}, err
+	}
+
+	return zoneReconcile(ctx, zone, isModified, isDeleted, r.Client, pdnsClient, log)
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ZoneReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// We use indexer to ensure that only one Zone/ClusterZone exists for one DNS entry
-	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &dnsv1alpha2.Zone{}, "Zone.Entry.Name", func(rawObj client.Object) []string {
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &dnsv1alpha3.Zone{}, "Zone.Entry.Name", func(rawObj client.Object) []string {
 		// grab the Zone object, extract its name...
 		var ZoneName string
-		if rawObj.(*dnsv1alpha2.Zone).Status.SyncStatus == nil || *rawObj.(*dnsv1alpha2.Zone).Status.SyncStatus == SUCCEEDED_STATUS {
-			ZoneName = (rawObj.(*dnsv1alpha2.Zone)).Name
+		if rawObj.(*dnsv1alpha3.Zone).Status.SyncStatus == nil || *rawObj.(*dnsv1alpha3.Zone).Status.SyncStatus == SUCCEEDED_STATUS {
+			ZoneName = (rawObj.(*dnsv1alpha3.Zone)).Name
 		}
 		return []string{ZoneName}
 	}); err != nil {
 		return err
 	}
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&dnsv1alpha2.Zone{}).
-		Owns(&dnsv1alpha2.ClusterRRset{}).
-		Owns(&dnsv1alpha2.RRset{}).
+		For(&dnsv1alpha3.Zone{}).
+		Owns(&dnsv1alpha3.ClusterRRset{}).
+		Owns(&dnsv1alpha3.RRset{}).
 		Complete(r)
 }

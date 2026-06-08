@@ -1,7 +1,7 @@
 package controller
 
 import (
-	dnsv1alpha2 "github.com/powerdns-operator/powerdns-operator/api/v1alpha2"
+	dnsv1alpha3 "github.com/powerdns-operator/powerdns-operator/api/v1alpha3"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 )
@@ -37,9 +37,9 @@ var (
 	)
 )
 
-func updateRrsetsMetrics(fqdn string, gr dnsv1alpha2.GenericRRset) {
+func updateRrsetsMetrics(fqdn string, gr dnsv1alpha3.GenericRRset) {
 	switch gr.(type) {
-	case *dnsv1alpha2.RRset:
+	case *dnsv1alpha3.RRset:
 		rrsetsStatusesMetric.With(map[string]string{
 			"fqdn":      fqdn,
 			"type":      gr.GetSpec().Type,
@@ -48,7 +48,7 @@ func updateRrsetsMetrics(fqdn string, gr dnsv1alpha2.GenericRRset) {
 			"namespace": gr.GetNamespace(),
 		}).Set(1)
 
-	case *dnsv1alpha2.ClusterRRset:
+	case *dnsv1alpha3.ClusterRRset:
 		clusterRrsetsStatusesMetric.With(map[string]string{
 			"fqdn":   fqdn,
 			"type":   gr.GetSpec().Type,
@@ -58,9 +58,9 @@ func updateRrsetsMetrics(fqdn string, gr dnsv1alpha2.GenericRRset) {
 	}
 
 }
-func removeRrsetMetrics(gr dnsv1alpha2.GenericRRset) {
+func removeRrsetMetrics(gr dnsv1alpha3.GenericRRset) {
 	switch gr.(type) {
-	case *dnsv1alpha2.RRset:
+	case *dnsv1alpha3.RRset:
 		rrsetsStatusesMetric.DeletePartialMatch(
 			map[string]string{
 				"namespace": gr.GetNamespace(),
@@ -75,31 +75,31 @@ func removeRrsetMetrics(gr dnsv1alpha2.GenericRRset) {
 	}
 }
 
-func updateZonesMetrics(gz dnsv1alpha2.GenericZone) {
+func updateZonesMetrics(gz dnsv1alpha3.GenericZone) {
 	switch gz.(type) {
-	case *dnsv1alpha2.Zone:
+	case *dnsv1alpha3.Zone:
 		zonesStatusesMetric.With(map[string]string{
 			"status":    *gz.GetStatus().SyncStatus,
 			"name":      gz.GetName(),
 			"namespace": gz.GetNamespace(),
 		}).Set(1)
-	case *dnsv1alpha2.ClusterZone:
+	case *dnsv1alpha3.ClusterZone:
 		clusterZonesStatusesMetric.With(map[string]string{
 			"status": *gz.GetStatus().SyncStatus,
 			"name":   gz.GetName(),
 		}).Set(1)
 	}
 }
-func removeZonesMetrics(gz dnsv1alpha2.GenericZone) {
+func removeZonesMetrics(gz dnsv1alpha3.GenericZone) {
 	switch gz.(type) {
-	case *dnsv1alpha2.Zone:
+	case *dnsv1alpha3.Zone:
 		zonesStatusesMetric.DeletePartialMatch(
 			map[string]string{
 				"namespace": gz.GetNamespace(),
 				"name":      gz.GetName(),
 			},
 		)
-	case *dnsv1alpha2.ClusterZone:
+	case *dnsv1alpha3.ClusterZone:
 		clusterZonesStatusesMetric.DeletePartialMatch(
 			map[string]string{
 				"name": gz.GetName(),

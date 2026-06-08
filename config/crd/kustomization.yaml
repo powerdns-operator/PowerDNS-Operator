@@ -6,6 +6,7 @@ resources:
 - bases/dns.cav.enablers.ob_rrsets.yaml
 - bases/dns.cav.enablers.ob_clusterzones.yaml
 - bases/dns.cav.enablers.ob_clusterrrsets.yaml
+- bases/dns.cav.enablers.ob_pdnsproviders.yaml
 #+kubebuilder:scaffold:crdkustomizeresource
 
 patches:

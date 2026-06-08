@@ -10,28 +10,13 @@ repo: github.com/powerdns-operator/powerdns-operator
 resources:
 - api:
     crdVersion: v1
-  domain: cav.enablers.ob
-  group: dns
-  kind: Zone
-  path: github.com/powerdns-operator/powerdns-operator/api/v1alpha1
-  version: v1alpha1
-- api:
-    crdVersion: v1
-    namespaced: true
-  domain: cav.enablers.ob
-  group: dns
-  kind: RRset
-  path: github.com/powerdns-operator/powerdns-operator/api/v1alpha1
-  version: v1alpha1
-- api:
-    crdVersion: v1
     namespaced: true
   controller: true
   domain: cav.enablers.ob
   group: dns
   kind: Zone
-  path: github.com/powerdns-operator/powerdns-operator/api/v1alpha2
-  version: v1alpha2
+  path: github.com/powerdns-operator/powerdns-operator/api/v1alpha3
+  version: v1alpha3
 - api:
     crdVersion: v1
     namespaced: true
@@ -39,22 +24,30 @@ resources:
   domain: cav.enablers.ob
   group: dns
   kind: RRset
-  path: github.com/powerdns-operator/powerdns-operator/api/v1alpha2
-  version: v1alpha2
+  path: github.com/powerdns-operator/powerdns-operator/api/v1alpha3
+  version: v1alpha3
 - api:
     crdVersion: v1
   controller: true
   domain: cav.enablers.ob
   group: dns
   kind: ClusterZone
-  path: github.com/powerdns-operator/powerdns-operator/api/v1alpha2
-  version: v1alpha2
+  path: github.com/powerdns-operator/powerdns-operator/api/v1alpha3
+  version: v1alpha3
 - api:
     crdVersion: v1
   controller: true
   domain: cav.enablers.ob
   group: dns
   kind: ClusterRRset
-  path: github.com/powerdns-operator/powerdns-operator/api/v1alpha2
-  version: v1alpha2
+  path: github.com/powerdns-operator/powerdns-operator/api/v1alpha3
+  version: v1alpha3
+- api:
+    crdVersion: v1
+  controller: true
+  domain: cav.enablers.ob
+  group: dns
+  kind: PDNSProvider
+  path: github.com/powerdns-operator/powerdns-operator/api/v1alpha3
+  version: v1alpha3
 version: "3"

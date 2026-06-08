@@ -5,10 +5,19 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - dns.cav.enablers.ob
   resources:
   - clusterrrsets
   - clusterzones
+  - pdnsproviders
   - rrsets
   - zones
   verbs:
@@ -24,6 +33,7 @@ rules:
   resources:
   - clusterrrsets/finalizers
   - clusterzones/finalizers
+  - pdnsproviders/finalizers
   - rrsets/finalizers
   - zones/finalizers
   verbs:
@@ -33,6 +43,7 @@ rules:
   resources:
   - clusterrrsets/status
   - clusterzones/status
+  - pdnsproviders/status
   - rrsets/status
   - zones/status
   verbs:

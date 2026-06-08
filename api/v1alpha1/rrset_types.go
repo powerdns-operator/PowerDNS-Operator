@@ -48,6 +48,7 @@ type RRsetStatus struct {
 }
 
 // +kubebuilder:object:root=true
+// +kubebuilder:storageversion:deprecated
 // +kubebuilder:subresource:status
 // +kubebuilder:unservedversion
 

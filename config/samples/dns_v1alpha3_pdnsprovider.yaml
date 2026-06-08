@@ -1,0 +1,9 @@
+apiVersion: dns.cav.enablers.ob/v1alpha3
+kind: PDNSProvider
+metadata:
+  labels:
+    app.kubernetes.io/name: powerdns-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: pdnsprovider-sample
+spec:
+  # TODO(user): Add fields here

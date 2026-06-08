@@ -9,15 +9,14 @@
  * see the "LICENSE" file for more details
  */
 
-package v1alpha2
+package v1alpha3
 
 import (
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // +kubebuilder:object:root=true
-// +kubebuilder:storageversion:deprecated
+// +kubebuilder:storageversion
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:scope=Cluster
 
@@ -50,16 +49,9 @@ func init() {
 }
 
 // IsInExpectedStatus returns true if Status.SyncStatus and Status.ObservedGeneration are, at least, at expected value
-func (r *ClusterRRset) IsInExpectedStatus(
-	expectedMinimumObservedGeneration int64,
-	expectedSyncStatus string,
-	expectedConditionStatus metav1.ConditionStatus,
-) bool {
-	currentAvailableCondition := meta.FindStatusCondition(r.Status.Conditions, "Available")
+func (r *ClusterRRset) IsInExpectedStatus(expectedMinimumObservedGeneration int64, expectedSyncStatus string) bool {
 	return r.Status.ObservedGeneration != nil &&
 		*r.Status.ObservedGeneration >= expectedMinimumObservedGeneration &&
 		r.Status.SyncStatus != nil &&
-		*r.Status.SyncStatus == expectedSyncStatus &&
-		currentAvailableCondition != nil &&
-		currentAvailableCondition.Status == expectedConditionStatus
+		*r.Status.SyncStatus == expectedSyncStatus
 }
