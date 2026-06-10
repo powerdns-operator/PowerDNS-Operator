@@ -19,7 +19,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -70,6 +69,7 @@ func (r *ClusterRRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		// then lets add the finalizer and update the object. This is equivalent
 		// to registering our finalizer.
 		if !controllerutil.ContainsFinalizer(rrset, METRICS_FINALIZER_NAME) {
+			log.V(1).Info("Adding finalizer to ClusterRRset")
 			controllerutil.AddFinalizer(rrset, METRICS_FINALIZER_NAME)
 			lastUpdateTime = &metav1.Time{Time: time.Now().UTC()}
 			if err := r.Update(ctx, rrset); err != nil {
@@ -79,15 +79,18 @@ func (r *ClusterRRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		}
 	}
 
-	// When updating a ClusterRRset, if 'Status' is not changed, 'LastTransitionTime' will not be updated
-	// So we delete condition to force new 'LastTransitionTime'
 	original := rrset.DeepCopy()
-	if !isDeleted && isModified {
-		meta.RemoveStatusCondition(&rrset.Status.Conditions, "Available")
+	// Ensure we update the status in case of early return
+	defer func() {
 		if err := r.Status().Patch(ctx, rrset, client.MergeFrom(original)); err != nil {
 			log.Error(err, "unable to patch ClusterRRSet status")
-			return ctrl.Result{}, err
 		}
+	}()
+
+	// When updating a ClusterRRset, if 'Status' is not changed, 'LastTransitionTime' will not be updated
+	// So we delete condition to force new 'LastTransitionTime'
+	if !isDeleted && isModified {
+		meta.RemoveStatusCondition(&rrset.Status.Conditions, "Available")
 	}
 
 	// Zone
@@ -124,20 +127,7 @@ func (r *ClusterRRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 			// If RRset is under deletion, no need to update its status
 			if !isDeleted {
-				original = rrset.DeepCopy()
-				rrset.Status.SyncStatus = ptr.To(dnsv1alpha2.PENDING_STATUS)
-				rrset.Status.ObservedGeneration = &rrset.Generation
-				meta.SetStatusCondition(&rrset.Status.Conditions, metav1.Condition{
-					Type:               "Available",
-					Status:             metav1.ConditionFalse,
-					LastTransitionTime: metav1.NewTime(time.Now().UTC()),
-					Reason:             RrsetReasonZoneNotAvailable,
-					Message:            RrsetMessageNonExistentZone + err.Error(),
-				})
-				if err := r.Status().Patch(ctx, rrset, client.MergeFrom(original)); err != nil {
-					log.Error(err, "unable to patch RRSet status")
-					return ctrl.Result{}, err
-				}
+				rrset.SetMissingZone(err)
 				updateRrsetsMetrics(getRRsetName(rrset), rrset)
 			}
 
@@ -147,27 +137,14 @@ func (r *ClusterRRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
 		} else {
 			log.Error(err, "Failed to get zone")
+			rrset.SetZoneNotAvailable(zone.GetName())
 			return ctrl.Result{}, err
 		}
 	}
 	// If a Zone/ClusterZone exists but is in Failed Status
 	zoneIsInFailedStatus := (zone.GetStatus().SyncStatus != nil && *zone.GetStatus().SyncStatus == dnsv1alpha2.FAILED_STATUS)
 	if zoneIsInFailedStatus {
-		original = rrset.DeepCopy()
-		rrset.Status.SyncStatus = ptr.To(dnsv1alpha2.FAILED_STATUS)
-		rrset.Status.ObservedGeneration = &rrset.Generation
-		meta.SetStatusCondition(&rrset.Status.Conditions, metav1.Condition{
-			Type:               "Available",
-			Status:             metav1.ConditionFalse,
-			LastTransitionTime: metav1.NewTime(time.Now().UTC()),
-			Reason:             RrsetReasonZoneNotAvailable,
-			Message:            RrsetMessageUnavailableZone + zone.GetName(),
-		})
-		if err := r.Status().Patch(ctx, rrset, client.MergeFrom(original)); err != nil {
-			log.Error(err, "unable to patch RRSet status")
-			return ctrl.Result{}, err
-		}
-
+		rrset.SetZoneNotAvailable(zone.GetName())
 		// Update metrics
 		updateRrsetsMetrics(getRRsetName(rrset), rrset)
 

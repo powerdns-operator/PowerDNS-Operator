@@ -69,16 +69,20 @@ func (r *ClusterZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			}
 		}
 	}
+
+	original := zone.DeepCopy()
+	// Ensure we update the status in case of early return
+	defer func() {
+		if err := r.Status().Patch(ctx, zone, client.MergeFrom(original)); err != nil {
+			log.Error(err, "unable to patch ClusterZone status")
+		}
+	}()
+
 	// When updating a ClusterZone, if 'Status' is not changed, 'LastTransitionTime' will not be updated
 	// So we delete condition to force new 'LastTransitionTime'
-	original := zone.DeepCopy()
 	if !isDeleted && isModified {
 		isModified = true
 		meta.RemoveStatusCondition(&zone.Status.Conditions, "Available")
-		if err := r.Status().Patch(ctx, zone, client.MergeFrom(original)); err != nil {
-			log.Error(err, "unable to patch ClusterZone status")
-			return ctrl.Result{}, err
-		}
 	}
 
 	return zoneReconcile(ctx, zone, isModified, isDeleted, r.Client, r.PDNSClient, log)
