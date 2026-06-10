@@ -20,7 +20,7 @@ import (
 	"github.com/joeig/go-powerdns/v3"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
@@ -93,7 +93,7 @@ var _ = Describe("Zone Controller", func() {
 		// Waiting for the resource to be fully deleted
 		Eventually(func() bool {
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			return errors.IsNotFound(err)
+			return apierrors.IsNotFound(err)
 		}, timeout, interval).Should(BeTrue())
 		// Confirm that resource is deleted in the backend
 		Eventually(func() bool {
@@ -452,7 +452,7 @@ var _ = Describe("Zone Controller", func() {
 			}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, fakeTypeNamespacedName, fakeResource)
-				return errors.IsNotFound(err)
+				return apierrors.IsNotFound(err)
 			}, timeout, interval).Should(BeTrue())
 		})
 	})
