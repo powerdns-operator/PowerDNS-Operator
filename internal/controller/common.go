@@ -19,7 +19,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/joeig/go-powerdns/v3"
 	dnsv1alpha2 "github.com/powerdns-operator/powerdns-operator/api/v1alpha2"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -154,7 +154,7 @@ func zoneReconcile(ctx context.Context, gz dnsv1alpha2.GenericZone, isModified b
 		Message:            conditionMessage,
 	})
 	if err != nil {
-		if errors.IsConflict(err) {
+		if apierrors.IsConflict(err) {
 			log.Info("Object has been modified, forcing a new reconciliation")
 			return ctrl.Result{Requeue: true}, nil
 		}
@@ -293,7 +293,7 @@ func rrsetReconcile(ctx context.Context, gr dnsv1alpha2.GenericRRset, zone dnsv1
 
 	// Set OwnerReference
 	if err := ownObject(ctx, zone, gr, scheme, cl, log); err != nil {
-		if errors.IsConflict(err) {
+		if apierrors.IsConflict(err) {
 			log.Info("Conflict on RRSet owner reference, retrying")
 			return ctrl.Result{Requeue: true}, nil
 		}
@@ -535,7 +535,7 @@ func createOrUpdateRrsetExternalResources(ctx context.Context, zone dnsv1alpha2.
 	rrType := powerdns.RRType(rrset.GetSpec().Type)
 	// Looking for a record with same Name and Type
 	records, err := PDNSClient.Records.Get(ctx, zone.GetObjectMeta().Name, name, &rrType)
-	if err != nil && !errors.IsNotFound(err) {
+	if err != nil && !apierrors.IsNotFound(err) {
 		return false, err
 	}
 	// An issue exist on GET API Calls, comments for another RRSet are included although we filter
