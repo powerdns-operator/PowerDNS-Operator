@@ -34,6 +34,7 @@ import (
 const (
 	RrsetReasonZoneNotAvailable      = "ZoneNotAvailable"
 	RrsetReasonSynchronizationFailed = "SynchronizationFailed"
+	RrsetReasonUnprocessable         = "Unprocessable"
 	RrsetReasonDuplicated            = "RrsetDuplicated"
 	RrsetReasonSynced                = "RrsetSynced"
 	RrsetMessageDuplicated           = "Already existing RRset with the same FQDN"

@@ -13,6 +13,8 @@ package controller
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -28,6 +30,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
+
+var ErrUnprocessableError = errors.New("Unprocessable")
 
 func zoneReconcile(ctx context.Context, gz dnsv1alpha2.GenericZone, isModified bool, isDeleted bool, cl client.Client, PDNSClient PdnsClienter, log logr.Logger) (ctrl.Result, error) {
 	isInFailedStatus := (gz.GetStatus().SyncStatus != nil && *gz.GetStatus().SyncStatus == dnsv1alpha2.FAILED_STATUS)
@@ -169,6 +173,7 @@ func zoneReconcile(ctx context.Context, gz dnsv1alpha2.GenericZone, isModified b
 
 func rrsetReconcile(ctx context.Context, gr dnsv1alpha2.GenericRRset, zone dnsv1alpha2.GenericZone, isModified bool, isDeleted bool, lastUpdateTime *metav1.Time, scheme *runtime.Scheme, cl client.Client, PDNSClient PdnsClienter, log logr.Logger) (ctrl.Result, error) {
 	isInFailedStatus := (gr.GetStatus().SyncStatus != nil && *gr.GetStatus().SyncStatus == dnsv1alpha2.FAILED_STATUS)
+	isUnprocessable := gr.GetStatus().SyncStatus != nil && *gr.GetStatus().SyncStatus == dnsv1alpha2.UNPROCESSABLE_STATUS
 
 	// initialize syncStatus
 	var syncStatus *string
@@ -181,12 +186,15 @@ func rrsetReconcile(ctx context.Context, gr dnsv1alpha2.GenericRRset, zone dnsv1
 		// The object is not being deleted, so if it does not have our finalizer,
 		// then lets add the finalizer and update the object. This is equivalent
 		// to registering our finalizer.
-		if !controllerutil.ContainsFinalizer(gr, RESOURCES_FINALIZER_NAME) {
-			controllerutil.AddFinalizer(gr, RESOURCES_FINALIZER_NAME)
-			lastUpdateTime = &metav1.Time{Time: time.Now().UTC()}
-			if err := cl.Update(ctx, gr); err != nil {
-				log.Error(err, "Failed to add finalizer")
-				return ctrl.Result{}, err
+		// Except for Unprocessable status: we don't want to add the finalizer
+		if !isUnprocessable {
+			if !controllerutil.ContainsFinalizer(gr, RESOURCES_FINALIZER_NAME) {
+				controllerutil.AddFinalizer(gr, RESOURCES_FINALIZER_NAME)
+				lastUpdateTime = &metav1.Time{Time: time.Now().UTC()}
+				if err := cl.Update(ctx, gr); err != nil {
+					log.Error(err, "Failed to add finalizer")
+					return ctrl.Result{}, err
+				}
 			}
 		}
 	} else {
@@ -224,7 +232,7 @@ func rrsetReconcile(ctx context.Context, gr dnsv1alpha2.GenericRRset, zone dnsv1
 	}
 
 	// We cannot exit previously (at the early moments of reconcile), because we have to allow deletion process
-	if isInFailedStatus && !isModified {
+	if (isInFailedStatus || isUnprocessable) && !isModified {
 		// Update resource metrics
 		updateRrsetsMetrics(getRRsetName(gr), gr)
 		return ctrl.Result{}, nil
@@ -279,13 +287,29 @@ func rrsetReconcile(ctx context.Context, gr dnsv1alpha2.GenericRRset, zone dnsv1
 	}
 
 	// Create or Update
-	changed, err := createOrUpdateRrsetExternalResources(ctx, zone, gr, PDNSClient)
-	if err != nil {
-		log.Error(err, "Failed to create or update external resources")
-		syncStatus = ptr.To(dnsv1alpha2.FAILED_STATUS)
-		conditionStatus = metav1.ConditionFalse
-		conditionReason = RrsetReasonSynchronizationFailed
-		conditionMessage = err.Error()
+	var changed bool
+	var err error
+	if !isUnprocessable {
+		changed, err = createOrUpdateRrsetExternalResources(ctx, zone, gr, PDNSClient)
+		if err != nil {
+			log.Error(err, "Failed to create or update external resources")
+			if errors.Is(err, ErrUnprocessableError) {
+				syncStatus = ptr.To(dnsv1alpha2.UNPROCESSABLE_STATUS)
+				conditionStatus = metav1.ConditionFalse
+				conditionReason = RrsetReasonUnprocessable
+				conditionMessage = err.Error()
+				controllerutil.RemoveFinalizer(gr, RESOURCES_FINALIZER_NAME)
+				if err := cl.Update(ctx, gr); err != nil {
+					log.Error(err, "Failed to remove finalizer")
+					return ctrl.Result{}, err
+				}
+			} else {
+				syncStatus = ptr.To(dnsv1alpha2.FAILED_STATUS)
+				conditionStatus = metav1.ConditionFalse
+				conditionReason = RrsetReasonSynchronizationFailed
+				conditionMessage = err.Error()
+			}
+		}
 	}
 	if changed {
 		lastUpdateTime = &metav1.Time{Time: time.Now().UTC()}
@@ -560,6 +584,14 @@ func createOrUpdateRrsetExternalResources(ctx context.Context, zone dnsv1alpha2.
 	}
 	err = PDNSClient.Records.Change(ctx, zone.GetObjectMeta().Name, name, rrType, rrset.GetSpec().TTL, rrset.GetSpec().Records, comments)
 	if err != nil {
+		// Identify if the error is a 422 Unprocessable Entity
+		var pdnsError *powerdns.Error
+		if errors.As(err, &pdnsError) {
+			if pdnsError.StatusCode == 422 && pdnsError.Status == "422 Unprocessable Entity" {
+				return false, fmt.Errorf("%w: %w", ErrUnprocessableError, err)
+			}
+		}
+
 		return false, err
 	}
 
