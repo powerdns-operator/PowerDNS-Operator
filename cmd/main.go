@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -29,6 +30,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
@@ -77,6 +79,13 @@ func main() {
 	}
 	apiCAPath := os.Getenv("PDNS_API_CA_PATH")
 
+	// Comma-separated list of namespaces the manager should watch. When empty
+	// (the default), the manager watches the whole cluster and all reconcilers
+	// (Zone, RRset, ClusterZone, ClusterRRset) are registered. When set, the
+	// cache is scoped to the listed namespaces and the cluster-scoped
+	// ClusterZone / ClusterRRset reconcilers are skipped.
+	watchNamespace := os.Getenv("WATCH_NAMESPACE")
+
 	// Parse PowerDNS API timeout from environment variable (in seconds)
 	apiTimeoutStr := os.Getenv("PDNS_API_TIMEOUT")
 	apiTimeoutSeconds := 10 // default timeout in seconds
@@ -104,6 +113,13 @@ func main() {
 	flag.BoolVar(&apiInsecure, "pdns-api-insecure", apiInsecure,
 		"Enable insecure connections to PowerDNS API")
 	flag.StringVar(&apiCAPath, "pdns-api-ca-path", apiCAPath, "The path to certificate authority")
+	flag.StringVar(&watchNamespace, "watch-namespace", watchNamespace,
+		"Comma-separated list of namespaces to watch. "+
+			"If empty (the default), the manager watches all namespaces and "+
+			"all reconcilers are registered. When set, the manager's cache is "+
+			"scoped to the listed namespaces and the ClusterZone / ClusterRRset "+
+			"reconcilers are not registered (cluster-scoped CRDs are not "+
+			"compatible with namespace-scoped operation).")
 
 	opts := zap.Options{
 		Development: false,
@@ -146,7 +162,7 @@ func main() {
 		TLSOpts: tlsOpts,
 	})
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	mgrOptions := ctrl.Options{
 		Scheme: scheme,
 		Metrics: metricsserver.Options{
 			BindAddress:   metricsAddr,
@@ -168,7 +184,29 @@ func main() {
 		// if you are doing or is intended to do any operation such as perform cleanups
 		// after the manager stops then its usage might be unsafe.
 		// LeaderElectionReleaseOnCancel: true,
-	})
+	}
+
+	// Scope the manager's cache to a list of namespaces when WATCH_NAMESPACE is
+	// set. An empty value preserves the historical cluster-wide behaviour.
+	if watchNamespace != "" {
+		namespaces := map[string]cache.Config{}
+		for _, ns := range strings.Split(watchNamespace, ",") {
+			ns = strings.TrimSpace(ns)
+			if ns != "" {
+				namespaces[ns] = cache.Config{}
+			}
+		}
+		if len(namespaces) == 0 {
+			setupLog.Error(nil, "WATCH_NAMESPACE was set but contained no valid namespace names")
+			os.Exit(1)
+		}
+		mgrOptions.Cache = cache.Options{DefaultNamespaces: namespaces}
+		setupLog.Info("manager scoped to namespaces", "namespaces", watchNamespace)
+	} else {
+		setupLog.Info("manager watching all namespaces (cluster-wide)")
+	}
+
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), mgrOptions)
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)

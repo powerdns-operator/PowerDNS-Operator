@@ -68,6 +68,7 @@ kubectl apply -f https://github.com/powerdns-operator/PowerDNS-Operator/releases
 | `PDNS_API_TIMEOUT` | PowerDNS API request timeout in seconds | No | `10` |
 | `PDNS_API_INSECURE` | Insecure connections with PowerDNS API | No | "False" |
 | `PDNS_API_CA_PATH` | Path to Certificate Authority | No | None |
+| `WATCH_NAMESPACE` | Comma-separated list of namespaces to watch. When empty, the manager watches `Zone` and `RRset` resources cluster-wide. When set, the cache is scoped to the listed namespaces so the operator only reconciles `Zone` and `RRset` CRs in those namespaces. Cluster-scoped CRDs (`ClusterZone`, `ClusterRRset`) are always reconciled cluster-wide regardless of this setting. | No | None |
 
 ### Verification
 
