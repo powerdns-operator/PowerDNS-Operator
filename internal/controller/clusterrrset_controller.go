@@ -15,7 +15,7 @@ import (
 	"context"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -102,7 +102,7 @@ func (r *ClusterRRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 	err = r.Get(ctx, client.ObjectKey{Namespace: rrset.Namespace, Name: rrset.Spec.ZoneRef.Name}, zone)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			// Zone not found, remove finalizer and requeue
 			actionOnFinalizer := false
 			if controllerutil.ContainsFinalizer(rrset, RESOURCES_FINALIZER_NAME) {
