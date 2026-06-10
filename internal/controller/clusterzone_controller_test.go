@@ -19,7 +19,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -90,7 +90,7 @@ var _ = Describe("ClusterZone Controller", func() {
 		// Waiting for the resource to be fully deleted
 		Eventually(func() bool {
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			return errors.IsNotFound(err)
+			return apierrors.IsNotFound(err)
 		}, timeout, interval).Should(BeTrue())
 		// Confirm that resource is deleted in the backend
 		Eventually(func() bool {
