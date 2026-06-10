@@ -125,7 +125,7 @@ func (r *ClusterRRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			// If RRset is under deletion, no need to update its status
 			if !isDeleted {
 				original = rrset.DeepCopy()
-				rrset.Status.SyncStatus = ptr.To(PENDING_STATUS)
+				rrset.Status.SyncStatus = ptr.To(dnsv1alpha2.PENDING_STATUS)
 				rrset.Status.ObservedGeneration = &rrset.Generation
 				meta.SetStatusCondition(&rrset.Status.Conditions, metav1.Condition{
 					Type:               "Available",
@@ -151,10 +151,10 @@ func (r *ClusterRRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		}
 	}
 	// If a Zone/ClusterZone exists but is in Failed Status
-	zoneIsInFailedStatus := (zone.GetStatus().SyncStatus != nil && *zone.GetStatus().SyncStatus == FAILED_STATUS)
+	zoneIsInFailedStatus := (zone.GetStatus().SyncStatus != nil && *zone.GetStatus().SyncStatus == dnsv1alpha2.FAILED_STATUS)
 	if zoneIsInFailedStatus {
 		original = rrset.DeepCopy()
-		rrset.Status.SyncStatus = ptr.To(FAILED_STATUS)
+		rrset.Status.SyncStatus = ptr.To(dnsv1alpha2.FAILED_STATUS)
 		rrset.Status.ObservedGeneration = &rrset.Generation
 		meta.SetStatusCondition(&rrset.Status.Conditions, metav1.Condition{
 			Type:               "Available",
@@ -195,7 +195,7 @@ func (r *ClusterRRsetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &dnsv1alpha2.ClusterRRset{}, "ClusterRRset.Entry.Name", func(rawObj client.Object) []string {
 		// grab the ClusterRRset object, extract its name...
 		var RRsetName string
-		if rawObj.(*dnsv1alpha2.ClusterRRset).Status.SyncStatus == nil || *rawObj.(*dnsv1alpha2.ClusterRRset).Status.SyncStatus == SUCCEEDED_STATUS {
+		if rawObj.(*dnsv1alpha2.ClusterRRset).Status.SyncStatus == nil || *rawObj.(*dnsv1alpha2.ClusterRRset).Status.SyncStatus == dnsv1alpha2.SUCCEEDED_STATUS {
 			RRsetName = getRRsetName(rawObj.(*dnsv1alpha2.ClusterRRset)) + "/" + rawObj.(*dnsv1alpha2.ClusterRRset).Spec.Type
 		}
 		return []string{RRsetName}
