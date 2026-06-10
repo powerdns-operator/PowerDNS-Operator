@@ -111,7 +111,7 @@ func (r *ZoneReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &dnsv1alpha2.Zone{}, "Zone.Entry.Name", func(rawObj client.Object) []string {
 		// grab the Zone object, extract its name...
 		var ZoneName string
-		if rawObj.(*dnsv1alpha2.Zone).Status.SyncStatus == nil || *rawObj.(*dnsv1alpha2.Zone).Status.SyncStatus == SUCCEEDED_STATUS {
+		if rawObj.(*dnsv1alpha2.Zone).Status.SyncStatus == nil || *rawObj.(*dnsv1alpha2.Zone).Status.SyncStatus == dnsv1alpha2.SUCCEEDED_STATUS {
 			ZoneName = (rawObj.(*dnsv1alpha2.Zone)).Name
 		}
 		return []string{ZoneName}

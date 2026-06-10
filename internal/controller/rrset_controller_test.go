@@ -181,11 +181,11 @@ var _ = Describe("RRset Controller", func() {
 			createdResource := &dnsv1alpha2.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, rssetLookupKey, createdResource)
-				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS, metav1.ConditionTrue)
+				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.SUCCEEDED_STATUS, metav1.ConditionTrue)
 			}, timeout, interval).Should(BeTrue())
 
 			Expect(countRrsetsMetrics()-ic).To(Equal(0), "No more metric should have been created")
-			Expect(getRrsetMetricWithLabels(resourceDNSName+"."+zoneRef+".", resourceType, SUCCEEDED_STATUS, resourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
+			Expect(getRrsetMetricWithLabels(resourceDNSName+"."+zoneRef+".", resourceType, dnsv1alpha2.SUCCEEDED_STATUS, resourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(resourceName, resourceType)).To(Equal(resourceRecords))
 			Expect(getMockedTTL(resourceName, resourceType)).To(Equal(resourceTTL))
 			Expect(getMockedComment(resourceName, resourceType)).To(Equal(resourceComment))
@@ -227,10 +227,10 @@ var _ = Describe("RRset Controller", func() {
 			updatedRRset := &dnsv1alpha2.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, rssetLookupKey, updatedRRset)
-				return err == nil && updatedRRset.IsInExpectedStatus(MODIFIED_GENERATION, SUCCEEDED_STATUS, metav1.ConditionTrue)
+				return err == nil && updatedRRset.IsInExpectedStatus(MODIFIED_GENERATION, dnsv1alpha2.SUCCEEDED_STATUS, metav1.ConditionTrue)
 			}, timeout, interval).Should(BeTrue())
 			Expect(countRrsetsMetrics()-ic).To(Equal(0), "No more metric should have been created")
-			Expect(getRrsetMetricWithLabels(resourceDNSName+"."+zoneRef+".", resourceType, SUCCEEDED_STATUS, resourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
+			Expect(getRrsetMetricWithLabels(resourceDNSName+"."+zoneRef+".", resourceType, dnsv1alpha2.SUCCEEDED_STATUS, resourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(resourceName, resourceType)).To(Equal(updatedRecords))
 			Expect(getMockedTTL(resourceName, resourceType)).To(Equal(resourceTTL))
 			Expect(getMockedComment(resourceName, resourceType)).To(Equal(resourceComment))
@@ -280,10 +280,10 @@ var _ = Describe("RRset Controller", func() {
 			updatedRRset := &dnsv1alpha2.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, rssetLookupKey, updatedRRset)
-				return err == nil && updatedRRset.IsInExpectedStatus(MODIFIED_GENERATION, SUCCEEDED_STATUS, metav1.ConditionTrue)
+				return err == nil && updatedRRset.IsInExpectedStatus(MODIFIED_GENERATION, dnsv1alpha2.SUCCEEDED_STATUS, metav1.ConditionTrue)
 			}, timeout, interval).Should(BeTrue())
 			Expect(countRrsetsMetrics()-ic).To(Equal(0), "No more metric should have been created")
-			Expect(getRrsetMetricWithLabels(resourceDNSName+"."+zoneRef+".", resourceType, SUCCEEDED_STATUS, resourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
+			Expect(getRrsetMetricWithLabels(resourceDNSName+"."+zoneRef+".", resourceType, dnsv1alpha2.SUCCEEDED_STATUS, resourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(resourceName, resourceType)).To(Equal(resourceRecords))
 			Expect(getMockedTTL(resourceName, resourceType)).To(Equal(modifiedResourceTTL))
 			Expect(getMockedComment(resourceName, resourceType)).To(Equal(resourceComment))
@@ -331,10 +331,10 @@ var _ = Describe("RRset Controller", func() {
 			updatedRRset := &dnsv1alpha2.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, rssetLookupKey, updatedRRset)
-				return err == nil && updatedRRset.IsInExpectedStatus(MODIFIED_GENERATION, SUCCEEDED_STATUS, metav1.ConditionTrue)
+				return err == nil && updatedRRset.IsInExpectedStatus(MODIFIED_GENERATION, dnsv1alpha2.SUCCEEDED_STATUS, metav1.ConditionTrue)
 			}, timeout, interval).Should(BeTrue())
 			Expect(countRrsetsMetrics()-ic).To(Equal(0), "No more metric should have been created")
-			Expect(getRrsetMetricWithLabels(resourceDNSName+"."+zoneRef+".", resourceType, SUCCEEDED_STATUS, resourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
+			Expect(getRrsetMetricWithLabels(resourceDNSName+"."+zoneRef+".", resourceType, dnsv1alpha2.SUCCEEDED_STATUS, resourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(resourceName, resourceType)).To(Equal(resourceRecords))
 			Expect(getMockedTTL(resourceName, resourceType)).To(Equal(resourceTTL))
 			Expect(getMockedComment(resourceName, resourceType)).To(Equal(modifiedResourceComment))
@@ -410,11 +410,11 @@ var _ = Describe("RRset Controller", func() {
 			// Waiting for the resource to be fully modified
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, updatedRRset)
-				return err == nil && updatedRRset.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS, metav1.ConditionTrue)
+				return err == nil && updatedRRset.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.SUCCEEDED_STATUS, metav1.ConditionTrue)
 			}, timeout, interval).Should(BeTrue())
 
 			Expect(countRrsetsMetrics()-ic).To(Equal(1), "One more metric should have been created")
-			Expect(getRrsetMetricWithLabels(resourceDNSName+"."+zoneRef+".", resourceType, SUCCEEDED_STATUS, resourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
+			Expect(getRrsetMetricWithLabels(resourceDNSName+"."+zoneRef+".", resourceType, dnsv1alpha2.SUCCEEDED_STATUS, resourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Eventually(func() bool {
 				return getMockedRecordsForType(recreationResourceName, recreationResourceType) != nil
 			}, timeout, interval).Should(BeTrue())
@@ -480,11 +480,11 @@ var _ = Describe("RRset Controller", func() {
 			// Waiting for the resource to be fully modified
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, updatedRRset)
-				return err == nil && updatedRRset.IsInExpectedStatus(MODIFIED_GENERATION, SUCCEEDED_STATUS, metav1.ConditionTrue)
+				return err == nil && updatedRRset.IsInExpectedStatus(MODIFIED_GENERATION, dnsv1alpha2.SUCCEEDED_STATUS, metav1.ConditionTrue)
 			}, timeout, interval).Should(BeTrue())
 
 			Expect(countRrsetsMetrics()-ic).To(Equal(0), "No more metric should have been created")
-			Expect(getRrsetMetricWithLabels(resourceDNSName+"."+zoneRef+".", resourceType, SUCCEEDED_STATUS, resourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
+			Expect(getRrsetMetricWithLabels(resourceDNSName+"."+zoneRef+".", resourceType, dnsv1alpha2.SUCCEEDED_STATUS, resourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(resourceName, resourceType)).To(Equal(modifiedResourceRecords))
 			Expect(getMockedTTL(resourceName, resourceType)).To(Equal(modifiedResourceTTL))
 			Expect(getMockedComment(resourceName, resourceType)).To(Equal(modifiedResourceComment))
@@ -609,11 +609,11 @@ var _ = Describe("RRset Controller", func() {
 			createdResource := &dnsv1alpha2.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, additionalRRsetLookupKey, createdResource)
-				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS, metav1.ConditionTrue)
+				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.SUCCEEDED_STATUS, metav1.ConditionTrue)
 			}, timeout, interval).Should(BeTrue())
 
 			Expect(countRrsetsMetrics()-ic).To(Equal(1), "One more metric should have been created")
-			Expect(getRrsetMetricWithLabels(additionalResourceName+"."+zoneName+".", additionalResourceType, SUCCEEDED_STATUS, additionalResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
+			Expect(getRrsetMetricWithLabels(additionalResourceName+"."+zoneName+".", additionalResourceType, dnsv1alpha2.SUCCEEDED_STATUS, additionalResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(DnsFqdn, additionalResourceType)).To(Equal(additionalResourceRecords))
 			Expect(getMockedTTL(DnsFqdn, additionalResourceType)).To(Equal(resourceTTL))
 			Expect(getMockedComment(DnsFqdn, additionalResourceType)).To(Equal(additionalResourceComment))
@@ -677,11 +677,11 @@ var _ = Describe("RRset Controller", func() {
 			createdResource := &dnsv1alpha2.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, additionalRRsetLookupKey, createdResource)
-				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS, metav1.ConditionTrue)
+				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.SUCCEEDED_STATUS, metav1.ConditionTrue)
 			}, timeout, interval).Should(BeTrue())
 
 			Expect(countRrsetsMetrics()-ic).To(Equal(1), "One more metric should have been created")
-			Expect(getRrsetMetricWithLabels(additionalResourceName+"."+zoneName+".", additionalResourceType, SUCCEEDED_STATUS, additionalResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
+			Expect(getRrsetMetricWithLabels(additionalResourceName+"."+zoneName+".", additionalResourceType, dnsv1alpha2.SUCCEEDED_STATUS, additionalResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(DnsFqdn, additionalResourceType)).To(Equal(additionalResourceRecords))
 			Expect(getMockedTTL(DnsFqdn, additionalResourceType)).To(Equal(resourceTTL))
 			Expect(getMockedComment(DnsFqdn, additionalResourceType)).To(Equal(additionalResourceComment))
@@ -744,11 +744,11 @@ var _ = Describe("RRset Controller", func() {
 			createdResource := &dnsv1alpha2.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, additionalRRsetLookupKey, createdResource)
-				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS, metav1.ConditionTrue)
+				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.SUCCEEDED_STATUS, metav1.ConditionTrue)
 			}, timeout, interval).Should(BeTrue())
 
 			Expect(countRrsetsMetrics()-ic).To(Equal(1), "One more metric should have been created")
-			Expect(getRrsetMetricWithLabels(additionalResourceName+"."+zoneName+".", additionalResourceType, SUCCEEDED_STATUS, additionalResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
+			Expect(getRrsetMetricWithLabels(additionalResourceName+"."+zoneName+".", additionalResourceType, dnsv1alpha2.SUCCEEDED_STATUS, additionalResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(DnsFqdn, additionalResourceType)).To(Equal(additionalResourceRecords))
 			Expect(getMockedTTL(DnsFqdn, additionalResourceType)).To(Equal(resourceTTL))
 			Expect(getMockedComment(DnsFqdn, additionalResourceType)).To(Equal(additionalResourceComment))
@@ -810,11 +810,11 @@ var _ = Describe("RRset Controller", func() {
 			createdResource := &dnsv1alpha2.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, additionalRRsetLookupKey, createdResource)
-				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS, metav1.ConditionTrue)
+				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.SUCCEEDED_STATUS, metav1.ConditionTrue)
 			}, timeout, interval).Should(BeTrue())
 
 			Expect(countRrsetsMetrics()-ic).To(Equal(1), "One more metric should have been created")
-			Expect(getRrsetMetricWithLabels(additionalResourceName+"."+zoneName+".", additionalResourceType, SUCCEEDED_STATUS, additionalResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
+			Expect(getRrsetMetricWithLabels(additionalResourceName+"."+zoneName+".", additionalResourceType, dnsv1alpha2.SUCCEEDED_STATUS, additionalResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(DnsFqdn, additionalResourceType)).To(Equal(additionalResourceRecords))
 			Expect(getMockedTTL(DnsFqdn, additionalResourceType)).To(Equal(resourceTTL))
 			Expect(getMockedComment(DnsFqdn, additionalResourceType)).To(Equal(additionalResourceComment))
@@ -877,11 +877,11 @@ var _ = Describe("RRset Controller", func() {
 			createdResource := &dnsv1alpha2.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, additionalRRsetLookupKey, createdResource)
-				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS, metav1.ConditionTrue)
+				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.SUCCEEDED_STATUS, metav1.ConditionTrue)
 			}, timeout, interval).Should(BeTrue())
 
 			Expect(countRrsetsMetrics()-ic).To(Equal(1), "One more metric should have been created")
-			Expect(getRrsetMetricWithLabels(additionalResourceName+"."+zoneName+".", additionalResourceType, SUCCEEDED_STATUS, additionalResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
+			Expect(getRrsetMetricWithLabels(additionalResourceName+"."+zoneName+".", additionalResourceType, dnsv1alpha2.SUCCEEDED_STATUS, additionalResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(DnsFqdn, additionalResourceType)).To(Equal(additionalResourceRecords))
 			Expect(getMockedTTL(DnsFqdn, additionalResourceType)).To(Equal(resourceTTL))
 			Expect(getMockedComment(DnsFqdn, additionalResourceType)).To(Equal(additionalResourceComment))
@@ -944,11 +944,11 @@ var _ = Describe("RRset Controller", func() {
 			createdResource := &dnsv1alpha2.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, additionalRRsetLookupKey, createdResource)
-				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS, metav1.ConditionTrue)
+				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.SUCCEEDED_STATUS, metav1.ConditionTrue)
 			}, timeout, interval).Should(BeTrue())
 
 			Expect(countRrsetsMetrics()-ic).To(Equal(1), "One more metric should have been created")
-			Expect(getRrsetMetricWithLabels(additionalResourceName+"."+zoneName+".", additionalResourceType, SUCCEEDED_STATUS, additionalResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
+			Expect(getRrsetMetricWithLabels(additionalResourceName+"."+zoneName+".", additionalResourceType, dnsv1alpha2.SUCCEEDED_STATUS, additionalResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(DnsFqdn, additionalResourceType)).To(Equal(additionalResourceRecords))
 			Expect(getMockedTTL(DnsFqdn, additionalResourceType)).To(Equal(resourceTTL))
 			Expect(getMockedComment(DnsFqdn, additionalResourceType)).To(Equal(additionalResourceComment))
@@ -1011,11 +1011,11 @@ var _ = Describe("RRset Controller", func() {
 			createdResource := &dnsv1alpha2.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, additionalRRsetLookupKey, createdResource)
-				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS, metav1.ConditionTrue)
+				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.SUCCEEDED_STATUS, metav1.ConditionTrue)
 			}, timeout, interval).Should(BeTrue())
 
 			Expect(countRrsetsMetrics()-ic).To(Equal(1), "One more metric should have been created")
-			Expect(getRrsetMetricWithLabels(additionalResourceName+"."+zoneName+".", additionalResourceType, SUCCEEDED_STATUS, additionalResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
+			Expect(getRrsetMetricWithLabels(additionalResourceName+"."+zoneName+".", additionalResourceType, dnsv1alpha2.SUCCEEDED_STATUS, additionalResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(DnsFqdn, additionalResourceType)).To(Equal(additionalResourceRecords))
 			Expect(getMockedTTL(DnsFqdn, additionalResourceType)).To(Equal(resourceTTL))
 			Expect(getMockedComment(DnsFqdn, additionalResourceType)).To(Equal(additionalResourceComment))
@@ -1111,11 +1111,11 @@ var _ = Describe("RRset Controller", func() {
 			createdResource := &dnsv1alpha2.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, additionalRRsetLookupKey, createdResource)
-				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, SUCCEEDED_STATUS, metav1.ConditionTrue)
+				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.SUCCEEDED_STATUS, metav1.ConditionTrue)
 			}, timeout, interval).Should(BeTrue())
 
 			Expect(countRrsetsMetrics()-ic).To(Equal(1), "One more metric should have been created")
-			Expect(getRrsetMetricWithLabels(additionalResourceName+"."+reverseZoneName+".", additionalResourceType, SUCCEEDED_STATUS, additionalResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
+			Expect(getRrsetMetricWithLabels(additionalResourceName+"."+reverseZoneName+".", additionalResourceType, dnsv1alpha2.SUCCEEDED_STATUS, additionalResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(DnsFqdn, additionalResourceType)).To(Equal(additionalResourceRecords))
 			Expect(getMockedTTL(DnsFqdn, additionalResourceType)).To(Equal(resourceTTL))
 			Expect(getMockedComment(DnsFqdn, additionalResourceType)).To(Equal(additionalResourceComment))
@@ -1175,13 +1175,13 @@ var _ = Describe("RRset Controller", func() {
 			createdResource := &dnsv1alpha2.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, badTypeRRsetLookupKey, createdResource)
-				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, FAILED_STATUS, metav1.ConditionFalse)
+				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.FAILED_STATUS, metav1.ConditionFalse)
 			}, timeout, interval).Should(BeTrue())
 
 			Expect(countRrsetsMetrics()-ic).To(Equal(1), "One more metric should have been created")
-			Expect(getRrsetMetricWithLabels(badTypeResourceDNSName+"."+zoneRef+".", badTypeResourceType, FAILED_STATUS, badTypeResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
+			Expect(getRrsetMetricWithLabels(badTypeResourceDNSName+"."+zoneRef+".", badTypeResourceType, dnsv1alpha2.FAILED_STATUS, badTypeResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(DnsFqdn, badTypeResourceType)).To(Equal([]string{}), "RRset should not have been created in backend")
-			Expect(*createdResource.Status.SyncStatus).To(Equal(FAILED_STATUS), "RRset status should be 'Failed'")
+			Expect(*createdResource.Status.SyncStatus).To(Equal(dnsv1alpha2.FAILED_STATUS), "RRset status should be 'Failed'")
 			Expect(createdResource.GetOwnerReferences()).NotTo(BeEmpty(), "RRset should have setOwnerReference")
 			Expect(createdResource.GetOwnerReferences()[0].Name).To(Equal(zoneRef), "RRset should have setOwnerReference to Zone")
 			Expect(createdResource.GetFinalizers()).To(ContainElement(RESOURCES_FINALIZER_NAME), "RRset should contain the finalizer")
@@ -1238,13 +1238,13 @@ var _ = Describe("RRset Controller", func() {
 			createdResource := &dnsv1alpha2.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, badFormatRRsetLookupKey, createdResource)
-				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, FAILED_STATUS, metav1.ConditionFalse)
+				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.FAILED_STATUS, metav1.ConditionFalse)
 			}, timeout, interval).Should(BeTrue())
 
 			Expect(countRrsetsMetrics()-ic).To(Equal(1), "One more metric should have been created")
-			Expect(getRrsetMetricWithLabels(badFormatResourceDNSName+"."+zoneRef+".", badFormatResourceType, FAILED_STATUS, badFormatResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
+			Expect(getRrsetMetricWithLabels(badFormatResourceDNSName+"."+zoneRef+".", badFormatResourceType, dnsv1alpha2.FAILED_STATUS, badFormatResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(DnsFqdn, badFormatResourceType)).To(Equal([]string{}), "RRset should not have been created in backend")
-			Expect(*createdResource.Status.SyncStatus).To(Equal(FAILED_STATUS), "RRset status should be 'Failed'")
+			Expect(*createdResource.Status.SyncStatus).To(Equal(dnsv1alpha2.FAILED_STATUS), "RRset status should be 'Failed'")
 			Expect(createdResource.GetOwnerReferences()).NotTo(BeEmpty(), "RRset should have setOwnerReference")
 			Expect(createdResource.GetOwnerReferences()[0].Name).To(Equal(zoneRef), "RRset should have setOwnerReference to Zone")
 			Expect(createdResource.GetFinalizers()).To(ContainElement(RESOURCES_FINALIZER_NAME), "RRset should contain the finalizer")
@@ -1301,13 +1301,13 @@ var _ = Describe("RRset Controller", func() {
 			createdResource := &dnsv1alpha2.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, unquotedRRsetLookupKey, createdResource)
-				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, FAILED_STATUS, metav1.ConditionFalse)
+				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.FAILED_STATUS, metav1.ConditionFalse)
 			}, timeout, interval).Should(BeTrue())
 
 			Expect(countRrsetsMetrics()-ic).To(Equal(1), "One more metric should have been created")
-			Expect(getRrsetMetricWithLabels(unquotedResourceDNSName+"."+zoneRef+".", unquotedResourceType, FAILED_STATUS, unquotedResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
+			Expect(getRrsetMetricWithLabels(unquotedResourceDNSName+"."+zoneRef+".", unquotedResourceType, dnsv1alpha2.FAILED_STATUS, unquotedResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(DnsFqdn, unquotedResourceType)).To(Equal([]string{}), "RRset should not have been created in backend")
-			Expect(*createdResource.Status.SyncStatus).To(Equal(FAILED_STATUS), "RRset status should be 'Failed'")
+			Expect(*createdResource.Status.SyncStatus).To(Equal(dnsv1alpha2.FAILED_STATUS), "RRset status should be 'Failed'")
 			Expect(createdResource.GetOwnerReferences()).NotTo(BeEmpty(), "RRset should have setOwnerReference")
 			Expect(createdResource.GetOwnerReferences()[0].Name).To(Equal(zoneRef), "RRset should have setOwnerReference to Zone")
 			Expect(createdResource.GetFinalizers()).To(ContainElement(RESOURCES_FINALIZER_NAME), "RRset should contain the finalizer")
@@ -1364,12 +1364,12 @@ var _ = Describe("RRset Controller", func() {
 			createdResource := &dnsv1alpha2.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, existingRRsetLookupKey, createdResource)
-				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, FAILED_STATUS, metav1.ConditionFalse)
+				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.FAILED_STATUS, metav1.ConditionFalse)
 			}, timeout, interval).Should(BeTrue())
 
 			Expect(countRrsetsMetrics()-ic).To(Equal(1), "One more metric should have been created")
-			Expect(getRrsetMetricWithLabels(existingResourceDNSName+"."+zoneRef+".", existingResourceType, FAILED_STATUS, existingResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
-			Expect(*createdResource.Status.SyncStatus).To(Equal(FAILED_STATUS), "RRset status should be 'Failed'")
+			Expect(getRrsetMetricWithLabels(existingResourceDNSName+"."+zoneRef+".", existingResourceType, dnsv1alpha2.FAILED_STATUS, existingResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
+			Expect(*createdResource.Status.SyncStatus).To(Equal(dnsv1alpha2.FAILED_STATUS), "RRset status should be 'Failed'")
 			Expect(createdResource.GetFinalizers()).To(ContainElement(RESOURCES_FINALIZER_NAME), "RRset should contain the finalizer")
 			Expect(createdResource.GetFinalizers()).To(ContainElement(METRICS_FINALIZER_NAME), "RRset should contain the metrics finalizer")
 		})
@@ -1426,12 +1426,12 @@ var _ = Describe("RRset Controller", func() {
 			createdResource := &dnsv1alpha2.RRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, pendingRRsetLookupKey, createdResource)
-				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, PENDING_STATUS, metav1.ConditionFalse)
+				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.PENDING_STATUS, metav1.ConditionFalse)
 			}, timeout, interval).Should(BeTrue())
 
 			Expect(countRrsetsMetrics()-ic).To(Equal(1), "One more metric should have been created")
-			Expect(getRrsetMetricWithLabels(pendingResourceDNSName+"."+pendingZoneName+".", pendingResourceType, PENDING_STATUS, pendingResourceName, pendingResourceNamespace)).To(Equal(1.0), "metric should be 1.0")
-			Expect(*createdResource.Status.SyncStatus).To(Equal(PENDING_STATUS), "RRset status should be 'Pending'")
+			Expect(getRrsetMetricWithLabels(pendingResourceDNSName+"."+pendingZoneName+".", pendingResourceType, dnsv1alpha2.PENDING_STATUS, pendingResourceName, pendingResourceNamespace)).To(Equal(1.0), "metric should be 1.0")
+			Expect(*createdResource.Status.SyncStatus).To(Equal(dnsv1alpha2.PENDING_STATUS), "RRset status should be 'Pending'")
 			Expect(createdResource.GetFinalizers()).To(ContainElement(METRICS_FINALIZER_NAME), "RRset should contain the metrics finalizer")
 		})
 	})
@@ -1550,7 +1550,7 @@ var _ = Describe("RRset Controller", func() {
 			// Waiting for the resource to be fully modified
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, recreatedZone)
-				return err == nil && recreatedZone.IsInExpectedStatus(FIRST_GENERATION, FAILED_STATUS, metav1.ConditionFalse)
+				return err == nil && recreatedZone.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.FAILED_STATUS, metav1.ConditionFalse)
 			}, timeout, interval).Should(BeTrue())
 		})
 	})
