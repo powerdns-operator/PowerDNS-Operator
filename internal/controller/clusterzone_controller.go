@@ -90,7 +90,7 @@ func (r *ClusterZoneReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &dnsv1alpha2.ClusterZone{}, "ClusterZone.Entry.Name", func(rawObj client.Object) []string {
 		// grab the ClusterZone object, extract its name...
 		var ZoneName string
-		if rawObj.(*dnsv1alpha2.ClusterZone).Status.SyncStatus == nil || *rawObj.(*dnsv1alpha2.ClusterZone).Status.SyncStatus == SUCCEEDED_STATUS {
+		if rawObj.(*dnsv1alpha2.ClusterZone).Status.SyncStatus == nil || *rawObj.(*dnsv1alpha2.ClusterZone).Status.SyncStatus == dnsv1alpha2.SUCCEEDED_STATUS {
 			ZoneName = (rawObj.(*dnsv1alpha2.ClusterZone)).Name
 		}
 		return []string{ZoneName}

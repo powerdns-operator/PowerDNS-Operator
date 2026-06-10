@@ -30,7 +30,7 @@ import (
 )
 
 func zoneReconcile(ctx context.Context, gz dnsv1alpha2.GenericZone, isModified bool, isDeleted bool, cl client.Client, PDNSClient PdnsClienter, log logr.Logger) (ctrl.Result, error) {
-	isInFailedStatus := (gz.GetStatus().SyncStatus != nil && *gz.GetStatus().SyncStatus == FAILED_STATUS)
+	isInFailedStatus := (gz.GetStatus().SyncStatus != nil && *gz.GetStatus().SyncStatus == dnsv1alpha2.FAILED_STATUS)
 
 	// examine DeletionTimestamp to determine if object is under deletion
 	if !isDeleted {
@@ -110,7 +110,7 @@ func zoneReconcile(ctx context.Context, gz dnsv1alpha2.GenericZone, isModified b
 			Message:            ZoneMessageDuplicated,
 		})
 		gz.SetStatus(dnsv1alpha2.ZoneStatus{
-			SyncStatus:         ptr.To(FAILED_STATUS),
+			SyncStatus:         ptr.To(dnsv1alpha2.FAILED_STATUS),
 			ObservedGeneration: &gz.GetObjectMeta().Generation,
 			Conditions:         conditions,
 		})
@@ -137,7 +137,7 @@ func zoneReconcile(ctx context.Context, gz dnsv1alpha2.GenericZone, isModified b
 	}
 
 	if syncStatus == nil {
-		syncStatus = ptr.To(SUCCEEDED_STATUS)
+		syncStatus = ptr.To(dnsv1alpha2.SUCCEEDED_STATUS)
 	}
 
 	// Update ZoneStatus
@@ -168,7 +168,7 @@ func zoneReconcile(ctx context.Context, gz dnsv1alpha2.GenericZone, isModified b
 }
 
 func rrsetReconcile(ctx context.Context, gr dnsv1alpha2.GenericRRset, zone dnsv1alpha2.GenericZone, isModified bool, isDeleted bool, lastUpdateTime *metav1.Time, scheme *runtime.Scheme, cl client.Client, PDNSClient PdnsClienter, log logr.Logger) (ctrl.Result, error) {
-	isInFailedStatus := (gr.GetStatus().SyncStatus != nil && *gr.GetStatus().SyncStatus == FAILED_STATUS)
+	isInFailedStatus := (gr.GetStatus().SyncStatus != nil && *gr.GetStatus().SyncStatus == dnsv1alpha2.FAILED_STATUS)
 
 	// initialize syncStatus
 	var syncStatus *string
@@ -263,7 +263,7 @@ func rrsetReconcile(ctx context.Context, gr dnsv1alpha2.GenericRRset, zone dnsv1
 		gr.SetStatus(dnsv1alpha2.RRsetStatus{
 			LastUpdateTime:     lastUpdateTime,
 			DnsEntryName:       &name,
-			SyncStatus:         ptr.To(FAILED_STATUS),
+			SyncStatus:         ptr.To(dnsv1alpha2.FAILED_STATUS),
 			ObservedGeneration: &gr.GetObjectMeta().Generation,
 			Conditions:         conditions,
 		})
@@ -282,7 +282,7 @@ func rrsetReconcile(ctx context.Context, gr dnsv1alpha2.GenericRRset, zone dnsv1
 	changed, err := createOrUpdateRrsetExternalResources(ctx, zone, gr, PDNSClient)
 	if err != nil {
 		log.Error(err, "Failed to create or update external resources")
-		syncStatus = ptr.To(FAILED_STATUS)
+		syncStatus = ptr.To(dnsv1alpha2.FAILED_STATUS)
 		conditionStatus = metav1.ConditionFalse
 		conditionReason = RrsetReasonSynchronizationFailed
 		conditionMessage = err.Error()
@@ -308,7 +308,7 @@ func rrsetReconcile(ctx context.Context, gr dnsv1alpha2.GenericRRset, zone dnsv1
 	// This update permits triggering a new event after RRSet update applied
 	original := gr.Copy()
 	if syncStatus == nil {
-		syncStatus = ptr.To(SUCCEEDED_STATUS)
+		syncStatus = ptr.To(dnsv1alpha2.SUCCEEDED_STATUS)
 	}
 	conditions := gr.GetStatus().Conditions
 	meta.SetStatusCondition(&conditions, metav1.Condition{
@@ -438,7 +438,7 @@ func zoneExternalResourcesReconcile(ctx context.Context, zoneRes *powerdns.Zone,
 		err := createZoneExternalResources(ctx, gz, PDNSClient, log)
 		if err != nil {
 			log.Error(err, "Failed to create external resources")
-			syncStatus = ptr.To(FAILED_STATUS)
+			syncStatus = ptr.To(dnsv1alpha2.FAILED_STATUS)
 			conditionStatus = metav1.ConditionFalse
 			conditionReason = ZoneReasonSynchronizationFailed
 			conditionMessage = err.Error()
@@ -477,7 +477,7 @@ func zoneExternalResourcesReconcile(ctx context.Context, zoneRes *powerdns.Zone,
 			}
 			err := updateNsOnZoneExternalResources(ctx, gz, *ttl, PDNSClient, log)
 			if err != nil {
-				syncStatus = ptr.To(FAILED_STATUS)
+				syncStatus = ptr.To(dnsv1alpha2.FAILED_STATUS)
 				conditionStatus = metav1.ConditionFalse
 				conditionReason = ZoneReasonNSSynchronizationFailed
 				conditionMessage = err.Error()
@@ -487,7 +487,7 @@ func zoneExternalResourcesReconcile(ctx context.Context, zoneRes *powerdns.Zone,
 		if !zoneIdentical {
 			err := updateZoneExternalResources(ctx, gz, PDNSClient, log)
 			if err != nil {
-				syncStatus = ptr.To(FAILED_STATUS)
+				syncStatus = ptr.To(dnsv1alpha2.FAILED_STATUS)
 				conditionStatus = metav1.ConditionFalse
 				conditionReason = ZoneReasonSynchronizationFailed
 				conditionMessage = err.Error()
