@@ -16,9 +16,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
-//+kubebuilder:resource:scope=Cluster
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:resource:scope=Cluster
 
 // +kubebuilder:printcolumn:name="Zone",type="string",JSONPath=".spec.zoneRef.name"
 // +kubebuilder:printcolumn:name="Name",type="string",JSONPath=".status.dnsEntryName"
@@ -28,19 +28,27 @@ import (
 // +kubebuilder:printcolumn:name="Records",type="string",JSONPath=".spec.records"
 // ClusterRRset is the Schema for the clusterrrsets API
 type ClusterRRset struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
+	metav1.TypeMeta `json:",inline"`
 
-	Spec   RRsetSpec   `json:"spec,omitempty"`
-	Status RRsetStatus `json:"status,omitempty"`
+	// metadata is a standard object metadata
+	// +optional
+	metav1.ObjectMeta `json:"metadata,omitzero"`
+
+	// spec defines the desired state of ClusterRRset
+	// +required
+	Spec RRsetSpec `json:"spec"`
+
+	// status defines the observed state of ClusterRRset
+	// +optional
+	Status RRsetStatus `json:"status,omitzero"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // ClusterRRsetList contains a list of ClusterRRset
 type ClusterRRsetList struct {
 	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
+	metav1.ListMeta `json:"metadata,omitzero"`
 	Items           []ClusterRRset `json:"items"`
 }
 
