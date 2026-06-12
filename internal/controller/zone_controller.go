@@ -97,7 +97,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	// When updating a Zone, if 'Status' is not changed, 'LastTransitionTime' will not be updated
 	// So we delete condition to force new 'LastTransitionTime'
 	if !isDeleted && isModified {
-		log.V(1).Info("Removing Available condition from ClusterZone")
+		log.V(1).Info("Removing Available condition from Zone")
 		isModified = true
 		meta.RemoveStatusCondition(&zone.Status.Conditions, "Available")
 	}
