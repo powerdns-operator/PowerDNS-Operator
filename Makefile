@@ -105,6 +105,9 @@ test: manifests generate fmt vet setup-envtest ## Run tests.
 # CertManager is installed by default; skip with:
 # - CERT_MANAGER_INSTALL_SKIP=true
 KIND_CLUSTER ?= powerdns-operator-test-e2e
+# Set KEEP_CLUSTER=true to keep the Kind cluster after 'make test-e2e' for
+# iterative debugging (the cluster is deleted by default).
+KEEP_CLUSTER ?= false
 
 .PHONY: setup-test-e2e
 setup-test-e2e: ## Set up a Kind cluster for e2e tests if it does not exist
@@ -122,8 +125,10 @@ setup-test-e2e: ## Set up a Kind cluster for e2e tests if it does not exist
 
 .PHONY: test-e2e
 test-e2e: setup-test-e2e manifests generate fmt vet ## Run the e2e tests. Expected an isolated environment using Kind.
-	KIND=$(KIND) KIND_CLUSTER=$(KIND_CLUSTER) go test -tags=e2e ./test/e2e/ -v -ginkgo.v
-	$(MAKE) cleanup-test-e2e
+	KIND=$(KIND) KIND_CLUSTER=$(KIND_CLUSTER) go test -tags=e2e ./test/e2e/ -v -ginkgo.v -timeout 30m; \
+	status=$$?; \
+	if [ "$(KEEP_CLUSTER)" != "true" ]; then $(MAKE) cleanup-test-e2e; else echo "KEEP_CLUSTER=true: leaving Kind cluster '$(KIND_CLUSTER)' running."; fi; \
+	exit $$status
 
 .PHONY: cleanup-test-e2e
 cleanup-test-e2e: ## Tear down the Kind cluster used for e2e tests
