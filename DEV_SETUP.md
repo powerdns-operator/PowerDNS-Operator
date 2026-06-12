@@ -84,6 +84,53 @@ make uninstall
 make undeploy
 ```
 
+## Testing
+
+### Unit / integration tests
+
+These run against [envtest](https://book.kubebuilder.io/reference/envtest.html) with an
+in-memory PowerDNS mock, so they need no external dependencies:
+
+```sh
+make test
+```
+
+### End-to-end (E2E) tests
+
+The E2E suite spins up a real environment: a [Kind](https://kind.sigs.k8s.io/) cluster,
+a real PowerDNS authoritative server deployed in-cluster, and the operator built from the
+local sources. Each spec applies `Zone`/`RRset`/`ClusterZone`/`ClusterRRset` resources via
+`kubectl` and then asserts the result directly against the PowerDNS HTTP API.
+
+**Prerequisites:** a working Docker daemon, plus `kind` and `kubectl` in your `PATH`.
+
+```sh
+make test-e2e
+```
+
+This target:
+
+1. creates the Kind cluster `powerdns-operator-test-e2e` (if missing),
+2. deploys PowerDNS (`test/e2e/testdata/powerdns.yaml`) and the credentials secret,
+3. builds the operator image, loads it into Kind, installs the CRDs and deploys the operator,
+4. runs the Ginkgo specs (`go test -tags=e2e ./test/e2e/`),
+5. deletes the Kind cluster.
+
+To keep the cluster running after the tests (for debugging), set `KEEP_CLUSTER=true`:
+
+```sh
+make test-e2e KEEP_CLUSTER=true
+```
+
+You can then tear it down manually with:
+
+```sh
+make cleanup-test-e2e
+```
+
+> **NOTE**: In CI, the E2E suite runs nightly, on demand (`workflow_dispatch`), or on pull
+> requests carrying the `run-e2e` label (see `.github/workflows/e2e.yml`).
+
 ## Project Distribution
 
 Following are the steps to build the installer and distribute this project to users.
