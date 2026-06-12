@@ -1,4 +1,4 @@
-# This patch adds the args to allow exposing the metrics endpoint securely
+# This patch mounts the manager secret in the manager container.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
