@@ -403,7 +403,7 @@ func updateZoneExternalResources(ctx context.Context, zone dnsv1alpha2.GenericZo
 }
 
 func updateNsOnZoneExternalResources(ctx context.Context, zone dnsv1alpha2.GenericZone, ttl uint32, PDNSClient PdnsClienter, log logr.Logger) error {
-	nameserversCanonical := []string{}
+	nameserversCanonical := make([]string, 0, len(zone.GetSpec().Nameservers))
 	for _, n := range zone.GetSpec().Nameservers {
 		nameserversCanonical = append(nameserversCanonical, makeCanonical(n))
 	}

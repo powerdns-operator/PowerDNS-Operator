@@ -16,8 +16,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 // +kubebuilder:resource:scope=Cluster
 
 // +kubebuilder:printcolumn:name="Serial",type="integer",JSONPath=".status.serial"
@@ -25,19 +25,27 @@ import (
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.syncStatus"
 // ClusterZone is the Schema for the clusterzones API
 type ClusterZone struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
+	metav1.TypeMeta `json:",inline"`
 
-	Spec   ZoneSpec   `json:"spec,omitempty"`
-	Status ZoneStatus `json:"status,omitempty"`
+	// metadata is a standard object metadata
+	// +optional
+	metav1.ObjectMeta `json:"metadata,omitzero"`
+
+	// spec defines the desired state of ClusterZone
+	// +required
+	Spec ZoneSpec `json:"spec"`
+
+	// status defines the observed state of ClusterZone
+	// +optional
+	Status ZoneStatus `json:"status,omitzero"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // ClusterZoneList contains a list of ClusterZone
 type ClusterZoneList struct {
 	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
+	metav1.ListMeta `json:"metadata,omitzero"`
 	Items           []ClusterZone `json:"items"`
 }
 
