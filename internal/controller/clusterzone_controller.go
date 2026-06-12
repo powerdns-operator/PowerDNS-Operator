@@ -47,21 +47,26 @@ func (r *ClusterZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	// Get ClusterZone
 	zone := &dnsv1alpha2.ClusterZone{}
+	log.V(1).Info("Getting ClusterZone", "ClusterZone.Name", req.Name)
 	err := r.Get(ctx, req.NamespacedName, zone)
 	if err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
+	log.V(1).Info("ClusterZone found", "ClusterZone", zone)
 
-	// Initialize variable to represent RRset situation
+	// Initialize variable to represent ClusterZone situation
 	isModified := zone.Status.ObservedGeneration != nil && *zone.Status.ObservedGeneration != zone.GetGeneration()
 	isDeleted := !zone.DeletionTimestamp.IsZero()
+	log.V(1).Info("ClusterZone situation", "isModified", isModified, "isDeleted", isDeleted)
 
 	// Position metrics finalizer as soon as possible
 	if !isDeleted {
+		log.V(1).Info("ClusterZone not deleted", "ClusterZone.Name", zone.Name)
 		// The object is not being deleted, so if it does not have our finalizer,
 		// then lets add the finalizer and update the object. This is equivalent
 		// to registering our finalizer.
 		if !controllerutil.ContainsFinalizer(zone, METRICS_FINALIZER_NAME) {
+			log.V(1).Info("Adding finalizer to ClusterZone")
 			controllerutil.AddFinalizer(zone, METRICS_FINALIZER_NAME)
 			if err := r.Update(ctx, zone); err != nil {
 				log.Error(err, "Failed to add finalizer")
@@ -69,16 +74,21 @@ func (r *ClusterZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			}
 		}
 	}
-	// When updating a ClusterZone, if 'Status' is not changed, 'LastTransitionTime' will not be updated
-	// So we delete condition to force new 'LastTransitionTime'
+
 	original := zone.DeepCopy()
-	if !isDeleted && isModified {
-		isModified = true
-		meta.RemoveStatusCondition(&zone.Status.Conditions, "Available")
+	// Ensure we update the status in case of early return
+	defer func() {
 		if err := r.Status().Patch(ctx, zone, client.MergeFrom(original)); err != nil {
 			log.Error(err, "unable to patch ClusterZone status")
-			return ctrl.Result{}, err
 		}
+	}()
+
+	// When updating a ClusterZone, if 'Status' is not changed, 'LastTransitionTime' will not be updated
+	// So we delete condition to force new 'LastTransitionTime'
+	if !isDeleted && isModified {
+		log.V(1).Info("Removing Available condition from ClusterZone")
+		isModified = true
+		meta.RemoveStatusCondition(&zone.Status.Conditions, "Available")
 	}
 
 	return zoneReconcile(ctx, zone, isModified, isDeleted, r.Client, r.PDNSClient, log)
