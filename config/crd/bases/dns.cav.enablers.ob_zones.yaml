@@ -219,7 +219,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: ZoneSpec defines the desired state of Zone
+            description: spec defines the desired state of Zone
             properties:
               catalog:
                 description: The catalog this zone is a member of
@@ -255,12 +255,22 @@ spec:
             - nameservers
             type: object
           status:
-            description: ZoneStatus defines the observed state of Zone
+            description: status defines the observed state of Zone
             properties:
               catalog:
                 description: The catalog this zone is a member of.
                 type: string
               conditions:
+                description: |-
+                  conditions represent the current state of the Zone resource.
+                  Each condition has a unique type and reflects the status of a specific aspect of the resource.
+
+                  Standard condition types include:
+                  - "Available": the resource is fully functional
+                  - "Progressing": the resource is being created or updated
+                  - "Degraded": the resource failed to reach or maintain its desired state
+
+                  The status of each condition is one of True, False, or Unknown.
                 items:
                   description: Condition contains details for one aspect of the current
                     state of this API Resource.
@@ -316,6 +326,9 @@ spec:
                   - type
                   type: object
                 type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
               dnssec:
                 description: Whether or not this zone is DNSSEC signed.
                 type: boolean
@@ -353,6 +366,8 @@ spec:
               syncStatus:
                 type: string
             type: object
+        required:
+        - spec
         type: object
     served: true
     storage: true
