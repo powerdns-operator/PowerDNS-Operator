@@ -35,7 +35,7 @@ type ZoneSpec struct {
 	SOAEditAPI *string `json:"soa_edit_api,omitempty"`
 }
 
-// ZoneStatus defines the observed state of Zone
+// ZoneStatus defines the observed state of Zone.
 type ZoneStatus struct {
 	// ID define the opaque zone id.
 	// +optional
@@ -63,8 +63,20 @@ type ZoneStatus struct {
 	DNSsec *bool `json:"dnssec,omitempty"`
 	// The catalog this zone is a member of.
 	// +optional
-	Catalog            *string            `json:"catalog,omitempty"`
-	SyncStatus         *string            `json:"syncStatus,omitempty"`
+	Catalog    *string `json:"catalog,omitempty"`
+	SyncStatus *string `json:"syncStatus,omitempty"`
+	// conditions represent the current state of the Zone resource.
+	// Each condition has a unique type and reflects the status of a specific aspect of the resource.
+	//
+	// Standard condition types include:
+	// - "Available": the resource is fully functional
+	// - "Progressing": the resource is being created or updated
+	// - "Degraded": the resource failed to reach or maintain its desired state
+	//
+	// The status of each condition is one of True, False, or Unknown.
+	// +listType=map
+	// +listMapKey=type
+	// +optional
 	Conditions         []metav1.Condition `json:"conditions,omitempty"`
 	ObservedGeneration *int64             `json:"observedGeneration,omitempty"`
 }
@@ -79,19 +91,27 @@ type ZoneStatus struct {
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.syncStatus"
 // Zone is the Schema for the zones API
 type Zone struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
+	metav1.TypeMeta `json:",inline"`
 
-	Spec   ZoneSpec   `json:"spec,omitempty"`
-	Status ZoneStatus `json:"status,omitempty"`
+	// metadata is a standard object metadata
+	// +optional
+	metav1.ObjectMeta `json:"metadata,omitzero"`
+
+	// spec defines the desired state of Zone
+	// +required
+	Spec ZoneSpec `json:"spec"`
+
+	// status defines the observed state of Zone
+	// +optional
+	Status ZoneStatus `json:"status,omitzero"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // ZoneList contains a list of Zone
 type ZoneList struct {
 	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
+	metav1.ListMeta `json:"metadata,omitzero"`
 	Items           []Zone `json:"items"`
 }
 
