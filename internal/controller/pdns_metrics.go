@@ -67,6 +67,7 @@ func removeRrsetMetrics(gr dnsv1alpha2.GenericRRset) {
 				"name":      gr.GetName(),
 			},
 		)
+	case *dnsv1alpha2.ClusterRRset:
 		clusterRrsetsStatusesMetric.DeletePartialMatch(
 			map[string]string{
 				"name": gr.GetName(),
