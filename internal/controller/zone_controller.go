@@ -36,15 +36,6 @@ const (
 	ZONE_CONFLICT_CODE  = 409
 )
 
-const (
-	ZoneReasonSynced                  = "ZoneSynced"
-	ZoneMessageSyncSucceeded          = "Zone synced with PowerDNS instance"
-	ZoneReasonSynchronizationFailed   = "SynchronizationFailed"
-	ZoneReasonNSSynchronizationFailed = "NSSynchronizationFailed"
-	ZoneReasonDuplicated              = "ZoneDuplicated"
-	ZoneMessageDuplicated             = "Already existing Zone with the same FQDN"
-)
-
 // ZoneReconciler reconciles a Zone object
 type ZoneReconciler struct {
 	client.Client
@@ -67,21 +58,26 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 	// Get Zone
 	zone := &dnsv1alpha2.Zone{}
+	log.V(1).Info("Getting Zone", "Zone.Name", req.Name)
 	err := r.Get(ctx, req.NamespacedName, zone)
 	if err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
+	log.V(1).Info("Zone found", "Zone", zone)
 
 	// Initialize variable to represent Zone situation
 	isModified := zone.Status.ObservedGeneration != nil && *zone.Status.ObservedGeneration != zone.GetGeneration()
 	isDeleted := !zone.DeletionTimestamp.IsZero()
+	log.V(1).Info("Zone situation", "isModified", isModified, "isDeleted", isDeleted)
 
 	// Position metrics finalizer as soon as possible
 	if !isDeleted {
+		log.V(1).Info("Zone not deleted", "Zone.Name", zone.Name)
 		// The object is not being deleted, so if it does not have our finalizer,
 		// then lets add the finalizer and update the object. This is equivalent
 		// to registering our finalizer.
 		if !controllerutil.ContainsFinalizer(zone, METRICS_FINALIZER_NAME) {
+			log.V(1).Info("Adding finalizer to Zone")
 			controllerutil.AddFinalizer(zone, METRICS_FINALIZER_NAME)
 			if err := r.Update(ctx, zone); err != nil {
 				log.Error(err, "Failed to add finalizer")
@@ -90,16 +86,20 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 	}
 
-	// When updating a Zone, if 'Status' is not changed, 'LastTransitionTime' will not be updated
-	// So we delete condition to force new 'LastTransitionTime'
 	original := zone.DeepCopy()
-	if !isDeleted && isModified {
-		isModified = true
-		meta.RemoveStatusCondition(&zone.Status.Conditions, "Available")
+	// Ensure we update the status in case of early return
+	defer func() {
 		if err := r.Status().Patch(ctx, zone, client.MergeFrom(original)); err != nil {
 			log.Error(err, "unable to patch Zone status")
-			return ctrl.Result{}, err
 		}
+	}()
+
+	// When updating a Zone, if 'Status' is not changed, 'LastTransitionTime' will not be updated
+	// So we delete condition to force new 'LastTransitionTime'
+	if !isDeleted && isModified {
+		log.V(1).Info("Removing Available condition from Zone")
+		isModified = true
+		meta.RemoveStatusCondition(&zone.Status.Conditions, "Available")
 	}
 
 	return zoneReconcile(ctx, zone, isModified, isDeleted, r.Client, r.PDNSClient, log)

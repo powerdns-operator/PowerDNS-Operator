@@ -16,7 +16,6 @@ import (
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -29,17 +28,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	dnsv1alpha2 "github.com/powerdns-operator/powerdns-operator/api/v1alpha2"
-)
-
-const (
-	RrsetReasonZoneNotAvailable      = "ZoneNotAvailable"
-	RrsetReasonSynchronizationFailed = "SynchronizationFailed"
-	RrsetReasonDuplicated            = "RrsetDuplicated"
-	RrsetReasonSynced                = "RrsetSynced"
-	RrsetMessageDuplicated           = "Already existing RRset with the same FQDN"
-	RrsetMessageSyncSucceeded        = "RRset synced with PowerDNS instance"
-	RrsetMessageNonExistentZone      = "non-existent zone:"
-	RrsetMessageUnavailableZone      = "unavailable zone:"
 )
 
 // RRsetReconciler reconciles a RRset object
@@ -60,14 +48,16 @@ func init() {
 
 func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
-	log.Info("Reconcile RRset", "Zone.RRset.Name", req.Name)
+	log.Info("Reconcile RRset", "RRset.Name", req.Name)
 
 	// RRset
 	rrset := &dnsv1alpha2.RRset{}
+	log.V(1).Info("Getting RRset", "RRset.Name", req.Name)
 	err := r.Get(ctx, req.NamespacedName, rrset)
 	if err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
+	log.V(1).Info("RRset found", "RRset", rrset)
 
 	// Initialize variable to represent RRset situation
 	isModified := rrset.Status.ObservedGeneration != nil && *rrset.Status.ObservedGeneration != rrset.GetGeneration()
@@ -76,13 +66,16 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	if rrset.Status.LastUpdateTime != nil {
 		lastUpdateTime = rrset.Status.LastUpdateTime
 	}
+	log.V(1).Info("RRset situation", "isModified", isModified, "isDeleted", isDeleted, "lastUpdateTime", lastUpdateTime)
 
 	// Position metrics finalizer as soon as possible
 	if !isDeleted {
+		log.V(1).Info("RRset not deleted", "RRset.Name", rrset.Name)
 		// The object is not being deleted, so if it does not have our finalizer,
 		// then lets add the finalizer and update the object. This is equivalent
 		// to registering our finalizer.
 		if !controllerutil.ContainsFinalizer(rrset, METRICS_FINALIZER_NAME) {
+			log.V(1).Info("Adding finalizer to RRset")
 			controllerutil.AddFinalizer(rrset, METRICS_FINALIZER_NAME)
 			lastUpdateTime = &metav1.Time{Time: time.Now().UTC()}
 			if err := r.Update(ctx, rrset); err != nil {
@@ -92,15 +85,19 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		}
 	}
 
-	// When updating a RRset, if 'Status' is not changed, 'LastTransitionTime' will not be updated
-	// So we delete condition to force new 'LastTransitionTime'
 	original := rrset.DeepCopy()
-	if !isDeleted && isModified {
-		meta.RemoveStatusCondition(&rrset.Status.Conditions, "Available")
+	// Ensure we update the status in case of early return
+	defer func() {
 		if err := r.Status().Patch(ctx, rrset, client.MergeFrom(original)); err != nil {
 			log.Error(err, "unable to patch RRSet status")
-			return ctrl.Result{}, err
 		}
+	}()
+
+	// When updating a RRset, if 'Status' is not changed, 'LastTransitionTime' will not be updated
+	// So we delete condition to force new 'LastTransitionTime'
+	if !isDeleted && isModified {
+		log.V(1).Info("Removing Available condition from RRset")
+		meta.RemoveStatusCondition(&rrset.Status.Conditions, "Available")
 	}
 
 	// Zone
@@ -113,16 +110,20 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	case "ClusterZone":
 		zone = &dnsv1alpha2.ClusterZone{}
 	}
+	log.V(1).Info("Getting associated Zone", "Zone.Name", rrset.Spec.ZoneRef.Name, "Zone.Kind", rrset.Spec.ZoneRef.Kind)
 	err = r.Get(ctx, client.ObjectKey{Namespace: rrset.Namespace, Name: rrset.Spec.ZoneRef.Name}, zone)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// Zone not found, remove finalizer and requeue
+			log.V(1).Info("Zone not found", "Zone.Name", rrset.Spec.ZoneRef.Name)
 			actionOnFinalizer := false
 			if controllerutil.ContainsFinalizer(rrset, RESOURCES_FINALIZER_NAME) {
+				log.V(1).Info("Removing resources finalizer from RRset")
 				controllerutil.RemoveFinalizer(rrset, RESOURCES_FINALIZER_NAME)
 				actionOnFinalizer = true
 			}
 			if isDeleted && controllerutil.ContainsFinalizer(rrset, METRICS_FINALIZER_NAME) {
+				log.V(1).Info("Removing metrics finalizer from RRset")
 				controllerutil.RemoveFinalizer(rrset, METRICS_FINALIZER_NAME)
 				// Remove resource metrics
 				removeRrsetMetrics(rrset)
@@ -137,54 +138,32 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 			// If RRset is under deletion, no need to update its status
 			if !isDeleted {
-				original = rrset.DeepCopy()
-				rrset.Status.SyncStatus = ptr.To(dnsv1alpha2.PENDING_STATUS)
-				rrset.Status.ObservedGeneration = &rrset.Generation
-				meta.SetStatusCondition(&rrset.Status.Conditions, metav1.Condition{
-					Type:               "Available",
-					Status:             metav1.ConditionFalse,
-					LastTransitionTime: metav1.NewTime(time.Now().UTC()),
-					Reason:             RrsetReasonZoneNotAvailable,
-					Message:            RrsetMessageNonExistentZone + err.Error(),
-				})
-				if err := r.Status().Patch(ctx, rrset, client.MergeFrom(original)); err != nil {
-					log.Error(err, "unable to patch RRSet status")
-					return ctrl.Result{}, err
-				}
+				log.V(1).Info("RRset is not deleted, setting missing zone")
+				rrset.SetMissingZone(err)
 				updateRrsetsMetrics(getRRsetName(rrset), rrset)
 			}
 
 			// Race condition when creating Zone+RRset at the same time
 			// RRset is not created because Zone is not created yet
 			// Requeue after few seconds
+			log.V(1).Info("Requeuing RRset", "RequeueAfter", 2*time.Second)
 			return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
 		} else {
 			log.Error(err, "Failed to get zone")
+			rrset.SetZoneNotAvailable(zone.GetName())
 			return ctrl.Result{}, err
 		}
 	}
 	// If a Zone/ClusterZone exists but is in Failed Status
 	zoneIsInFailedStatus := (zone.GetStatus().SyncStatus != nil && *zone.GetStatus().SyncStatus == dnsv1alpha2.FAILED_STATUS)
 	if zoneIsInFailedStatus {
-		original = rrset.DeepCopy()
-		rrset.Status.SyncStatus = ptr.To(dnsv1alpha2.FAILED_STATUS)
-		rrset.Status.ObservedGeneration = &rrset.Generation
-		meta.SetStatusCondition(&rrset.Status.Conditions, metav1.Condition{
-			Type:               "Available",
-			Status:             metav1.ConditionFalse,
-			LastTransitionTime: metav1.NewTime(time.Now().UTC()),
-			Reason:             RrsetReasonZoneNotAvailable,
-			Message:            RrsetMessageUnavailableZone + zone.GetName(),
-		})
-		if err := r.Status().Patch(ctx, rrset, client.MergeFrom(original)); err != nil {
-			log.Error(err, "unable to patch RRSet status")
-			return ctrl.Result{}, err
-		}
-
+		log.V(1).Info("Zone is in failed status, setting zone not available")
+		rrset.SetZoneNotAvailable(zone.GetName())
 		// Update metrics
 		updateRrsetsMetrics(getRRsetName(rrset), rrset)
 
 		if isDeleted {
+			log.V(1).Info("RRset is deleted, removing metrics finalizer")
 			if controllerutil.ContainsFinalizer(rrset, METRICS_FINALIZER_NAME) {
 				controllerutil.RemoveFinalizer(rrset, METRICS_FINALIZER_NAME)
 				// Remove resource metrics
