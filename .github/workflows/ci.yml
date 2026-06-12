@@ -7,8 +7,8 @@ on:
   pull_request: {}
 
 env:
-  GOLANGCI_VERSION: 'v2.4.0'
-  KUBERNETES_VERSION: '1.33.0'
+  GOLANGCI_VERSION: 'v2.11.4'
+  KUBERNETES_VERSION: '1.35.0'
 
 permissions:
   contents: read
