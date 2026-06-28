@@ -1,0 +1,16 @@
+# Record of type 'A' in 'helloworld.com' zone
+# test2.helloworld.com.helloworld.com.      IN    A    3.3.3.3
+apiVersion: dns.cav.enablers.ob/v1alpha2
+kind: RRset
+metadata:
+  name: test2.helloworld.com
+  namespace: default
+spec:
+  type: A
+  name: test2.helloworld.com
+  ttl: 300
+  records:
+    - 4.4.4.4
+  zoneRef:
+    name: helloworld.com
+    kind: ClusterZone

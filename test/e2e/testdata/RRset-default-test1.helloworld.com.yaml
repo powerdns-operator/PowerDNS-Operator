@@ -1,0 +1,17 @@
+# FQDN Record of type 'A' in 'helloworld.com' zone
+# test1.helloworld.com.      IN    A    3.3.3.3
+apiVersion: dns.cav.enablers.ob/v1alpha2
+kind: RRset
+metadata:
+  name: test1.helloworld.com
+  namespace: default
+spec:
+  comment: nothing to tell
+  name: test1.helloworld.com.
+  type: A
+  ttl: 300
+  records:
+    - 3.3.3.3
+  zoneRef:
+    name: helloworld.com
+    kind: ClusterZone

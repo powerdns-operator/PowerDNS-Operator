@@ -16,6 +16,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -78,6 +79,28 @@ func expectSyncSucceeded(kind, name, namespace string) {
 	}).WithTimeout(pollTimeout).WithPolling(pollInterval).Should(Succeed())
 }
 
+// expectSyncFailed waits until the resource reports a "Failed" syncStatus.
+// namespace may be empty for cluster-scoped resources.
+func expectSyncFailed(kind, name, namespace string) {
+	GinkgoHelper()
+	Eventually(func(g Gomega) {
+		status, err := utils.GetResourceField(kind, name, namespace, "{.status.syncStatus}")
+		g.Expect(err).NotTo(HaveOccurred())
+		g.Expect(status).To(Equal("Failed"))
+	}).WithTimeout(pollTimeout).WithPolling(pollInterval).Should(Succeed())
+}
+
+// expectSyncPending waits until the resource reports a "Pending" syncStatus.
+// namespace may be empty for cluster-scoped resources.
+func expectSyncPending(kind, name, namespace string) {
+	GinkgoHelper()
+	Eventually(func(g Gomega) {
+		status, err := utils.GetResourceField(kind, name, namespace, "{.status.syncStatus}")
+		g.Expect(err).NotTo(HaveOccurred())
+		g.Expect(status).To(Equal("Pending"))
+	}).WithTimeout(pollTimeout).WithPolling(pollInterval).Should(Succeed())
+}
+
 // applyAndDeferDelete applies a manifest and schedules its deletion at the end
 // of the current spec/container.
 func applyAndDeferDelete(manifest string) {
@@ -86,6 +109,14 @@ func applyAndDeferDelete(manifest string) {
 	DeferCleanup(func() {
 		Expect(utils.DeleteManifest(manifest)).To(Succeed())
 	})
+}
+
+func getManifestFromFile(filename string) string {
+	manifest, err := os.ReadFile(filename)
+	if err != nil {
+		panic(err)
+	}
+	return string(manifest)
 }
 
 func getClusterZoneManifest(zoneName, kind, ns1, ns2 string) string {

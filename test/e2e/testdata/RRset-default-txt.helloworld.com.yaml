@@ -1,0 +1,16 @@
+# Record of type 'TXT' in 'helloworld.com' zone
+# helloworld.com.      IN    TXT    "Welcome to the helloworld.com domain"
+apiVersion: dns.cav.enablers.ob/v1alpha2
+kind: RRset
+metadata:
+  name: txt.helloworld.com
+  namespace: default
+spec:
+  type: TXT
+  name: "helloworld.com."
+  ttl: 300
+  records:
+    - "\"Welcome to the helloworld.com domain\""
+  zoneRef:
+    name: helloworld.com
+    kind: ClusterZone

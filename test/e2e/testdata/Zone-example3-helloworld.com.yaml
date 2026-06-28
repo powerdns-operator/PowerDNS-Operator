@@ -1,0 +1,13 @@
+# Fake Zone
+apiVersion: dns.cav.enablers.ob/v1alpha2
+kind: Zone
+metadata:
+  annotations:
+    fake-zone: "Same name as ClusterZone/helloworld.com"
+  name: helloworld.com
+  namespace: example3
+spec:
+  nameservers:
+    - ns3.helloworld.com
+    - ns4.helloworld.com
+  kind: Native

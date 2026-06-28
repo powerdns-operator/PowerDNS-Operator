@@ -1,0 +1,16 @@
+# Record of type 'SRV' in 'helloworld.com' zone
+# _database._tcp.myapp.helloworld.com.      IN    SRV    1  50  25565  test2.helloworld.com.
+apiVersion: dns.cav.enablers.ob/v1alpha2
+kind: RRset
+metadata:
+  name: database.srv.helloworld.com
+  namespace: default
+spec:
+  type: SRV
+  name: "_database._tcp.myapp"
+  ttl: 300
+  records:
+    - 1 50 25565 test2.helloworld.com.
+  zoneRef:
+    name: helloworld.com
+    kind: ClusterZone
