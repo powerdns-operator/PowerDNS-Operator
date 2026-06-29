@@ -1,0 +1,16 @@
+# Record (duplicate) of type 'A' in 'helloworld.com' zone
+# test1.helloworld.com.      IN    A    6.6.6.6
+apiVersion: dns.cav.enablers.ob/v1alpha2
+kind: RRset
+metadata:
+  name: test1failed.helloworld.com
+  namespace: default
+spec:
+  type: A
+  name: "test1"
+  ttl: 300
+  records:
+    - "6.6.6.6"
+  zoneRef:
+    name: helloworld.com
+    kind: ClusterZone

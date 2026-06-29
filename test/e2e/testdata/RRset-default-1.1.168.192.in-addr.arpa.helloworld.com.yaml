@@ -1,0 +1,16 @@
+# Record of type 'PTR' in 'helloworld.com' zone
+# 1.1.168.192.in-addr.arpa.      IN    PTR    mailserver.helloworld.com.
+apiVersion: dns.cav.enablers.ob/v1alpha2
+kind: RRset
+metadata:
+  name: 1.1.168.192.in-addr.arpa.helloworld.com
+  namespace: default
+spec:
+  type: PTR
+  name: "1"
+  ttl: 300
+  records:
+    - mailserver.helloworld.com.
+  zoneRef:
+    name: 1.168.192.in-addr.arpa
+    kind: ClusterZone

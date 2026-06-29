@@ -1,0 +1,16 @@
+# Record of type 'CNAME' in 'helloworld.com' zone
+# test4.helloworld.com.      IN    CNAME    test1.helloworld.com.
+apiVersion: dns.cav.enablers.ob/v1alpha2
+kind: RRset
+metadata:
+  name: test4.helloworld.com
+  namespace: default
+spec:
+  type: CNAME
+  name: test4
+  ttl: 300
+  records:
+    - test1.helloworld.com.
+  zoneRef:
+    name: helloworld.com
+    kind: ClusterZone

@@ -225,7 +225,9 @@ func rrsetReconcile(ctx context.Context, gr dnsv1alpha2.GenericRRset, zone dnsv1
 	// In that case: len(existingRRsets.Items) > 1
 	// 1 RRset (test.example.com in NS example1) + 1 ClusterRRset (test.example.com)
 	// In that case: len(existingRRsets.Items) >= 1 AND len(existingClusterRRsets.Items) >= 1
-	if len(existingRRsets.Items) > 1 || (len(existingRRsets.Items) >= 1 && len(existingClusterRRsets.Items) >= 1) {
+	// 1 ClusterRRset (test.example.com) + 1 ClusterRRset (test.example.com)
+	// In that case: len(existingClusterRRsets.Items) > 1
+	if len(existingRRsets.Items) > 1 || (len(existingRRsets.Items) >= 1 && len(existingClusterRRsets.Items) >= 1) || len(existingClusterRRsets.Items) > 1 {
 		name := getRRsetName(gr)
 		gr.SetDuplicated(lastUpdateTime, name)
 

@@ -1,0 +1,17 @@
+# FQDN Record of type 'A' in 'nozone.com' zone
+# test.nozone.com.      IN    A    1.2.3.4
+apiVersion: dns.cav.enablers.ob/v1alpha2
+kind: RRset
+metadata:
+  name: test.nozone.com
+  namespace: default
+spec:
+  comment: Record in a zone without a zone object
+  name: test.nozone.com.
+  type: A
+  ttl: 300
+  records:
+    - 1.2.3.4
+  zoneRef:
+    name: nozone.com
+    kind: ClusterZone

@@ -1,0 +1,92 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: powerdns
+---
+# Lightweight authoritative PowerDNS used as the real backend for e2e tests.
+# The official image ships a pre-initialized gsqlite3 database in
+# /var/lib/powerdns/pdns.sqlite3 and auto-enables the HTTP API when
+# PDNS_AUTH_API_KEY is set, so no schema bootstrap is required here.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: powerdns
+  namespace: powerdns
+  labels:
+    app: powerdns
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: powerdns
+  template:
+    metadata:
+      labels:
+        app: powerdns
+    spec:
+      containers:
+        - name: powerdns
+          image: powerdns/pdns-auth-49:latest
+          # Override the webserver binding/ACL so the API is reachable from the
+          # operator pod and the kubelet probe (command-line flags take
+          # precedence over the config files shipped in the image).
+          args:
+            - --webserver=yes
+            - --webserver-address=0.0.0.0
+            - --webserver-allow-from=0.0.0.0/0
+            - --api=yes
+          env:
+            - name: PDNS_AUTH_API_KEY
+              value: e2e-test-api-key
+          ports:
+            - name: api
+              containerPort: 8081
+            - name: dns-udp
+              containerPort: 53
+              protocol: UDP
+            - name: dns-tcp
+              containerPort: 53
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /api/v1/servers/localhost
+              port: 8081
+              httpHeaders:
+                - name: X-API-Key
+                  value: e2e-test-api-key
+            initialDelaySeconds: 3
+            periodSeconds: 3
+            failureThreshold: 20
+          livenessProbe:
+            httpGet:
+              path: /api/v1/servers/localhost
+              port: 8081
+              httpHeaders:
+                - name: X-API-Key
+                  value: e2e-test-api-key
+            initialDelaySeconds: 15
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: powerdns
+  namespace: powerdns
+  labels:
+    app: powerdns
+spec:
+  selector:
+    app: powerdns
+  ports:
+    - name: api
+      port: 8081
+      targetPort: 8081
+    - name: dns-udp
+      port: 53
+      targetPort: 53
+      protocol: UDP
+    - name: dns-tcp
+      port: 53
+      targetPort: 53
+      protocol: TCP
