@@ -33,7 +33,7 @@ https://github.com/user-attachments/assets/cc43b03e-ed0d-4112-941d-0b53cc2ad3be
 
 | Component | Supported Versions |
 |-----------|-------------------|
-| **PowerDNS Authoritative** | 4.9 |
+| **PowerDNS Authoritative** | 4.9, 5.0 |
 | **Kubernetes** | 1.33, 1.34, 1.35 |
 | **Go** (for development) | 1.26+ |
 

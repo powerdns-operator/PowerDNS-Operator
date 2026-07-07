@@ -14,7 +14,10 @@ package utils
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2" //nolint:golint,revive
@@ -37,12 +40,37 @@ const (
 	// powerDNSManifest is the path (relative to the project root) of the
 	// PowerDNS deployment manifest.
 	powerDNSManifest = "test/e2e/testdata/powerdns.yaml"
+	// defaultPowerDNSImage is the PowerDNS backend image used by the e2e tests
+	// when E2EPowerDNSImageEnv is not set. It must match the image hardcoded in
+	// powerDNSManifest.
+	defaultPowerDNSImage = "powerdns/pdns-auth-49:latest"
+	// E2EPowerDNSImageEnv is the environment variable used to override the
+	// PowerDNS backend image (e.g. to run the e2e suite against several
+	// PowerDNS versions). When empty, defaultPowerDNSImage is used.
+	E2EPowerDNSImageEnv = "E2E_POWERDNS_IMAGE"
 )
 
+// PowerDNSImage returns the PowerDNS backend image the e2e suite runs against,
+// honoring the E2EPowerDNSImageEnv override and falling back to the default.
+func PowerDNSImage() string {
+	if img := os.Getenv(E2EPowerDNSImageEnv); img != "" {
+		return img
+	}
+	return defaultPowerDNSImage
+}
+
 // DeployPowerDNS deploys the in-cluster PowerDNS authoritative server used as
-// the real backend for e2e tests and waits for it to become available.
+// the real backend for e2e tests and waits for it to become available. The
+// backend image can be overridden via E2EPowerDNSImageEnv so the same suite can
+// run against multiple PowerDNS versions.
 func DeployPowerDNS() error {
-	cmd := exec.Command("kubectl", "apply", "-f", powerDNSManifest)
+	manifest, err := renderPowerDNSManifest(PowerDNSImage())
+	if err != nil {
+		return err
+	}
+
+	cmd := exec.Command("kubectl", "apply", "-f", "-")
+	cmd.Stdin = strings.NewReader(manifest)
 	if _, err := Run(cmd); err != nil {
 		return err
 	}
@@ -52,7 +80,7 @@ func DeployPowerDNS() error {
 		"--namespace", PowerDNSNamespace,
 		"--timeout", "5m",
 	)
-	_, err := Run(cmd)
+	_, err = Run(cmd)
 	return err
 }
 
@@ -62,6 +90,25 @@ func UndeployPowerDNS() {
 	if _, err := Run(cmd); err != nil {
 		warnError(err)
 	}
+}
+
+// renderPowerDNSManifest reads the PowerDNS deployment manifest and swaps the
+// default backend image for the requested one, so the e2e suite can target
+// several PowerDNS versions without editing the manifest.
+func renderPowerDNSManifest(image string) (string, error) {
+	dir, err := GetProjectDir()
+	if err != nil {
+		return "", err
+	}
+	raw, err := os.ReadFile(filepath.Join(dir, powerDNSManifest))
+	if err != nil {
+		return "", fmt.Errorf("reading powerdns manifest: %w", err)
+	}
+	manifest := string(raw)
+	if image != defaultPowerDNSImage {
+		manifest = strings.ReplaceAll(manifest, defaultPowerDNSImage, image)
+	}
+	return manifest, nil
 }
 
 // PortForward represents a running `kubectl port-forward` process.
