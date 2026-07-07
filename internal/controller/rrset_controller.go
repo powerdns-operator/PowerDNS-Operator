@@ -184,7 +184,7 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{}, nil
 	}
 
-	return grr.rrsetReconcile(ctx, rrset, zone, isModified, isDeleted, lastUpdateTime)
+	return grr.reconcileRRset(ctx, rrset, zone, isModified, isDeleted, lastUpdateTime)
 }
 
 // SetupWithManager sets up the controller with the Manager.

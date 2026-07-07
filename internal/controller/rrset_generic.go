@@ -34,7 +34,7 @@ type GenericRRsetReconciler struct {
 	scheme     *runtime.Scheme
 }
 
-func (grr *GenericRRsetReconciler) rrsetReconcile(ctx context.Context, gr dnsv1alpha2.GenericRRset, zone dnsv1alpha2.GenericZone, isModified bool, isDeleted bool, lastUpdateTime *metav1.Time) (ctrl.Result, error) {
+func (grr *GenericRRsetReconciler) reconcileRRset(ctx context.Context, gr dnsv1alpha2.GenericRRset, zone dnsv1alpha2.GenericZone, isModified bool, isDeleted bool, lastUpdateTime *metav1.Time) (ctrl.Result, error) {
 	cl := grr.Client
 	log := grr.log
 	scheme := grr.scheme

@@ -107,7 +107,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		meta.RemoveStatusCondition(&zone.Status.Conditions, "Available")
 	}
 
-	return gzr.zoneReconcile(ctx, zone, isModified, isDeleted)
+	return gzr.reconcileZone(ctx, zone, isModified, isDeleted)
 }
 
 // SetupWithManager sets up the controller with the Manager.

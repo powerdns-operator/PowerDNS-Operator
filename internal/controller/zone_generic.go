@@ -32,9 +32,7 @@ type GenericZoneReconciler struct {
 }
 
 //nolint:unparam // Always return ctrl.Result{} is ok
-func (gzr *GenericZoneReconciler) zoneReconcile(
-	ctx context.Context, gz dnsv1alpha2.GenericZone, isModified bool, isDeleted bool,
-) (ctrl.Result, error) {
+func (gzr *GenericZoneReconciler) reconcileZone(ctx context.Context, gz dnsv1alpha2.GenericZone, isModified bool, isDeleted bool) (ctrl.Result, error) {
 	cl := gzr.Client
 	log := gzr.log
 	isInFailedStatus := (gz.GetStatus().SyncStatus != nil && *gz.GetStatus().SyncStatus == dnsv1alpha2.FAILED_STATUS)
