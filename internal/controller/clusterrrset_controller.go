@@ -65,6 +65,12 @@ func (r *ClusterRRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		lastUpdateTime = rrset.Status.LastUpdateTime
 	}
 	log.V(1).Info("ClusterRRset situation", "isModified", isModified, "isDeleted", isDeleted, "lastUpdateTime", lastUpdateTime)
+	grr := GenericRRsetReconciler{
+		Client:     r.Client,
+		PDNSClient: r.PDNSClient,
+		scheme:     r.Scheme,
+		log:        log,
+	}
 
 	// Position metrics finalizer as soon as possible
 	if !isDeleted {
@@ -176,7 +182,7 @@ func (r *ClusterRRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, nil
 	}
 
-	return rrsetReconcile(ctx, rrset, zone, isModified, isDeleted, lastUpdateTime, r.Scheme, r.Client, r.PDNSClient, log)
+	return grr.rrsetReconcile(ctx, rrset, zone, isModified, isDeleted, lastUpdateTime)
 }
 
 // SetupWithManager sets up the controller with the Manager.

@@ -27,7 +27,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-func rrsetReconcile(ctx context.Context, gr dnsv1alpha2.GenericRRset, zone dnsv1alpha2.GenericZone, isModified bool, isDeleted bool, lastUpdateTime *metav1.Time, scheme *runtime.Scheme, cl client.Client, PDNSClient PdnsClienter, log logr.Logger) (ctrl.Result, error) {
+type GenericRRsetReconciler struct {
+	client.Client
+	log        logr.Logger
+	PDNSClient PdnsClienter
+	scheme     *runtime.Scheme
+}
+
+func (grr *GenericRRsetReconciler) rrsetReconcile(ctx context.Context, gr dnsv1alpha2.GenericRRset, zone dnsv1alpha2.GenericZone, isModified bool, isDeleted bool, lastUpdateTime *metav1.Time) (ctrl.Result, error) {
+	cl := grr.Client
+	log := grr.log
+	scheme := grr.scheme
 	isInFailedStatus := (gr.GetStatus().SyncStatus != nil && *gr.GetStatus().SyncStatus == dnsv1alpha2.FAILED_STATUS)
 	log.V(1).Info("RRset situation", "isModified", isModified, "isDeleted", isDeleted, "lastUpdateTime", lastUpdateTime, "isInFailedStatus", isInFailedStatus)
 
@@ -53,7 +63,7 @@ func rrsetReconcile(ctx context.Context, gr dnsv1alpha2.GenericRRset, zone dnsv1
 		if controllerutil.ContainsFinalizer(gr, RESOURCES_FINALIZER_NAME) {
 			log.V(1).Info("Removing resources finalizer from RRset")
 			// our finalizer is present, so lets handle any external dependency
-			if err := deleteRrsetExternalResources(ctx, zone, gr, PDNSClient, log); err != nil {
+			if err := grr.deleteRrsetExternalResources(ctx, gr, zone); err != nil {
 				// if fail to delete the external resource, return with error
 				// so that it can be retried
 				log.Error(err, "Failed to delete external resources")
@@ -132,7 +142,7 @@ func rrsetReconcile(ctx context.Context, gr dnsv1alpha2.GenericRRset, zone dnsv1
 	// Create or Update
 	var changed bool
 	var err error
-	changed, err = createOrUpdateRrsetExternalResources(ctx, zone, gr, PDNSClient)
+	changed, err = grr.createOrUpdateRrsetExternalResources(ctx, gr, zone)
 	if changed {
 		lastUpdateTime = &metav1.Time{Time: time.Now().UTC()}
 	}
@@ -157,7 +167,9 @@ func rrsetReconcile(ctx context.Context, gr dnsv1alpha2.GenericRRset, zone dnsv1
 	return ctrl.Result{}, nil
 }
 
-func deleteRrsetExternalResources(ctx context.Context, zone dnsv1alpha2.GenericZone, rrset dnsv1alpha2.GenericRRset, PDNSClient PdnsClienter, log logr.Logger) error {
+func (grr *GenericRRsetReconciler) deleteRrsetExternalResources(ctx context.Context, rrset dnsv1alpha2.GenericRRset, zone dnsv1alpha2.GenericZone) error {
+	PDNSClient := grr.PDNSClient
+	log := grr.log
 	err := PDNSClient.Records.Delete(ctx, zone.GetObjectMeta().Name, getRRsetName(rrset), powerdns.RRType(rrset.GetSpec().Type))
 	if err != nil {
 		log.Error(err, "Failed to delete record")
@@ -167,7 +179,8 @@ func deleteRrsetExternalResources(ctx context.Context, zone dnsv1alpha2.GenericZ
 	return nil
 }
 
-func createOrUpdateRrsetExternalResources(ctx context.Context, zone dnsv1alpha2.GenericZone, rrset dnsv1alpha2.GenericRRset, PDNSClient PdnsClienter) (bool, error) {
+func (grr *GenericRRsetReconciler) createOrUpdateRrsetExternalResources(ctx context.Context, rrset dnsv1alpha2.GenericRRset, zone dnsv1alpha2.GenericZone) (bool, error) {
+	PDNSClient := grr.PDNSClient
 	name := getRRsetName(rrset)
 	rrType := powerdns.RRType(rrset.GetSpec().Type)
 	// Looking for a record with same Name and Type

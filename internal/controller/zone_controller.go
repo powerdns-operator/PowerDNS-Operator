@@ -69,6 +69,11 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	isModified := zone.Status.ObservedGeneration != nil && *zone.Status.ObservedGeneration != zone.GetGeneration()
 	isDeleted := !zone.DeletionTimestamp.IsZero()
 	log.V(1).Info("Zone situation", "isModified", isModified, "isDeleted", isDeleted)
+	gzr := GenericZoneReconciler{
+		Client:     r.Client,
+		PDNSClient: r.PDNSClient,
+		log:        log,
+	}
 
 	// Position metrics finalizer as soon as possible
 	if !isDeleted {
@@ -102,7 +107,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		meta.RemoveStatusCondition(&zone.Status.Conditions, "Available")
 	}
 
-	return zoneReconcile(ctx, zone, isModified, isDeleted, r.Client, r.PDNSClient, log)
+	return gzr.zoneReconcile(ctx, zone, isModified, isDeleted)
 }
 
 // SetupWithManager sets up the controller with the Manager.
