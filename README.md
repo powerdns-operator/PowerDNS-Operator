@@ -26,14 +26,14 @@ https://github.com/user-attachments/assets/cc43b03e-ed0d-4112-941d-0b53cc2ad3be
 - **Namespace Isolation**: Support for both cluster-wide and namespace-scoped resources
 - **RBAC Integration**: Fine-grained access control with Kubernetes RBAC
 - **Helm Support**: Easy deployment with Helm charts
-- **Metrics & Monitoring**: Built-in Prometheus metrics and Grafana dashboards
+- **Metrics & Monitoring**: Built-in Prometheus metrics (Grafana dashboards coming soon)
 - **GitOps Ready**: Perfect for GitOps workflows with ArgoCD, Flux, or similar tools
 
 ## 📋 Prerequisites
 
 | Component | Supported Versions |
 |-----------|-------------------|
-| **PowerDNS Authoritative** | 4.7, 4.8, 4.9 |
+| **PowerDNS Authoritative** | 4.9 |
 | **Kubernetes** | 1.33, 1.34, 1.35 |
 | **Go** (for development) | 1.26+ |
 
