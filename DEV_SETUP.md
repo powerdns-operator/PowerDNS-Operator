@@ -128,6 +128,17 @@ You can then tear it down manually with:
 make cleanup-test-e2e
 ```
 
+#### Running against a specific PowerDNS version
+
+By default the suite deploys a specific version of `powerdns/pdns-auth-XX:latest`. To run it against another PowerDNS version, set the `E2E_POWERDNS_IMAGE` environment variable to any published [PowerDNS authoritative image](https://hub.docker.com/u/powerdns):
+
+```sh
+# Run the E2E suite against PowerDNS 5.0
+E2E_POWERDNS_IMAGE=powerdns/pdns-auth-50:latest make test-e2e
+```
+
+In CI, the `e2e-tests` job runs a matrix across the supported PowerDNS versions, each as its own check (e.g. `e2e-tests (PowerDNS X.Y)`). Add or remove versions by editing the `powerdns` matrix in `.github/workflows/ci.yml`.
+
 > **NOTE**: In CI, the E2E suite runs nightly, on demand (`workflow_dispatch`), or on pull
 > requests carrying the `run-e2e` label (see `.github/workflows/e2e.yml`).
 

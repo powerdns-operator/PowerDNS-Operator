@@ -125,6 +125,17 @@ jobs:
     needs: detect-noop
     if: needs.detect-noop.outputs.noop != 'true'
 
+    strategy:
+      fail-fast: false
+      matrix:
+        powerdns:
+          - version: "4.9"
+            image: "powerdns/pdns-auth-49:latest"
+          - version: "5.0"
+            image: "powerdns/pdns-auth-50:latest"
+
+    name: e2e-tests (PowerDNS ${{ matrix.powerdns.version }})
+
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -147,6 +158,8 @@ jobs:
           kind version
 
       - name: Run E2E Tests
+        env:
+          E2E_POWERDNS_IMAGE: ${{ matrix.powerdns.image }}
         run: make test-e2e
 
   repo-slug:
