@@ -4,7 +4,7 @@
 
 | Component | Supported Versions |
 |-----------|-------------------|
-| **PowerDNS Authoritative** | 4.9 |
+| **PowerDNS Authoritative** | 4.9, 5.0 |
 | **Kubernetes** | 1.33, 1.34, 1.35 |
 | **Go** (for development) | 1.26+ |
 
