@@ -1,0 +1,16 @@
+# Record of type 'AAAA' in 'helloworld.com' zone
+# test3.helloworld.com.      IN    AAAA    2001:0dc8:86a4:0000:0000:7a2f:2360:2341
+apiVersion: dns.cav.enablers.ob/v1alpha2
+kind: RRset
+metadata:
+  name: test3-ipv6.helloworld.com
+  namespace: default
+spec:
+  type: AAAA
+  name: test3
+  ttl: 300
+  records:
+    - 2001:0dc8:86a4:0000:0000:7a2f:2360:2341
+  zoneRef:
+    name: helloworld.com
+    kind: ClusterZone
