@@ -13,6 +13,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -83,8 +84,7 @@ func (r *ClusterRRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			controllerutil.AddFinalizer(rrset, METRICS_FINALIZER_NAME)
 			lastUpdateTime = &metav1.Time{Time: time.Now().UTC()}
 			if err := r.Update(ctx, rrset); err != nil {
-				log.Error(err, "Failed to add finalizer")
-				return ctrl.Result{}, err
+				return ctrl.Result{}, fmt.Errorf("failed to add finalizer: %w", err)
 			}
 		}
 	}
@@ -135,8 +135,7 @@ func (r *ClusterRRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			}
 			if actionOnFinalizer {
 				if err := r.Update(ctx, rrset); err != nil {
-					log.Error(err, "Failed to remove finalizer")
-					return ctrl.Result{}, err
+					return ctrl.Result{}, fmt.Errorf("failed to remove finalizer: %w", err)
 				}
 			}
 
@@ -153,9 +152,8 @@ func (r *ClusterRRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			log.V(1).Info("Requeuing ClusterRRset", "RequeueAfter", 2*time.Second)
 			return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
 		} else {
-			log.Error(err, "Failed to get zone")
 			rrset.SetZoneNotAvailable(zone.GetName())
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("failed to get zone: %w", err)
 		}
 	}
 	// If a Zone/ClusterZone exists but is in Failed Status
@@ -173,8 +171,7 @@ func (r *ClusterRRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request
 				// Remove resource metrics
 				removeRrsetMetrics(rrset)
 				if err := r.Update(ctx, rrset); err != nil {
-					log.Error(err, "Failed to remove finalizer")
-					return ctrl.Result{}, err
+					return ctrl.Result{}, fmt.Errorf("failed to remove finalizer: %w", err)
 				}
 			}
 		}
@@ -182,7 +179,15 @@ func (r *ClusterRRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, nil
 	}
 
-	return grr.reconcileRRset(ctx, rrset, zone, isModified, isDeleted, lastUpdateTime)
+	err = grr.reconcileRRset(ctx, rrset, zone, isModified, isDeleted, lastUpdateTime)
+	if err != nil {
+		if apierrors.IsConflict(err) {
+			log.Info("Conflict on ClusterRRSet owner reference, retrying")
+			return ctrl.Result{Requeue: true}, nil
+		}
+		return ctrl.Result{}, fmt.Errorf("failed to reconcile ClusterRRset: %w", err)
+	}
+	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

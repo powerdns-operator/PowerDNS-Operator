@@ -22,7 +22,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -34,10 +33,8 @@ type GenericRRsetReconciler struct {
 	scheme     *runtime.Scheme
 }
 
-func (grr *GenericRRsetReconciler) reconcileRRset(ctx context.Context, gr dnsv1alpha2.GenericRRset, zone dnsv1alpha2.GenericZone, isModified bool, isDeleted bool, lastUpdateTime *metav1.Time) (ctrl.Result, error) {
-	cl := grr.Client
-	log := grr.log
-	scheme := grr.scheme
+func (grr *GenericRRsetReconciler) reconcileRRset(ctx context.Context, gr dnsv1alpha2.GenericRRset, zone dnsv1alpha2.GenericZone, isModified bool, isDeleted bool, lastUpdateTime *metav1.Time) error {
+	log := grr.log.WithValues("rrset.name", gr.GetName(), "rrset.namespace", gr.GetNamespace(), "zone.name", zone.GetName(), "zone.namespace", zone.GetNamespace())
 	isInFailedStatus := (gr.GetStatus().SyncStatus != nil && *gr.GetStatus().SyncStatus == dnsv1alpha2.FAILED_STATUS)
 	log.V(1).Info("RRset situation", "isModified", isModified, "isDeleted", isDeleted, "lastUpdateTime", lastUpdateTime, "isInFailedStatus", isInFailedStatus)
 
@@ -51,9 +48,8 @@ func (grr *GenericRRsetReconciler) reconcileRRset(ctx context.Context, gr dnsv1a
 			log.V(1).Info("Adding resources finalizer to RRset")
 			controllerutil.AddFinalizer(gr, RESOURCES_FINALIZER_NAME)
 			lastUpdateTime = &metav1.Time{Time: time.Now().UTC()}
-			if err := cl.Update(ctx, gr); err != nil {
-				log.Error(err, "Failed to add finalizer")
-				return ctrl.Result{}, err
+			if err := grr.Update(ctx, gr); err != nil {
+				return fmt.Errorf("failed to add finalizer on RRset: %w", err)
 			}
 		}
 	} else {
@@ -66,60 +62,57 @@ func (grr *GenericRRsetReconciler) reconcileRRset(ctx context.Context, gr dnsv1a
 			if err := grr.deleteRrsetExternalResources(ctx, gr, zone); err != nil {
 				// if fail to delete the external resource, return with error
 				// so that it can be retried
-				log.Error(err, "Failed to delete external resources")
-				return ctrl.Result{}, err
+				return fmt.Errorf("failed to delete RRset external resources: %w", err)
 			}
 			// remove our finalizer from the list.
 			controllerutil.RemoveFinalizer(gr, RESOURCES_FINALIZER_NAME)
+			log.V(1).Info("Removing finalizer from RRset")
 			finalizerRemoved = true
 		}
 		if controllerutil.ContainsFinalizer(gr, METRICS_FINALIZER_NAME) {
 			// Remove resource metrics and finalizer
 			removeRrsetMetrics(gr)
 			controllerutil.RemoveFinalizer(gr, METRICS_FINALIZER_NAME)
+			log.V(1).Info("Removing metrics finalizer from RRset")
 			finalizerRemoved = true
 		}
 		if finalizerRemoved {
-			if err := cl.Update(ctx, gr); err != nil {
-				log.Error(err, "Failed to remove finalizer")
-				return ctrl.Result{}, err
+			if err := grr.Update(ctx, gr); err != nil {
+				return fmt.Errorf("failed to remove finalizer on RRset: %w", err)
 			}
 		}
 
 		// Stop reconciliation as the item is being deleted
-		return ctrl.Result{}, nil
+		return nil
 	}
 
 	// Set OwnerReference as soon as the Zone is known, so that RRsets in a
 	// Failed status are also owned (and garbage-collected) by their Zone
-	if err := ownObject(ctx, zone, gr, scheme, cl, log); err != nil {
+	if err := ownObject(ctx, zone, gr, grr.scheme, grr.Client, log); err != nil {
 		if apierrors.IsConflict(err) {
-			log.Info("Conflict on RRSet owner reference, retrying")
-			return ctrl.Result{Requeue: true}, nil
+			return err
 		}
-		log.Error(err, "Failed to set owner reference")
-		return ctrl.Result{}, err
+		return fmt.Errorf("failed to set owner reference: %w", err)
 	}
 
 	// We cannot exit previously (at the early moments of reconcile), because we have to allow deletion process
 	if isInFailedStatus && !isModified {
 		// Update resource metrics
 		updateRrsetsMetrics(getRRsetName(gr), gr)
-		return ctrl.Result{}, nil
+		return nil
 	}
 
 	// If a RRset already exists with the same DNS name:
 	// * Stop reconciliation
 	// * Append a Failed Status on RRset
 	var existingRRsets dnsv1alpha2.RRsetList
-	if err := cl.List(ctx, &existingRRsets, client.MatchingFields{"RRset.Entry.Name": getRRsetName(gr) + "/" + gr.GetSpec().Type}); err != nil {
-		log.Error(err, "unable to find RRsets related to the DNS Name")
-		return ctrl.Result{}, err
+	if err := grr.List(ctx, &existingRRsets, client.MatchingFields{"RRset.Entry.Name": getRRsetName(gr) + "/" + gr.GetSpec().Type}); err != nil {
+		return fmt.Errorf("error while listing RRsets related to the DNS Name: %w", err)
+
 	}
 	var existingClusterRRsets dnsv1alpha2.ClusterRRsetList
-	if err := cl.List(ctx, &existingClusterRRsets, client.MatchingFields{"ClusterRRset.Entry.Name": getRRsetName(gr) + "/" + gr.GetSpec().Type}); err != nil {
-		log.Error(err, "unable to find RRsets related to the DNS Name")
-		return ctrl.Result{}, err
+	if err := grr.List(ctx, &existingClusterRRsets, client.MatchingFields{"ClusterRRset.Entry.Name": getRRsetName(gr) + "/" + gr.GetSpec().Type}); err != nil {
+		return fmt.Errorf("error while listing ClusterRRsets related to the DNS Name: %w", err)
 	}
 
 	// Multiple use-cases:
@@ -136,7 +129,7 @@ func (grr *GenericRRsetReconciler) reconcileRRset(ctx context.Context, gr dnsv1a
 		// Update resource metrics
 		updateRrsetsMetrics(getRRsetName(gr), gr)
 
-		return ctrl.Result{}, fmt.Errorf("RRset already exists")
+		return fmt.Errorf("RRset already exists")
 	}
 
 	// Create or Update
@@ -147,10 +140,9 @@ func (grr *GenericRRsetReconciler) reconcileRRset(ctx context.Context, gr dnsv1a
 		lastUpdateTime = &metav1.Time{Time: time.Now().UTC()}
 	}
 	if err != nil {
-		log.Error(err, "Failed to create or update external resources")
 		gr.SetSynchronizationFailed(lastUpdateTime, err)
 		updateRrsetsMetrics(getRRsetName(gr), gr)
-		return ctrl.Result{}, err
+		return fmt.Errorf("failed to create or update external resources: %w", err)
 	}
 
 	// This Patch is very important:
@@ -164,13 +156,13 @@ func (grr *GenericRRsetReconciler) reconcileRRset(ctx context.Context, gr dnsv1a
 	// Metrics calculation
 	updateRrsetsMetrics(getRRsetName(gr), gr)
 
-	return ctrl.Result{}, nil
+	return nil
 }
 
 func (grr *GenericRRsetReconciler) deleteRrsetExternalResources(ctx context.Context, rrset dnsv1alpha2.GenericRRset, zone dnsv1alpha2.GenericZone) error {
 	PDNSClient := grr.PDNSClient
 	log := grr.log
-	err := PDNSClient.Records.Delete(ctx, zone.GetObjectMeta().Name, getRRsetName(rrset), powerdns.RRType(rrset.GetSpec().Type))
+	err := PDNSClient.Records.Delete(ctx, zone.GetName(), getRRsetName(rrset), powerdns.RRType(rrset.GetSpec().Type))
 	if err != nil {
 		log.Error(err, "Failed to delete record")
 		return err
