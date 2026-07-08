@@ -191,6 +191,9 @@ spec:
                 description: The SOA serial number.
                 format: int32
                 type: integer
+              syncGeneration:
+                format: int64
+                type: integer
               syncStatus:
                 type: string
             type: object

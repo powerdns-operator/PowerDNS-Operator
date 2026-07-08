@@ -64,8 +64,9 @@ type ZoneStatus struct {
 	DNSsec *bool `json:"dnssec,omitempty"`
 	// The catalog this zone is a member of.
 	// +optional
-	Catalog    *string `json:"catalog,omitempty"`
-	SyncStatus *string `json:"syncStatus,omitempty"`
+	Catalog        *string `json:"catalog,omitempty"`
+	SyncStatus     *string `json:"syncStatus,omitempty"`
+	SyncGeneration *int64  `json:"syncGeneration,omitempty"`
 	// conditions represent the current state of the Zone resource.
 	// Each condition has a unique type and reflects the status of a specific aspect of the resource.
 	//
@@ -169,10 +170,38 @@ func (c *Zone) SetDuplicated() {
 	setZoneDuplicated(&c.Status, c.Generation)
 }
 
-func (c *Zone) SetSynchronizationFailed(err error) {
-	setZoneSynchronizationFailed(&c.Status, c.Generation, err)
-}
-
 func (c *Zone) SetAvailable(zoneRes *powerdns.Zone) {
 	setZoneAvailable(&c.Status, c.Generation, zoneRes)
+}
+
+func (c *Zone) SetValidated() {
+	setZoneValidated(&c.Status, c.Generation)
+}
+
+func (c *Zone) SetUnprocessable(stage string, err error) {
+	setZoneUnprocessable(stage, &c.Status, c.Generation, err)
+}
+
+func (c *Zone) SetBadRequest(stage string, err error) {
+	setZoneBadRequest(stage, &c.Status, c.Generation, err)
+}
+
+func (c *Zone) SetSynchronizationFailed(stage string, err error) {
+	setZoneSynchronizationFailed(stage, &c.Status, c.Generation, err)
+}
+
+func (c *Zone) SetProcessed() {
+	setZoneProcessed(&c.Status, c.Generation)
+}
+
+func (c *Zone) UnsetProcessed() {
+	unsetZoneProcessed(&c.Status)
+}
+
+func (c *Zone) UnsetAvailable() {
+	unsetZoneAvailable(&c.Status)
+}
+
+func (c *Zone) SetSyncStatus() {
+	setZoneSyncStatusAndGeneration(&c.Status, c.Generation)
 }

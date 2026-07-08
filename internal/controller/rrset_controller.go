@@ -198,7 +198,7 @@ func (r *RRsetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &dnsv1alpha2.RRset{}, "RRset.Entry.Name", func(rawObj client.Object) []string {
 		// grab the RRset object, extract its name...
 		var RRsetName string
-		if rawObj.(*dnsv1alpha2.RRset).Status.SyncStatus == nil || *rawObj.(*dnsv1alpha2.RRset).Status.SyncStatus == dnsv1alpha2.SUCCEEDED_STATUS {
+		if rawObj.(*dnsv1alpha2.RRset).Status.SyncStatus == nil || *rawObj.(*dnsv1alpha2.RRset).Status.SyncStatus == dnsv1alpha2.SYNCED_STATUS {
 			RRsetName = getRRsetName(rawObj.(*dnsv1alpha2.RRset)) + "/" + rawObj.(*dnsv1alpha2.RRset).Spec.Type
 		}
 		return []string{RRsetName}

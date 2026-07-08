@@ -103,10 +103,38 @@ func (c *ClusterZone) SetDuplicated() {
 	setZoneDuplicated(&c.Status, c.Generation)
 }
 
-func (c *ClusterZone) SetSynchronizationFailed(err error) {
-	setZoneSynchronizationFailed(&c.Status, c.Generation, err)
-}
-
 func (c *ClusterZone) SetAvailable(zoneRes *powerdns.Zone) {
 	setZoneAvailable(&c.Status, c.Generation, zoneRes)
+}
+
+func (c *ClusterZone) SetValidated() {
+	setZoneValidated(&c.Status, c.Generation)
+}
+
+func (c *ClusterZone) SetUnprocessable(stage string, err error) {
+	setZoneUnprocessable(stage, &c.Status, c.Generation, err)
+}
+
+func (c *ClusterZone) SetBadRequest(stage string, err error) {
+	setZoneBadRequest(stage, &c.Status, c.Generation, err)
+}
+
+func (c *ClusterZone) SetSynchronizationFailed(stage string, err error) {
+	setZoneSynchronizationFailed(stage, &c.Status, c.Generation, err)
+}
+
+func (c *ClusterZone) SetProcessed() {
+	setZoneProcessed(&c.Status, c.Generation)
+}
+
+func (c *ClusterZone) UnsetProcessed() {
+	unsetZoneProcessed(&c.Status)
+}
+
+func (c *ClusterZone) UnsetAvailable() {
+	unsetZoneAvailable(&c.Status)
+}
+
+func (c *ClusterZone) SetSyncStatus() {
+	setZoneSyncStatusAndGeneration(&c.Status, c.Generation)
 }
