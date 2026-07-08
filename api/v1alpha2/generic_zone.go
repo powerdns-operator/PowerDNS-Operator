@@ -44,8 +44,15 @@ type GenericZone interface {
 
 	// Set Status functions
 	SetDuplicated()
-	SetSynchronizationFailed(err error)
+	SetValidated()
+	SetUnprocessable(stage string, err error)
+	SetBadRequest(stage string, err error)
+	SetSynchronizationFailed(stage string, err error)
+	SetProcessed()
 	SetAvailable(zoneRes *powerdns.Zone)
+	UnsetProcessed()
+	UnsetAvailable()
+	SetSyncStatus()
 }
 
 // +kubebuilder:object:root:false
@@ -84,12 +91,40 @@ func (c *Zone) SetDuplicated() {
 	setZoneDuplicated(&c.Status, c.Generation)
 }
 
-func (c *Zone) SetSynchronizationFailed(err error) {
-	setZoneSynchronizationFailed(&c.Status, c.Generation, err)
+func (c *Zone) SetValidated() {
+	setZoneValidated(&c.Status, c.Generation)
+}
+
+func (c *Zone) SetUnprocessable(stage string, err error) {
+	setZoneUnprocessable(stage, &c.Status, c.Generation, err)
+}
+
+func (c *Zone) SetBadRequest(stage string, err error) {
+	setZoneBadRequest(stage, &c.Status, c.Generation, err)
+}
+
+func (c *Zone) SetSynchronizationFailed(stage string, err error) {
+	setZoneSynchronizationFailed(stage, &c.Status, c.Generation, err)
+}
+
+func (c *Zone) SetProcessed() {
+	setZoneProcessed(&c.Status, c.Generation)
 }
 
 func (c *Zone) SetAvailable(zoneRes *powerdns.Zone) {
 	setZoneAvailable(&c.Status, c.Generation, zoneRes)
+}
+
+func (c *Zone) UnsetProcessed() {
+	unsetZoneProcessed(&c.Status)
+}
+
+func (c *Zone) UnsetAvailable() {
+	unsetZoneAvailable(&c.Status)
+}
+
+func (c *Zone) SetSyncStatus() {
+	setZoneSyncStatusAndGeneration(&c.Status, c.Generation)
 }
 
 // +kubebuilder:object:root:false
@@ -128,43 +163,115 @@ func (c *ClusterZone) SetDuplicated() {
 	setZoneDuplicated(&c.Status, c.Generation)
 }
 
-func (c *ClusterZone) SetSynchronizationFailed(err error) {
-	setZoneSynchronizationFailed(&c.Status, c.Generation, err)
+func (c *ClusterZone) SetValidated() {
+	setZoneValidated(&c.Status, c.Generation)
+}
+
+func (c *ClusterZone) SetUnprocessable(stage string, err error) {
+	setZoneUnprocessable(stage, &c.Status, c.Generation, err)
+}
+
+func (c *ClusterZone) SetBadRequest(stage string, err error) {
+	setZoneBadRequest(stage, &c.Status, c.Generation, err)
+}
+
+func (c *ClusterZone) SetSynchronizationFailed(stage string, err error) {
+	setZoneSynchronizationFailed(stage, &c.Status, c.Generation, err)
+}
+
+func (c *ClusterZone) SetProcessed() {
+	setZoneProcessed(&c.Status, c.Generation)
 }
 
 func (c *ClusterZone) SetAvailable(zoneRes *powerdns.Zone) {
 	setZoneAvailable(&c.Status, c.Generation, zoneRes)
 }
 
+func (c *ClusterZone) UnsetProcessed() {
+	unsetZoneProcessed(&c.Status)
+}
+
+func (c *ClusterZone) UnsetAvailable() {
+	unsetZoneAvailable(&c.Status)
+}
+
+func (c *ClusterZone) SetSyncStatus() {
+	setZoneSyncStatusAndGeneration(&c.Status, c.Generation)
+}
+
 func setZoneDuplicated(status *ZoneStatus, generation int64) {
-	status.SyncStatus = ptr.To(FAILED_STATUS)
-	status.ObservedGeneration = &generation
 	condition := metav1.Condition{
-		Type:               "Available",
+		ObservedGeneration: generation,
+		Type:               "Valid",
 		Status:             metav1.ConditionFalse,
 		LastTransitionTime: metav1.Time{Time: time.Now().UTC()},
-		Reason:             DUPLICATED_REASON,
-		Message:            ZONE_DUPLICATED_MESSAGE,
+		Reason:             "Duplicated",
+		Message:            "At least another ClusterZone/Zone exists with the same name",
 	}
 	meta.SetStatusCondition(&status.Conditions, condition)
 }
 
-func setZoneSynchronizationFailed(status *ZoneStatus, generation int64, err error) {
-	status.SyncStatus = ptr.To(FAILED_STATUS)
-	status.ObservedGeneration = &generation
+func setZoneValidated(status *ZoneStatus, generation int64) {
 	condition := metav1.Condition{
-		Type:               "Available",
+		ObservedGeneration: generation,
+		Type:               "Valid",
+		Status:             metav1.ConditionTrue,
+		LastTransitionTime: metav1.Time{Time: time.Now().UTC()},
+		Reason:             "Valid",
+		Message:            "Zone validated",
+	}
+	meta.SetStatusCondition(&status.Conditions, condition)
+}
+
+func setZoneUnprocessable(stage string, status *ZoneStatus, generation int64, err error) {
+	condition := metav1.Condition{
+		ObservedGeneration: generation,
+		Type:               stage,
 		Status:             metav1.ConditionFalse,
 		LastTransitionTime: metav1.Time{Time: time.Now().UTC()},
-		Reason:             SYNCHRONIZATION_FAILED_REASON,
-		Message:            SYNCHRONIZATION_FAILED_MESSAGE + err.Error(),
+		Reason:             "Unprocessable",
+		Message:            "Unprocessable:" + err.Error(),
+	}
+	meta.SetStatusCondition(&status.Conditions, condition)
+}
+
+func setZoneBadRequest(stage string, status *ZoneStatus, generation int64, err error) {
+	condition := metav1.Condition{
+		ObservedGeneration: generation,
+		Type:               stage,
+		Status:             metav1.ConditionFalse,
+		LastTransitionTime: metav1.Time{Time: time.Now().UTC()},
+		Reason:             "BadRequest",
+		Message:            "BadRequest:" + err.Error(),
+	}
+	meta.SetStatusCondition(&status.Conditions, condition)
+}
+
+func setZoneSynchronizationFailed(stage string, status *ZoneStatus, generation int64, err error) {
+	condition := metav1.Condition{
+		ObservedGeneration: generation,
+		Type:               stage,
+		Status:             metav1.ConditionFalse,
+		LastTransitionTime: metav1.Time{Time: time.Now().UTC()},
+		Reason:             "SynchronizationFailed",
+		Message:            "Synchronization failed:" + err.Error(),
+	}
+	meta.SetStatusCondition(&status.Conditions, condition)
+}
+
+func setZoneProcessed(status *ZoneStatus, generation int64) {
+	condition := metav1.Condition{
+		ObservedGeneration: generation,
+		Type:               "Processed",
+		Status:             metav1.ConditionTrue,
+		LastTransitionTime: metav1.Time{Time: time.Now().UTC()},
+		Reason:             "Processed",
+		Message:            "Processed",
 	}
 	meta.SetStatusCondition(&status.Conditions, condition)
 }
 
 func setZoneAvailable(status *ZoneStatus, generation int64, zoneRes *powerdns.Zone) {
-	status.SyncStatus = ptr.To(SUCCEEDED_STATUS)
-	status.ObservedGeneration = &generation
 	status.ID = zoneRes.ID
 	status.Name = zoneRes.Name
 	status.Kind = ptr.To(string(ptr.Deref(zoneRes.Kind, "")))
@@ -175,11 +282,71 @@ func setZoneAvailable(status *ZoneStatus, generation int64, zoneRes *powerdns.Zo
 	status.DNSsec = zoneRes.DNSsec
 	status.Catalog = zoneRes.Catalog
 	condition := metav1.Condition{
+		ObservedGeneration: generation,
 		Type:               "Available",
 		Status:             metav1.ConditionTrue,
 		LastTransitionTime: metav1.Time{Time: time.Now().UTC()},
-		Reason:             SUCCEEDED_REASON,
-		Message:            SUCCEEDED_MESSAGE,
+		Reason:             "Succeeded",
+		Message:            "Succeeded",
 	}
 	meta.SetStatusCondition(&status.Conditions, condition)
+}
+
+func unsetZoneProcessed(status *ZoneStatus) {
+	meta.RemoveStatusCondition(&status.Conditions, "Processed")
+}
+
+func unsetZoneAvailable(status *ZoneStatus) {
+	meta.RemoveStatusCondition(&status.Conditions, "Available")
+}
+
+func calculateZoneSyncStatusAndGeneration(status *ZoneStatus, generation int64) (string, int64) {
+	var validGeneration, processedGeneration, availableGeneration int64
+	var validCondition, processedCondition, availableCondition, hasProcessedCondition bool
+
+	if c := meta.FindStatusCondition(status.Conditions, "Valid"); c != nil {
+		validCondition = c.Status == metav1.ConditionTrue
+		validGeneration = c.ObservedGeneration
+	}
+
+	if c := meta.FindStatusCondition(status.Conditions, "Processed"); c != nil {
+		hasProcessedCondition = true
+		processedCondition = c.Status == metav1.ConditionTrue
+		processedGeneration = c.ObservedGeneration
+	}
+
+	if c := meta.FindStatusCondition(status.Conditions, "Available"); c != nil {
+		availableGeneration = c.ObservedGeneration
+		availableCondition = c.Status == metav1.ConditionTrue
+	}
+
+	// The Zone/ClusterZone is available for a previous generation
+	if availableCondition && availableGeneration < generation {
+		return "Stale", availableGeneration
+	}
+
+	if !validCondition {
+		return "Invalid", validGeneration
+	}
+
+	if !hasProcessedCondition {
+		return "Valid", validGeneration
+	}
+
+	if !processedCondition {
+		return "Unprocessed", processedGeneration
+	}
+
+	if !availableCondition {
+		return "Processed", processedGeneration
+	}
+
+	return "Synced", availableGeneration
+}
+
+func setZoneSyncStatusAndGeneration(status *ZoneStatus, generation int64) {
+	calculatedSyncStatus, calculatedGeneration := calculateZoneSyncStatusAndGeneration(status, generation)
+	status.SyncStatus = ptr.To(calculatedSyncStatus)
+	status.ObservedGeneration = &generation
+	status.SyncGeneration = &calculatedGeneration
 }

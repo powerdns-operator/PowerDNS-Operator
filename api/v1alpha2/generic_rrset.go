@@ -170,8 +170,8 @@ func setMissingZone(status *RRsetStatus, generation int64, err error) {
 		Type:               "Available",
 		Status:             metav1.ConditionFalse,
 		LastTransitionTime: metav1.NewTime(time.Now().UTC()),
-		Reason:             MISSING_ZONE_REASON,
-		Message:            MISSING_ZONE_MESSAGE + err.Error(),
+		Reason:             "ZoneMissing",
+		Message:            "Zone missing:" + err.Error(),
 	}
 	meta.SetStatusCondition(&status.Conditions, condition)
 }
@@ -183,8 +183,8 @@ func setZoneNotAvailable(status *RRsetStatus, generation int64, zoneName string)
 		Type:               "Available",
 		Status:             metav1.ConditionFalse,
 		LastTransitionTime: metav1.NewTime(time.Now().UTC()),
-		Reason:             ZONE_NOT_AVAILABLE_REASON,
-		Message:            ZONE_NOT_AVAILABLE_MESSAGE + zoneName,
+		Reason:             "ZoneNotAvailable",
+		Message:            "Zone not available:" + zoneName,
 	}
 	meta.SetStatusCondition(&status.Conditions, condition)
 }
@@ -198,8 +198,8 @@ func setRRsetDuplicated(status *RRsetStatus, generation int64, lastUpdateTime *m
 		Type:               "Available",
 		Status:             metav1.ConditionFalse,
 		LastTransitionTime: *lastUpdateTime,
-		Reason:             DUPLICATED_REASON,
-		Message:            RRSET_DUPLICATED_MESSAGE,
+		Reason:             "Duplicated",
+		Message:            "At least another ClusterRRset/RRset exists with the same name",
 	}
 	meta.SetStatusCondition(&status.Conditions, condition)
 }
@@ -212,14 +212,14 @@ func setRRsetSynchronizationFailed(status *RRsetStatus, generation int64, lastUp
 		Type:               "Available",
 		Status:             metav1.ConditionFalse,
 		LastTransitionTime: *lastUpdateTime,
-		Reason:             SYNCHRONIZATION_FAILED_REASON,
-		Message:            SYNCHRONIZATION_FAILED_MESSAGE + err.Error(),
+		Reason:             "SynchronizationFailed",
+		Message:            "Synchronization failed:" + err.Error(),
 	}
 	meta.SetStatusCondition(&status.Conditions, condition)
 }
 
 func setRRsetAvailable(status *RRsetStatus, generation int64, lastUpdateTime *metav1.Time, name string) {
-	status.SyncStatus = ptr.To(SUCCEEDED_STATUS)
+	status.SyncStatus = ptr.To(SYNCED_STATUS)
 	status.ObservedGeneration = &generation
 	status.LastUpdateTime = lastUpdateTime
 	status.DnsEntryName = &name
@@ -227,8 +227,8 @@ func setRRsetAvailable(status *RRsetStatus, generation int64, lastUpdateTime *me
 		Type:               "Available",
 		Status:             metav1.ConditionTrue,
 		LastTransitionTime: *lastUpdateTime,
-		Reason:             SUCCEEDED_REASON,
-		Message:            SUCCEEDED_MESSAGE,
+		Reason:             "Succeeded",
+		Message:            "Succeeded",
 	}
 	meta.SetStatusCondition(&status.Conditions, condition)
 }

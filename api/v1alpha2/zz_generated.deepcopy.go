@@ -421,6 +421,11 @@ func (in *ZoneStatus) DeepCopyInto(out *ZoneStatus) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.SyncGeneration != nil {
+		in, out := &in.SyncGeneration, &out.SyncGeneration
+		*out = new(int64)
+		**out = **in
+	}
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions
 		*out = make([]v1.Condition, len(*in))

@@ -14,6 +14,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/go-logr/logr"
@@ -31,113 +32,186 @@ type GenericZoneReconciler struct {
 }
 
 //nolint:unparam // Always return ctrl.Result{} is ok
-func (gzr *GenericZoneReconciler) reconcileZone(ctx context.Context, gz dnsv1alpha2.GenericZone, isModified bool, isDeleted bool) error {
+func (gzr *GenericZoneReconciler) deleteZone(ctx context.Context, gz dnsv1alpha2.GenericZone) error {
+	finalizerRemoved := false
+	if controllerutil.ContainsFinalizer(gz, RESOURCES_FINALIZER_NAME) {
+		// our finalizer is present, so lets handle any external dependency
+		if err := gzr.deleteZoneExternalResources(ctx, gz); err != nil {
+			// if fail to delete the external resource, return with error
+			// so that it can be retried
+			return err
+		}
+		// remove our finalizer from the list and update it.
+		controllerutil.RemoveFinalizer(gz, RESOURCES_FINALIZER_NAME)
+		finalizerRemoved = true
+	}
+	if controllerutil.ContainsFinalizer(gz, METRICS_FINALIZER_NAME) {
+		// Remove resource metrics and finalizer
+		removeZonesMetrics(gz)
+		controllerutil.RemoveFinalizer(gz, METRICS_FINALIZER_NAME)
+		finalizerRemoved = true
+	}
+	if finalizerRemoved {
+		if err := gzr.Update(ctx, gz); err != nil {
+			return err
+		}
+	}
+
+	// Stop reconciliation as the item is being deleted
+	return nil
+}
+
+func (gzr *GenericZoneReconciler) reconcileZone(ctx context.Context, gz dnsv1alpha2.GenericZone) error {
 	log := gzr.log.WithValues("kind", gz.GetKind(), "name", gz.GetName(), "namespace", gz.GetNamespace())
-	isInFailedStatus := (gz.GetStatus().SyncStatus != nil && *gz.GetStatus().SyncStatus == dnsv1alpha2.FAILED_STATUS)
-
-	// examine DeletionTimestamp to determine if object is under deletion
-	if !isDeleted {
-		// The object is not being deleted, so if it does not have our finalizer,
-		// then lets add the finalizer and update the object. This is equivalent
-		// to registering our finalizer.
-		if !controllerutil.ContainsFinalizer(gz, RESOURCES_FINALIZER_NAME) {
-			controllerutil.AddFinalizer(gz, RESOURCES_FINALIZER_NAME)
-			if err := gzr.Update(ctx, gz); err != nil {
-				return fmt.Errorf("failed to add finalizer on Zone: %w", err)
-			}
-		}
-	} else {
-		// The object is being deleted
-		finalizerRemoved := false
-		if controllerutil.ContainsFinalizer(gz, RESOURCES_FINALIZER_NAME) {
-			// our finalizer is present, so lets handle any external dependency
-			if err := gzr.deleteZoneExternalResources(ctx, gz); err != nil {
-				// if fail to delete the external resource, return with error
-				// so that it can be retried
-				return fmt.Errorf("failed to delete zone external resources: %w", err)
-			}
-			// remove our finalizer from the list and update it.
-			controllerutil.RemoveFinalizer(gz, RESOURCES_FINALIZER_NAME)
-			log.V(1).Info("Removing finalizer from zone")
-			finalizerRemoved = true
-		}
-		if controllerutil.ContainsFinalizer(gz, METRICS_FINALIZER_NAME) {
-			// Remove resource metrics and finalizer
-			removeZonesMetrics(gz)
-			controllerutil.RemoveFinalizer(gz, METRICS_FINALIZER_NAME)
-			log.V(1).Info("Removing metrics finalizer from zone")
-			finalizerRemoved = true
-		}
-		if finalizerRemoved {
-			if err := gzr.Update(ctx, gz); err != nil {
-				return fmt.Errorf("failed to remove finalizers on Zone: %w", err)
-			}
-		}
-
-		// Stop reconciliation as the item is being deleted
-		return nil
-	}
-
-	// We cannot exit previously (at the early moments of reconcile), because we have to allow deletion process
-	if isInFailedStatus && !isModified {
-		// Update resource metrics
-		updateZonesMetrics(gz)
-		return nil
-	}
-
-	// If a Zone already exists with the same DNS name:
-	// * Stop reconciliation
-	// * Append a Failed Status on Zone
-	var existingZones dnsv1alpha2.ZoneList
-	if err := gzr.List(ctx, &existingZones, client.MatchingFields{"Zone.Entry.Name": gz.GetName()}); err != nil {
-		return fmt.Errorf("error while listing Zone related to the DNS Name: %w", err)
-	}
-	var existingClusterZones dnsv1alpha2.ClusterZoneList
-	if err := gzr.List(ctx, &existingClusterZones, client.MatchingFields{"ClusterZone.Entry.Name": gz.GetName()}); err != nil {
-		return fmt.Errorf("error while listing ClusterZone related to the DNS Name: %w", err)
-	}
-
-	// Multiple use-cases:
-	// 1 Zone (example.com in NS example1) + 1 Zone (example.com in NS example3)
-	// In that case: len(existingZones.Items) > 1
-	// 1 Zone (example.com in NS example1) + 1 ClusterZone (example.com)
-	// In that case: len(existingZones.Items) >= 1 AND len(existingClusterZones.Items) >= 1
-	if len(existingZones.Items) > 1 || (len(existingZones.Items) >= 1 && len(existingClusterZones.Items) >= 1) {
-		log.V(1).WithValues("existingZones", existingZones.Items, "existingClusterZones", existingClusterZones.Items).Info("Zone is duplicated")
-		gz.SetDuplicated()
-
-		// Update resource metrics
-		updateZonesMetrics(gz)
-
-		return fmt.Errorf("zone already exists")
-	}
 
 	// Get zone
+	log.V(1).Info("Getting zone external resources")
 	zoneRes, err := gzr.getZoneExternalResources(ctx, gz.GetName())
 	if err != nil {
-		return err
+		log.V(1).Error(err, "Failed to get zone external resources")
+		switch err.Error() {
+		case UNPROCESSABLE_ERROR_MSG:
+			gz.SetUnprocessable("Processed", err)
+		case BAD_REQUEST_ERROR_MSG:
+			gz.SetBadRequest("Processed", err)
+		default:
+			gz.SetSynchronizationFailed("Processed", err)
+		}
+		return fmt.Errorf("failed to get zone external resources: %w", err)
 	}
 
-	err = gzr.zoneExternalResourcesReconcile(ctx, zoneRes, gz)
-	if err != nil {
-		gz.SetSynchronizationFailed(err)
-		return err
+	// Let's add the finalizer and update the object.
+	if !controllerutil.ContainsFinalizer(gz, RESOURCES_FINALIZER_NAME) {
+		log.V(1).Info("Adding resources finalizer to Zone")
+		controllerutil.AddFinalizer(gz, RESOURCES_FINALIZER_NAME)
+		if err := gzr.Update(ctx, gz); err != nil {
+			return fmt.Errorf("failed to add finalizer on Zone: %w", err)
+		}
 	}
+
+	// After the finalizer update at first time, the status is reseted
+	// so we need to set the validated status again
+	gz.SetValidated()
+
+	if zoneRes.Name == nil {
+		// CREATE ZONE
+		log.V(1).Info("External resource does not exist, creating it")
+		err := gzr.createZoneExternalResources(ctx, gz)
+		if err != nil {
+			switch err.Error() {
+			case UNPROCESSABLE_ERROR_MSG:
+				gz.SetUnprocessable("Processed", err)
+				return nil
+			case BAD_REQUEST_ERROR_MSG:
+				gz.SetBadRequest("Processed", err)
+				return nil
+			default:
+				gz.SetSynchronizationFailed("Processed", err)
+				return fmt.Errorf("failed to create external resources: %w", err)
+			}
+		}
+		log.V(1).Info("External resource created")
+	} else {
+		// UPDATE ZONE
+		log.V(1).Info("External resource exists, comparing content and updating it if necessary")
+		nameservers, ttl, err := gzr.getNSFromZoneExternalResources(ctx, gz)
+		if err != nil {
+			return fmt.Errorf("failed to get NS from external resource: %w", err)
+		}
+
+		// Workflow is different on update types:
+		// Nameservers changes  => patch RRSet
+		// Other changes        => patch Zone
+		zoneIdentical, nsIdentical := zoneIsIdenticalToExternalZone(gz, zoneRes, nameservers)
+
+		// Nameservers changes
+		if !nsIdentical {
+			log.V(1).Info("NS in external resource are not identical, updating them")
+			err := gzr.updateNsOnZoneExternalResources(ctx, gz, *ttl)
+			if err != nil {
+				switch err.Error() {
+				case UNPROCESSABLE_ERROR_MSG:
+					gz.SetUnprocessable("Processed", err)
+					return nil
+				case BAD_REQUEST_ERROR_MSG:
+					gz.SetBadRequest("Processed", err)
+					return nil
+				case NOT_FOUND_ERROR_MSG:
+					return fmt.Errorf("failed to update NS in external resource: %w", err)
+				default:
+					gz.SetSynchronizationFailed("Processed", err)
+					return fmt.Errorf("failed to update NS in external resource: %w", err)
+				}
+			}
+			log.V(1).Info("NS in external resource updated")
+		}
+		// Other changes
+		if !zoneIdentical {
+			log.V(1).Info("External resource is not identical, updating it")
+			err := gzr.updateZoneExternalResources(ctx, gz)
+			if err != nil {
+				switch err.Error() {
+				case NOT_FOUND_ERROR_MSG:
+					return fmt.Errorf("failed to update external resource: %w", err)
+				case UNPROCESSABLE_ERROR_MSG:
+					gz.SetUnprocessable("Processed", err)
+				case BAD_REQUEST_ERROR_MSG:
+					gz.SetBadRequest("Processed", err)
+				default:
+					gz.SetSynchronizationFailed("Processed", err)
+				}
+				// Revert NS in external resource
+				err := gzr.revertNsOnZoneExternalResources(ctx, zoneRes, nameservers, *ttl)
+				if err != nil {
+					switch err.Error() {
+					case UNPROCESSABLE_ERROR_MSG:
+						gz.SetUnprocessable("Processed", err)
+						return nil
+					case BAD_REQUEST_ERROR_MSG:
+						gz.SetBadRequest("Processed", err)
+						return nil
+					case NOT_FOUND_ERROR_MSG:
+						return fmt.Errorf("failed to revert NS in external resource: %w", err)
+					default:
+						gz.SetSynchronizationFailed("Processed", err)
+						return fmt.Errorf("failed to revert NS in external resource: %w", err)
+					}
+				}
+				return fmt.Errorf("failed to revert NS in external resource: %w", err)
+			}
+			log.V(1).Info("External resource updated")
+		}
+	}
+	gz.SetProcessed()
 
 	// Update ZoneStatus
 	zoneRes, err = gzr.getZoneExternalResources(ctx, gz.GetName())
 	if err != nil {
-		return err
+		switch err.Error() {
+		case UNPROCESSABLE_ERROR_MSG:
+			gz.SetUnprocessable("Available", err)
+		case BAD_REQUEST_ERROR_MSG:
+			gz.SetBadRequest("Available", err)
+		case NOT_FOUND_ERROR_MSG:
+			gz.UnsetProcessed()
+			gz.UnsetAvailable()
+		default:
+			gz.SetSynchronizationFailed("Available", err)
+		}
+		return fmt.Errorf("failed to get zone external resources after update: %w", err)
 	}
 
 	gz.SetAvailable(zoneRes)
 
 	// Update resource metrics
-	updateZonesMetrics(gz)
+	// updateZonesMetrics(gz)
 
 	return nil
 }
 
+// getZoneExternalResources gets the zone from the PowerDNS API
+// and returns it as a powerdns.Zone object, nil if the zone is not found
+// or an error if the PowerDNS API fails
 func (gzr *GenericZoneReconciler) getZoneExternalResources(ctx context.Context, domain string) (*powerdns.Zone, error) {
 	log := gzr.log.WithValues("domain", domain)
 	zoneRes, err := gzr.PDNSClient.Zones.Get(ctx, domain)
@@ -231,61 +305,98 @@ func (gzr *GenericZoneReconciler) deleteZoneExternalResources(ctx context.Contex
 	return nil
 }
 
-func (gzr *GenericZoneReconciler) zoneExternalResourcesReconcile(ctx context.Context, zoneRes *powerdns.Zone, gz dnsv1alpha2.GenericZone) error {
+func (gzr *GenericZoneReconciler) alreadyExists(ctx context.Context, gz dnsv1alpha2.GenericZone) (bool, error) {
 	log := gzr.log.WithValues("kind", gz.GetKind(), "name", gz.GetName(), "namespace", gz.GetNamespace())
-	if zoneRes.Name == nil {
-		log.V(1).Info("External resource does not exist, creating it")
-		// If Zone does not exist, create it
-		err := gzr.createZoneExternalResources(ctx, gz)
-		if err != nil {
-			return fmt.Errorf("failed to create external resources: %w", err)
-		}
-		log.V(1).Info("External resource created")
-	} else {
-		log.V(1).Info("External resource exists, comparing content and updating it if necessary")
-		// If Zone exists, compare content and update it if necessary
-		ns, err := gzr.PDNSClient.Records.Get(ctx, gz.GetName(), gz.GetName(), ptr.To(powerdns.RRTypeNS))
-		if err != nil {
-			return fmt.Errorf("PowerDNS API returned an error while getting NS in external resource: %w", err)
-		}
 
-		var filteredRRset powerdns.RRset
-		if len(ns) > 0 {
-			filteredRRset = ns[0]
-		}
-		var nameservers []string
-		for _, n := range filteredRRset.Records {
-			nameservers = append(nameservers, strings.TrimSuffix(*n.Content, "."))
-		}
-
-		// Workflow is different on update types:
-		// Nameservers changes  => patch RRSet
-		// Other changes        => patch Zone
-		zoneIdentical, nsIdentical := zoneIsIdenticalToExternalZone(gz, zoneRes, nameservers)
-
-		// Nameservers changes
-		if !nsIdentical {
-			log.V(1).Info("NS in external resource are not identical, updating them")
-			ttl := ptr.To(DEFAULT_TTL_FOR_NS_RECORDS)
-			if filteredRRset.TTL != nil {
-				ttl = filteredRRset.TTL
-			}
-			err := gzr.updateNsOnZoneExternalResources(ctx, gz, *ttl)
-			if err != nil {
-				return fmt.Errorf("failed to update NS in external resource: %w", err)
-			}
-			log.V(1).Info("NS in external resource updated")
-		}
-		// Other changes
-		if !zoneIdentical {
-			log.V(1).Info("External resource is not identical, updating it")
-			err := gzr.updateZoneExternalResources(ctx, gz)
-			if err != nil {
-				return fmt.Errorf("failed to update external resource: %w", err)
-			}
-			log.V(1).Info("External resource updated")
-		}
+	// If a Zone already exists with the same DNS name:
+	// * Stop reconciliation
+	// * Append a Failed Status on Zone
+	var existingZones dnsv1alpha2.ZoneList
+	if err := gzr.List(ctx, &existingZones, client.MatchingFields{"Zone.Entry.Name": gz.GetName()}); err != nil {
+		return false, fmt.Errorf("error while listing Zone related to the DNS Name: %w", err)
 	}
-	log.V(1).Info("External resources reconciled")
+	var existingClusterZones dnsv1alpha2.ClusterZoneList
+	if err := gzr.List(ctx, &existingClusterZones, client.MatchingFields{"ClusterZone.Entry.Name": gz.GetName()}); err != nil {
+		return false, fmt.Errorf("error while listing ClusterZone related to the DNS Name: %w", err)
+	}
+
+	// Remove current Zone or ClusterZone from the lists
+	switch gz.GetKind() {
+	case "Zone":
+		existingZones.Items = slices.DeleteFunc(existingZones.Items, func(item dnsv1alpha2.Zone) bool {
+			return item.GetName() == gz.GetName() && item.GetNamespace() == gz.GetNamespace()
+		})
+	case "ClusterZone":
+		existingClusterZones.Items = slices.DeleteFunc(existingClusterZones.Items, func(item dnsv1alpha2.ClusterZone) bool {
+			return item.GetName() == gz.GetName()
+		})
+	}
+
+	// Multiple use-cases:
+	// 1 Zone (example.com in NS example1) + 1 Zone (example.com in NS example3)
+	// In that case: len(existingZones.Items) > 1
+	// 1 Zone (example.com in NS example1) + 1 ClusterZone (example.com)
+	// In that case: len(existingZones.Items) >= 1 AND len(existingClusterZones.Items) >= 1
+	if len(existingZones.Items) >= 1 || len(existingClusterZones.Items) >= 1 {
+		log.V(1).WithValues("existingZones", existingZones.Items, "existingClusterZones", existingClusterZones.Items).Info("Zone is duplicated")
+
+		return true, nil
+	}
+	return false, nil
+}
+
+func (gzr *GenericZoneReconciler) revertNsOnZoneExternalResources(ctx context.Context, zoneRes *powerdns.Zone, nameservers []string, ttl uint32) error {
+	log := gzr.log.WithValues("name", *zoneRes.Name)
+	err := gzr.PDNSClient.Records.Change(ctx, *zoneRes.Name, *zoneRes.Name, powerdns.RRTypeNS, ttl, nameservers)
+	if err != nil {
+		return fmt.Errorf("PowerDNS API returned an error while reverting NS in external resource: %w", err)
+	}
+	log.V(1).Info("NS in external resource reverted")
 	return nil
+}
+
+/*
+	revertNsOnZoneExternalResources
+
+func (gzr *GenericZoneReconciler) updateNsOnZoneExternalResources(ctx context.Context, zone dnsv1alpha2.GenericZone, ttl uint32) error {
+	log := gzr.log.WithValues("kind", zone.GetKind(), "name", zone.GetName(), "namespace", zone.GetNamespace())
+	nameserversCanonical := make([]string, 0, len(zone.GetSpec().Nameservers))
+	for _, n := range zone.GetSpec().Nameservers {
+		nameserversCanonical = append(nameserversCanonical, makeCanonical(n))
+	}
+
+	err := gzr.PDNSClient.Records.Change(ctx, makeCanonical(zone.GetName()), makeCanonical(zone.GetName()), powerdns.RRTypeNS, ttl, nameserversCanonical)
+	if err != nil {
+		return fmt.Errorf("PowerDNS API returned an error while updating NS in external resource: %w", err)
+	}
+	log.V(1).Info("NS in external resource updated")
+	return nil
+}
+
+*/
+
+func (gzr *GenericZoneReconciler) getNSFromZoneExternalResources(ctx context.Context, gz dnsv1alpha2.GenericZone) ([]string, *uint32, error) {
+	// Get NS Records
+	ns, err := gzr.PDNSClient.Records.Get(ctx, gz.GetName(), gz.GetName(), ptr.To(powerdns.RRTypeNS))
+	if err != nil {
+		return nil, nil, fmt.Errorf("PowerDNS API returned an error while getting NS in external resource: %w", err)
+	}
+
+	// Extract Nameservers
+	var filteredRRset powerdns.RRset
+	if len(ns) > 0 {
+		filteredRRset = ns[0]
+	}
+	var nameservers []string
+	for _, n := range filteredRRset.Records {
+		nameservers = append(nameservers, strings.TrimSuffix(*n.Content, "."))
+	}
+
+	// Extract TTL
+	ttl := ptr.To(DEFAULT_TTL_FOR_NS_RECORDS)
+	if filteredRRset.TTL != nil {
+		ttl = filteredRRset.TTL
+	}
+
+	return nameservers, ttl, nil
 }

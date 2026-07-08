@@ -63,8 +63,9 @@ type ZoneStatus struct {
 	DNSsec *bool `json:"dnssec,omitempty"`
 	// The catalog this zone is a member of.
 	// +optional
-	Catalog    *string `json:"catalog,omitempty"`
-	SyncStatus *string `json:"syncStatus,omitempty"`
+	Catalog        *string `json:"catalog,omitempty"`
+	SyncStatus     *string `json:"syncStatus,omitempty"`
+	SyncGeneration *int64  `json:"syncGeneration,omitempty"`
 	// conditions represent the current state of the Zone resource.
 	// Each condition has a unique type and reflects the status of a specific aspect of the resource.
 	//

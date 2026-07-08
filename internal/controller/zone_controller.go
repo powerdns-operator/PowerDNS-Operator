@@ -15,7 +15,6 @@ import (
 	"context"
 	"fmt"
 
-	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -56,47 +55,58 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	log.V(1).Info("Zone found", "Zone", zone)
 
 	// Initialize variable to represent Zone situation
-	isModified := zone.Status.ObservedGeneration != nil && *zone.Status.ObservedGeneration != zone.GetGeneration()
 	isDeleted := !zone.DeletionTimestamp.IsZero()
-	log.V(1).Info("Zone situation", "isModified", isModified, "isDeleted", isDeleted)
 	gzr := GenericZoneReconciler{
 		Client:     r.Client,
 		PDNSClient: r.PDNSClient,
 		log:        log,
 	}
 
+	if isDeleted {
+		log.V(1).Info("Zone deleted", "Zone.Name", zone.Name)
+		// Delete external resources and remove finalizers
+		if err := gzr.deleteZone(ctx, zone); err != nil {
+			return ctrl.Result{}, err
+		}
+		// Stop reconciliation as the item is being deleted
+		return ctrl.Result{}, nil
+	}
+
+	log.V(1).Info("Zone not deleted", "Zone.Name", zone.Name)
+
 	// Position metrics finalizer as soon as possible
-	if !isDeleted {
-		log.V(1).Info("Zone not deleted", "Zone.Name", zone.Name)
-		// The object is not being deleted, so if it does not have our finalizer,
-		// then lets add the finalizer and update the object. This is equivalent
-		// to registering our finalizer.
-		if !controllerutil.ContainsFinalizer(zone, METRICS_FINALIZER_NAME) {
-			log.V(1).Info("Adding finalizer to Zone")
-			controllerutil.AddFinalizer(zone, METRICS_FINALIZER_NAME)
-			if err := r.Update(ctx, zone); err != nil {
-				return ctrl.Result{}, fmt.Errorf("failed to add finalizer: %w", err)
-			}
+	if !controllerutil.ContainsFinalizer(zone, METRICS_FINALIZER_NAME) {
+		log.V(1).Info("Adding finalizer to Zone")
+		controllerutil.AddFinalizer(zone, METRICS_FINALIZER_NAME)
+		if err := r.Update(ctx, zone); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to add finalizer: %w", err)
 		}
 	}
 
 	original := zone.DeepCopy()
 	// Ensure we update the status in case of early return
 	defer func() {
+		zone.SetSyncStatus()
+		updateZonesMetrics(zone)
 		if err := r.Status().Patch(ctx, zone, client.MergeFrom(original)); err != nil {
 			log.Error(err, "unable to patch Zone status")
 		}
 	}()
 
-	// When updating a Zone, if 'Status' is not changed, 'LastTransitionTime' will not be updated
-	// So we delete condition to force new 'LastTransitionTime'
-	if !isDeleted && isModified {
-		log.V(1).Info("Removing Available condition from Zone")
-		isModified = true
-		meta.RemoveStatusCondition(&zone.Status.Conditions, "Available")
+	exists, err := gzr.alreadyExists(ctx, zone)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to determine if zone is duplicated: %w", err)
+	}
+	if exists {
+		zone.SetDuplicated()
+		// updateZonesMetrics(zone)
+		return ctrl.Result{}, nil
 	}
 
-	err = gzr.reconcileZone(ctx, zone, isModified, isDeleted)
+	log.V(1).Info("Zone is validated status")
+	zone.SetValidated()
+
+	err = gzr.reconcileZone(ctx, zone)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to reconcile Zone: %w", err)
 	}
@@ -110,7 +120,9 @@ func (r *ZoneReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &dnsv1alpha2.Zone{}, "Zone.Entry.Name", func(rawObj client.Object) []string {
 		// grab the Zone object, extract its name...
 		var ZoneName string
-		if rawObj.(*dnsv1alpha2.Zone).Status.SyncStatus == nil || *rawObj.(*dnsv1alpha2.Zone).Status.SyncStatus == dnsv1alpha2.SUCCEEDED_STATUS {
+		if rawObj.(*dnsv1alpha2.Zone).Status.SyncStatus == nil ||
+			*rawObj.(*dnsv1alpha2.Zone).Status.SyncStatus == dnsv1alpha2.SYNCED_STATUS ||
+			*rawObj.(*dnsv1alpha2.Zone).Status.SyncStatus == dnsv1alpha2.STALE_STATUS {
 			ZoneName = (rawObj.(*dnsv1alpha2.Zone)).Name
 		}
 		return []string{ZoneName}

@@ -196,7 +196,7 @@ func (r *ClusterRRsetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &dnsv1alpha2.ClusterRRset{}, "ClusterRRset.Entry.Name", func(rawObj client.Object) []string {
 		// grab the ClusterRRset object, extract its name...
 		var RRsetName string
-		if rawObj.(*dnsv1alpha2.ClusterRRset).Status.SyncStatus == nil || *rawObj.(*dnsv1alpha2.ClusterRRset).Status.SyncStatus == dnsv1alpha2.SUCCEEDED_STATUS {
+		if rawObj.(*dnsv1alpha2.ClusterRRset).Status.SyncStatus == nil || *rawObj.(*dnsv1alpha2.ClusterRRset).Status.SyncStatus == dnsv1alpha2.SYNCED_STATUS {
 			RRsetName = getRRsetName(rawObj.(*dnsv1alpha2.ClusterRRset)) + "/" + rawObj.(*dnsv1alpha2.ClusterRRset).Spec.Type
 		}
 		return []string{RRsetName}
