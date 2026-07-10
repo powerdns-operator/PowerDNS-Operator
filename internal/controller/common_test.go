@@ -85,6 +85,24 @@ func setupTestCase() func() {
 	}
 }
 
+func assertZoneAPIError(t *testing.T, got, want error, action string) {
+	t.Helper()
+	if want == nil {
+		if got != nil {
+			t.Errorf("got %v, want nil", got)
+		}
+		return
+	}
+	wantWrapped := fmt.Errorf("PowerDNS API returned an error while %s: %w", action, want)
+	if got == nil {
+		t.Errorf("got nil, want %v", wantWrapped)
+		return
+	}
+	if got.Error() != wantWrapped.Error() {
+		t.Errorf("got %v, want %v", got, wantWrapped)
+	}
+}
+
 func TestGetExternalResources(t *testing.T) {
 	var (
 		name        = "example.org"
@@ -119,9 +137,7 @@ func TestGetExternalResources(t *testing.T) {
 			if !reflect.DeepEqual(z, tc.want) {
 				t.Errorf("got %v, want %v", *z, tc.want)
 			}
-			if !cmp.Equal(err, tc.e) {
-				t.Errorf("got %v, want %v", err, tc.e)
-			}
+			assertZoneAPIError(t, err, tc.e, "getting external resource")
 		})
 	}
 }
@@ -162,9 +178,7 @@ func TestCreateExternalResources(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
 			err := gzr.createZoneExternalResources(ctx, tc.genericZone)
-			if !cmp.Equal(err, tc.e) {
-				t.Errorf("got %v, want %v", err, tc.e)
-			}
+			assertZoneAPIError(t, err, tc.e, "creating external resource")
 		})
 	}
 }
@@ -206,9 +220,7 @@ func TestUpdateExternalResources(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
 			err := gzr.updateZoneExternalResources(ctx, tc.genericZone)
-			if !cmp.Equal(err, tc.e) {
-				t.Errorf("got %v, want %v", err, tc.e)
-			}
+			assertZoneAPIError(t, err, tc.e, "updating external resource")
 		})
 	}
 }
@@ -243,9 +255,7 @@ func TestUpdateNsOnExternalResources(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
 			err := gzr.updateNsOnZoneExternalResources(ctx, tc.genericZone, ttl)
-			if !cmp.Equal(err, tc.e) {
-				t.Errorf("got %v, want %v", err, tc.e)
-			}
+			assertZoneAPIError(t, err, tc.e, "updating NS in external resource")
 		})
 	}
 }
@@ -285,9 +295,7 @@ func TestDeleteExternalResources(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
 			err := gzr.deleteZoneExternalResources(ctx, tc.genericZone)
-			if !cmp.Equal(err, tc.e) {
-				t.Errorf("got %v, want %v", err, tc.e)
-			}
+			assertZoneAPIError(t, err, tc.e, "deleting external resource")
 		})
 	}
 }
