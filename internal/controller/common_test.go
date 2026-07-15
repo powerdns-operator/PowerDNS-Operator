@@ -29,6 +29,8 @@ import (
 var (
 	m          mockClient
 	PDNSClient PdnsClienter
+	gzr        GenericZoneReconciler
+	grr        GenericRRsetReconciler
 )
 
 func init() {
@@ -36,6 +38,15 @@ func init() {
 	PDNSClient = PdnsClienter{
 		Records: m.Records,
 		Zones:   m.Zones,
+	}
+	ctx = context.Background()
+	gzr = GenericZoneReconciler{
+		PDNSClient: PDNSClient,
+		log:        log.FromContext(ctx),
+	}
+	grr = GenericRRsetReconciler{
+		PDNSClient: PDNSClient,
+		log:        log.FromContext(ctx),
 	}
 }
 
@@ -74,6 +85,24 @@ func setupTestCase() func() {
 	}
 }
 
+func assertZoneAPIError(t *testing.T, got, want error, action string) {
+	t.Helper()
+	if want == nil {
+		if got != nil {
+			t.Errorf("got %v, want nil", got)
+		}
+		return
+	}
+	wantWrapped := fmt.Errorf("PowerDNS API returned an error while %s: %w", action, want)
+	if got == nil {
+		t.Errorf("got nil, want %v", wantWrapped)
+		return
+	}
+	if got.Error() != wantWrapped.Error() {
+		t.Errorf("got %v, want %v", got, wantWrapped)
+	}
+}
+
 func TestGetExternalResources(t *testing.T) {
 	var (
 		name        = "example.org"
@@ -82,8 +111,7 @@ func TestGetExternalResources(t *testing.T) {
 		kind        = powerdns.ZoneKind(MASTER_KIND_ZONE)
 		catalog     = "catalog.org."
 	)
-	ctx := context.Background()
-	log := log.FromContext(ctx)
+
 	serial64, _ := strconv.ParseUint(
 		fmt.Sprintf("%s02", time.Now().UTC().Format("20060102")), 10, 32)
 	serial := uint32(serial64)
@@ -105,13 +133,11 @@ func TestGetExternalResources(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
-			z, err := getZoneExternalResources(ctx, tc.domain, PDNSClient, log)
+			z, err := gzr.getZoneExternalResources(ctx, tc.domain)
 			if !reflect.DeepEqual(z, tc.want) {
 				t.Errorf("got %v, want %v", *z, tc.want)
 			}
-			if !cmp.Equal(err, tc.e) {
-				t.Errorf("got %v, want %v", err, tc.e)
-			}
+			assertZoneAPIError(t, err, tc.e, "getting external resource")
 		})
 	}
 }
@@ -133,8 +159,6 @@ func TestCreateExternalResources(t *testing.T) {
 		nameservers2 = []string{"ns1.example2.org", "ns2.example2.org"}
 		soaEditApi2  = "DEFAULT"
 	)
-	ctx := context.Background()
-	log := log.FromContext(ctx)
 
 	var testCases = []struct {
 		description string
@@ -153,10 +177,8 @@ func TestCreateExternalResources(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
-			err := createZoneExternalResources(ctx, tc.genericZone, PDNSClient, log)
-			if !cmp.Equal(err, tc.e) {
-				t.Errorf("got %v, want %v", err, tc.e)
-			}
+			err := gzr.createZoneExternalResources(ctx, tc.genericZone)
+			assertZoneAPIError(t, err, tc.e, "creating external resource")
 		})
 	}
 }
@@ -178,8 +200,6 @@ func TestUpdateExternalResources(t *testing.T) {
 		nameservers2 = []string{"ns1.example2.org", "ns2.example2.org"}
 		soaEditApi2  = "DEFAULT"
 	)
-	ctx := context.Background()
-	log := log.FromContext(ctx)
 
 	var testCases = []struct {
 		description string
@@ -199,10 +219,8 @@ func TestUpdateExternalResources(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
-			err := updateZoneExternalResources(ctx, tc.genericZone, PDNSClient, log)
-			if !cmp.Equal(err, tc.e) {
-				t.Errorf("got %v, want %v", err, tc.e)
-			}
+			err := gzr.updateZoneExternalResources(ctx, tc.genericZone)
+			assertZoneAPIError(t, err, tc.e, "updating external resource")
 		})
 	}
 }
@@ -218,8 +236,6 @@ func TestUpdateNsOnExternalResources(t *testing.T) {
 		nameservers1 = []string{"ns1.example1.org", "ns2.example1.org"}
 		nameservers2 = []string{"ns1.example2.org", "ns2.example2.org"}
 	)
-	ctx := context.Background()
-	log := log.FromContext(ctx)
 	ttl := uint32(1500)
 
 	var testCases = []struct {
@@ -238,10 +254,8 @@ func TestUpdateNsOnExternalResources(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
-			err := updateNsOnZoneExternalResources(ctx, tc.genericZone, ttl, PDNSClient, log)
-			if !cmp.Equal(err, tc.e) {
-				t.Errorf("got %v, want %v", err, tc.e)
-			}
+			err := gzr.updateNsOnZoneExternalResources(ctx, tc.genericZone, ttl)
+			assertZoneAPIError(t, err, tc.e, "updating NS in external resource")
 		})
 	}
 }
@@ -262,8 +276,6 @@ func TestDeleteExternalResources(t *testing.T) {
 		nameservers2 = []string{"ns1.example2.org", "ns2.example2.org"}
 		soaEditApi2  = "DEFAULT"
 	)
-	ctx := context.Background()
-	log := log.FromContext(ctx)
 
 	var testCases = []struct {
 		description string
@@ -282,10 +294,8 @@ func TestDeleteExternalResources(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
-			err := deleteZoneExternalResources(ctx, tc.genericZone, PDNSClient, log)
-			if !cmp.Equal(err, tc.e) {
-				t.Errorf("got %v, want %v", err, tc.e)
-			}
+			err := gzr.deleteZoneExternalResources(ctx, tc.genericZone)
+			assertZoneAPIError(t, err, tc.e, "deleting external resource")
 		})
 	}
 }
@@ -313,8 +323,6 @@ func TestDeleteRrsetExternalResources(t *testing.T) {
 		catalog      = "catalog.org."
 		nameservers1 = []string{"ns1.example1.org", "ns2.example1.org"}
 	)
-	ctx := context.Background()
-	log := log.FromContext(ctx)
 
 	var testCases = []struct {
 		description string
@@ -332,7 +340,7 @@ func TestDeleteRrsetExternalResources(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
-			err := deleteRrsetExternalResources(ctx, tc.genericZone, tc.rrset, PDNSClient, log)
+			err := grr.deleteRrsetExternalResources(ctx, tc.rrset, tc.genericZone)
 			if !cmp.Equal(err, tc.e) {
 				t.Errorf("got %v, want %v", err, tc.e)
 			}
@@ -363,7 +371,6 @@ func TestCreateOrUpdateRrsetExternalResources(t *testing.T) {
 		catalog      = "catalog.org."
 		nameservers1 = []string{"ns1.example1.org", "ns2.example1.org"}
 	)
-	ctx := context.Background()
 
 	var testCases = []struct {
 		description string
@@ -383,7 +390,7 @@ func TestCreateOrUpdateRrsetExternalResources(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
-			modified, err := createOrUpdateRrsetExternalResources(ctx, tc.genericZone, tc.rrset, PDNSClient)
+			modified, err := grr.createOrUpdateRrsetExternalResources(ctx, tc.rrset, tc.genericZone)
 			if !cmp.Equal(modified, tc.want) {
 				t.Errorf("got %v, want %v", modified, tc.want)
 			}
