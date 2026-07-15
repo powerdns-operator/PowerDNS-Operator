@@ -34,6 +34,9 @@ type GenericZone interface {
 	metav1.Object
 
 	GetObjectMeta() *metav1.ObjectMeta
+	GetName() string
+	GetKind() string
+	GetNamespace() string
 	GetTypeMeta() *metav1.TypeMeta
 
 	GetSpec() *ZoneSpec
@@ -53,6 +56,18 @@ var _ GenericZone = &Zone{}
 
 func (c *Zone) GetObjectMeta() *metav1.ObjectMeta {
 	return &c.ObjectMeta
+}
+
+func (c *Zone) GetName() string {
+	return c.Name
+}
+
+func (c *Zone) GetKind() string {
+	return "Zone"
+}
+
+func (c *Zone) GetNamespace() string {
+	return c.Namespace
 }
 
 func (c *Zone) GetTypeMeta() *metav1.TypeMeta {
@@ -93,6 +108,18 @@ var _ GenericZone = &ClusterZone{}
 
 func (c *ClusterZone) GetObjectMeta() *metav1.ObjectMeta {
 	return &c.ObjectMeta
+}
+
+func (c *ClusterZone) GetName() string {
+	return c.Name
+}
+
+func (c *ClusterZone) GetKind() string {
+	return "ClusterZone"
+}
+
+func (c *ClusterZone) GetNamespace() string {
+	return ""
 }
 
 func (c *ClusterZone) GetTypeMeta() *metav1.TypeMeta {
