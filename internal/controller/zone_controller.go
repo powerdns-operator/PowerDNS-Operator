@@ -13,6 +13,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -69,6 +70,11 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	isModified := zone.Status.ObservedGeneration != nil && *zone.Status.ObservedGeneration != zone.GetGeneration()
 	isDeleted := !zone.DeletionTimestamp.IsZero()
 	log.V(1).Info("Zone situation", "isModified", isModified, "isDeleted", isDeleted)
+	gzr := GenericZoneReconciler{
+		Client:     r.Client,
+		PDNSClient: r.PDNSClient,
+		log:        log,
+	}
 
 	// Position metrics finalizer as soon as possible
 	if !isDeleted {
@@ -80,8 +86,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			log.V(1).Info("Adding finalizer to Zone")
 			controllerutil.AddFinalizer(zone, METRICS_FINALIZER_NAME)
 			if err := r.Update(ctx, zone); err != nil {
-				log.Error(err, "Failed to add finalizer")
-				return ctrl.Result{}, err
+				return ctrl.Result{}, fmt.Errorf("failed to add finalizer: %w", err)
 			}
 		}
 	}
@@ -102,7 +107,12 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		meta.RemoveStatusCondition(&zone.Status.Conditions, "Available")
 	}
 
-	return zoneReconcile(ctx, zone, isModified, isDeleted, r.Client, r.PDNSClient, log)
+	err = gzr.reconcileZone(ctx, zone, isModified, isDeleted)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to reconcile Zone: %w", err)
+	}
+
+	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

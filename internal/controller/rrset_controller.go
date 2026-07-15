@@ -13,6 +13,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -67,6 +68,12 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		lastUpdateTime = rrset.Status.LastUpdateTime
 	}
 	log.V(1).Info("RRset situation", "isModified", isModified, "isDeleted", isDeleted, "lastUpdateTime", lastUpdateTime)
+	grr := GenericRRsetReconciler{
+		Client:     r.Client,
+		PDNSClient: r.PDNSClient,
+		scheme:     r.Scheme,
+		log:        log,
+	}
 
 	// Position metrics finalizer as soon as possible
 	if !isDeleted {
@@ -79,8 +86,7 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			controllerutil.AddFinalizer(rrset, METRICS_FINALIZER_NAME)
 			lastUpdateTime = &metav1.Time{Time: time.Now().UTC()}
 			if err := r.Update(ctx, rrset); err != nil {
-				log.Error(err, "Failed to add finalizer")
-				return ctrl.Result{}, err
+				return ctrl.Result{}, fmt.Errorf("failed to add finalizer: %w", err)
 			}
 		}
 	}
@@ -131,8 +137,7 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			}
 			if actionOnFinalizer {
 				if err := r.Update(ctx, rrset); err != nil {
-					log.Error(err, "Failed to remove finalizer")
-					return ctrl.Result{}, err
+					return ctrl.Result{}, fmt.Errorf("failed to remove finalizer: %w", err)
 				}
 			}
 
@@ -149,9 +154,8 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			log.V(1).Info("Requeuing RRset", "RequeueAfter", 2*time.Second)
 			return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
 		} else {
-			log.Error(err, "Failed to get zone")
 			rrset.SetZoneNotAvailable(zone.GetName())
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("failed to get zone: %w", err)
 		}
 	}
 	// If a Zone/ClusterZone exists but is in Failed Status
@@ -169,8 +173,7 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 				// Remove resource metrics
 				removeRrsetMetrics(rrset)
 				if err := r.Update(ctx, rrset); err != nil {
-					log.Error(err, "Failed to remove finalizer")
-					return ctrl.Result{}, err
+					return ctrl.Result{}, fmt.Errorf("failed to remove finalizer: %w", err)
 				}
 			}
 		}
@@ -178,7 +181,15 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{}, nil
 	}
 
-	return rrsetReconcile(ctx, rrset, zone, isModified, isDeleted, lastUpdateTime, r.Scheme, r.Client, r.PDNSClient, log)
+	err = grr.reconcileRRset(ctx, rrset, zone, isModified, isDeleted, lastUpdateTime)
+	if err != nil {
+		if apierrors.IsConflict(err) {
+			log.Info("Conflict on RRSet owner reference, retrying")
+			return ctrl.Result{Requeue: true}, nil
+		}
+		return ctrl.Result{}, fmt.Errorf("failed to reconcile RRSet: %w", err)
+	}
+	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
