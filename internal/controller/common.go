@@ -11,16 +11,6 @@
 
 package controller
 
-import (
-	"context"
-
-	"github.com/go-logr/logr"
-	dnsv1alpha2 "github.com/powerdns-operator/powerdns-operator/api/v1alpha2"
-	"k8s.io/apimachinery/pkg/runtime"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-)
-
 const (
 	RESOURCES_FINALIZER_NAME   = "dns.cav.enablers.ob/external-resources"
 	METRICS_FINALIZER_NAME     = "dns.cav.enablers.ob/metrics"
@@ -35,12 +25,3 @@ const (
 	BAD_REQUEST_ERROR_MSG    = "Bad Request"
 	BAD_REQUEST_ERROR_CODE   = 400
 )
-
-func ownObject(ctx context.Context, zone dnsv1alpha2.GenericZone, rrset dnsv1alpha2.GenericRRset, scheme *runtime.Scheme, cl client.Client, log logr.Logger) error {
-	err := ctrl.SetControllerReference(zone, rrset, scheme)
-	if err != nil {
-		log.Error(err, "Failed to set owner reference. Is there already a controller managing this object?")
-		return err
-	}
-	return cl.Update(ctx, rrset)
-}

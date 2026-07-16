@@ -47,6 +47,7 @@ type RRsetStatus struct {
 	LastUpdateTime *metav1.Time `json:"lastUpdateTime,omitempty"`
 	DnsEntryName   *string      `json:"dnsEntryName,omitempty"`
 	SyncStatus     *string      `json:"syncStatus,omitempty"`
+	SyncGeneration *int64       `json:"syncGeneration,omitempty"`
 	// conditions represent the current state of the RRset resource.
 	// Each condition has a unique type and reflects the status of a specific aspect of the resource.
 	//

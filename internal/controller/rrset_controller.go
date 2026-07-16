@@ -19,7 +19,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -67,7 +66,7 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	if rrset.Status.LastUpdateTime != nil {
 		lastUpdateTime = rrset.Status.LastUpdateTime
 	}
-	log.V(1).Info("RRset situation", "isModified", isModified, "isDeleted", isDeleted, "lastUpdateTime", lastUpdateTime)
+	//	log.V(1).Info("RRset situation", "isModified", isModified, "isDeleted", isDeleted, "lastUpdateTime", lastUpdateTime)
 	grr := GenericRRsetReconciler{
 		Client:     r.Client,
 		PDNSClient: r.PDNSClient,
@@ -75,35 +74,45 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		log:        log,
 	}
 
+	if isDeleted {
+		log.V(1).Info("RRset deleted", "RRset.Name", rrset.Name)
+		// Delete external resources and remove finalizers
+		if err := grr.deleteRRset(ctx, rrset); err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
+	log.V(1).Info("RRset not deleted", "RRset.Name", rrset.Name)
+
 	// Position metrics finalizer as soon as possible
-	if !isDeleted {
-		log.V(1).Info("RRset not deleted", "RRset.Name", rrset.Name)
-		// The object is not being deleted, so if it does not have our finalizer,
-		// then lets add the finalizer and update the object. This is equivalent
-		// to registering our finalizer.
-		if !controllerutil.ContainsFinalizer(rrset, METRICS_FINALIZER_NAME) {
-			log.V(1).Info("Adding finalizer to RRset")
-			controllerutil.AddFinalizer(rrset, METRICS_FINALIZER_NAME)
-			lastUpdateTime = &metav1.Time{Time: time.Now().UTC()}
-			if err := r.Update(ctx, rrset); err != nil {
-				return ctrl.Result{}, fmt.Errorf("failed to add finalizer: %w", err)
-			}
+	if !controllerutil.ContainsFinalizer(rrset, METRICS_FINALIZER_NAME) {
+		log.V(1).Info("Adding finalizer to RRset")
+		controllerutil.AddFinalizer(rrset, METRICS_FINALIZER_NAME)
+		lastUpdateTime = &metav1.Time{Time: time.Now().UTC()}
+		if err := r.Update(ctx, rrset); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to add finalizer: %w", err)
 		}
 	}
 
 	original := rrset.DeepCopy()
 	// Ensure we update the status in case of early return
 	defer func() {
+		rrset.SetSyncStatus(getRRsetName(rrset))
+		updateRrsetsMetrics(getRRsetName(rrset), rrset)
 		if err := r.Status().Patch(ctx, rrset, client.MergeFrom(original)); err != nil {
 			log.Error(err, "unable to patch RRSet status")
 		}
 	}()
 
-	// When updating a RRset, if 'Status' is not changed, 'LastTransitionTime' will not be updated
-	// So we delete condition to force new 'LastTransitionTime'
-	if !isDeleted && isModified {
-		log.V(1).Info("Removing Available condition from RRset")
-		meta.RemoveStatusCondition(&rrset.Status.Conditions, "Available")
+	exists, err := grr.alreadyExists(ctx, rrset)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to determine if RRset is duplicated: %w", err)
+	}
+	if exists {
+		rrset.SetDuplicated()
+		// updateRrsetsMetrics(getRRsetName(rrset), rrset)
+		return ctrl.Result{}, nil
 	}
 
 	// Zone
@@ -122,31 +131,31 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		if apierrors.IsNotFound(err) {
 			// Zone not found, remove finalizer and requeue
 			log.V(1).Info("Zone not found", "Zone.Name", rrset.Spec.ZoneRef.Name)
-			actionOnFinalizer := false
-			if controllerutil.ContainsFinalizer(rrset, RESOURCES_FINALIZER_NAME) {
-				log.V(1).Info("Removing resources finalizer from RRset")
-				controllerutil.RemoveFinalizer(rrset, RESOURCES_FINALIZER_NAME)
-				actionOnFinalizer = true
-			}
-			if isDeleted && controllerutil.ContainsFinalizer(rrset, METRICS_FINALIZER_NAME) {
-				log.V(1).Info("Removing metrics finalizer from RRset")
-				controllerutil.RemoveFinalizer(rrset, METRICS_FINALIZER_NAME)
-				// Remove resource metrics
-				removeRrsetMetrics(rrset)
-				actionOnFinalizer = true
-			}
-			if actionOnFinalizer {
-				if err := r.Update(ctx, rrset); err != nil {
-					return ctrl.Result{}, fmt.Errorf("failed to remove finalizer: %w", err)
-				}
-			}
+			// actionOnFinalizer := false
+			// if controllerutil.ContainsFinalizer(rrset, RESOURCES_FINALIZER_NAME) {
+			// 	log.V(1).Info("Removing resources finalizer from RRset")
+			// 	controllerutil.RemoveFinalizer(rrset, RESOURCES_FINALIZER_NAME)
+			// 	actionOnFinalizer = true
+			// }
+			// if isDeleted && controllerutil.ContainsFinalizer(rrset, METRICS_FINALIZER_NAME) {
+			// 	log.V(1).Info("Removing metrics finalizer from RRset")
+			// 	controllerutil.RemoveFinalizer(rrset, METRICS_FINALIZER_NAME)
+			// 	// Remove resource metrics
+			// 	removeRrsetMetrics(rrset)
+			// 	actionOnFinalizer = true
+			// }
+			// if actionOnFinalizer {
+			// 	if err := r.Update(ctx, rrset); err != nil {
+			// 		return ctrl.Result{}, fmt.Errorf("failed to remove finalizer: %w", err)
+			// 	}
+			// }
 
 			// If RRset is under deletion, no need to update its status
-			if !isDeleted {
-				log.V(1).Info("RRset is not deleted, setting missing zone")
-				rrset.SetMissingZone(err)
-				updateRrsetsMetrics(getRRsetName(rrset), rrset)
-			}
+			//			if !isDeleted {
+			log.V(1).Info("Setting missing zone for RRset", "RRset.Name", rrset.Name)
+			rrset.SetMissingZone()
+			// updateRrsetsMetrics(getRRsetName(rrset), rrset)
+			//			}
 
 			// Race condition when creating Zone+RRset at the same time
 			// RRset is not created because Zone is not created yet
@@ -158,28 +167,42 @@ func (r *RRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			return ctrl.Result{}, fmt.Errorf("failed to get zone: %w", err)
 		}
 	}
+
+	// Set OwnerReference as soon as the Zone is known, so that RRsets in a
+	// Failed status are also owned (and garbage-collected) by their Zone
+	err = ctrl.SetControllerReference(zone, rrset, r.Scheme)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to set owner reference: %w", err)
+	}
+	if err := r.Update(ctx, rrset); err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to set owner reference: %w", err)
+	}
+
 	// If a Zone/ClusterZone exists but is in Failed Status
-	zoneIsInFailedStatus := (zone.GetStatus().SyncStatus != nil && *zone.GetStatus().SyncStatus == dnsv1alpha2.FAILED_STATUS)
+	zoneIsInFailedStatus := (zone.GetStatus().SyncStatus != nil && *zone.GetStatus().SyncStatus != dnsv1alpha2.SYNCED_STATUS)
 	if zoneIsInFailedStatus {
 		log.V(1).Info("Zone is in failed status, setting zone not available")
 		rrset.SetZoneNotAvailable(zone.GetName())
 		// Update metrics
-		updateRrsetsMetrics(getRRsetName(rrset), rrset)
+		// updateRrsetsMetrics(getRRsetName(rrset), rrset)
 
-		if isDeleted {
-			log.V(1).Info("RRset is deleted, removing metrics finalizer")
-			if controllerutil.ContainsFinalizer(rrset, METRICS_FINALIZER_NAME) {
-				controllerutil.RemoveFinalizer(rrset, METRICS_FINALIZER_NAME)
-				// Remove resource metrics
-				removeRrsetMetrics(rrset)
-				if err := r.Update(ctx, rrset); err != nil {
-					return ctrl.Result{}, fmt.Errorf("failed to remove finalizer: %w", err)
-				}
-			}
-		}
+		// if isDeleted {
+		// 	log.V(1).Info("RRset is deleted, removing metrics finalizer")
+		// 	if controllerutil.ContainsFinalizer(rrset, METRICS_FINALIZER_NAME) {
+		// 		controllerutil.RemoveFinalizer(rrset, METRICS_FINALIZER_NAME)
+		// 		// Remove resource metrics
+		// 		removeRrsetMetrics(rrset)
+		// 		if err := r.Update(ctx, rrset); err != nil {
+		// 			return ctrl.Result{}, fmt.Errorf("failed to remove finalizer: %w", err)
+		// 		}
+		// 	}
+		// }
 
 		return ctrl.Result{}, nil
 	}
+
+	log.V(1).Info("RRset is validated status")
+	rrset.SetValidated()
 
 	err = grr.reconcileRRset(ctx, rrset, zone, isModified, isDeleted, lastUpdateTime)
 	if err != nil {

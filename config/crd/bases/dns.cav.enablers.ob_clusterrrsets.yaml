@@ -182,6 +182,9 @@ spec:
               observedGeneration:
                 format: int64
                 type: integer
+              syncGeneration:
+                format: int64
+                type: integer
               syncStatus:
                 type: string
             type: object
