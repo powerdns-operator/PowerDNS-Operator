@@ -13,6 +13,8 @@
 package v1alpha2
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -32,12 +34,14 @@ type GenericRRset interface {
 	metav1.Object
 
 	GetObjectMeta() *metav1.ObjectMeta
+	GetKind() string
 	GetTypeMeta() *metav1.TypeMeta
 
 	GetSpec() *RRsetSpec
 	GetStatus() RRsetStatus
 	SetStatus(status RRsetStatus)
 	Copy() GenericRRset
+	GetDomain() string
 
 	// Set Status functions
 	SetDuplicated(lastUpdateTime *metav1.Time, name string)
@@ -53,6 +57,10 @@ var _ GenericRRset = &RRset{}
 
 func (c *RRset) GetObjectMeta() *metav1.ObjectMeta {
 	return &c.ObjectMeta
+}
+
+func (c *RRset) GetKind() string {
+	return "RRset"
 }
 
 func (c *RRset) GetTypeMeta() *metav1.TypeMeta {
@@ -74,6 +82,11 @@ func (c *RRset) SetStatus(status RRsetStatus) {
 func (c *RRset) Copy() GenericRRset {
 	return c.DeepCopy()
 }
+
+func (c *RRset) GetDomain() string {
+	return fmt.Sprintf("%s.", strings.TrimSuffix(c.Spec.ZoneRef.Name, "."))
+}
+
 func (c *RRset) SetMissingZone(err error) {
 	setMissingZone(&c.Status, c.Generation, err)
 }
@@ -102,6 +115,10 @@ func (c *ClusterRRset) GetObjectMeta() *metav1.ObjectMeta {
 	return &c.ObjectMeta
 }
 
+func (c *ClusterRRset) GetKind() string {
+	return "ClusterRRset"
+}
+
 func (c *ClusterRRset) GetTypeMeta() *metav1.TypeMeta {
 	return &c.TypeMeta
 }
@@ -120,6 +137,10 @@ func (c *ClusterRRset) SetStatus(status RRsetStatus) {
 
 func (c *ClusterRRset) Copy() GenericRRset {
 	return c.DeepCopy()
+}
+
+func (c *ClusterRRset) GetDomain() string {
+	return fmt.Sprintf("%s.", strings.TrimSuffix(c.Spec.ZoneRef.Name, "."))
 }
 
 func (c *ClusterRRset) SetMissingZone(err error) {

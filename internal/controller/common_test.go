@@ -340,7 +340,7 @@ func TestDeleteRrsetExternalResources(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
-			err := grr.deleteRrsetExternalResources(ctx, tc.rrset, tc.genericZone)
+			err := grr.deleteRrsetExternalResources(ctx, tc.rrset, tc.rrset.GetDomain())
 			if !cmp.Equal(err, tc.e) {
 				t.Errorf("got %v, want %v", err, tc.e)
 			}
@@ -390,7 +390,7 @@ func TestCreateOrUpdateRrsetExternalResources(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
-			modified, err := grr.createOrUpdateRrsetExternalResources(ctx, tc.rrset, tc.genericZone)
+			modified, err := grr.createOrUpdateRrsetExternalResources(ctx, tc.rrset, tc.rrset.GetDomain())
 			if !cmp.Equal(modified, tc.want) {
 				t.Errorf("got %v, want %v", modified, tc.want)
 			}
