@@ -155,7 +155,7 @@ var _ = Describe("ClusterZone Controller", func() {
 			// Waiting for the resource to be fully modified
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, updatedZone)
-				return err == nil && updatedZone.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.FAILED_STATUS, metav1.ConditionFalse)
+				return err == nil && updatedZone.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.INVALID_STATUS, metav1.ConditionFalse)
 			}, timeout, interval).Should(BeTrue())
 		})
 	})

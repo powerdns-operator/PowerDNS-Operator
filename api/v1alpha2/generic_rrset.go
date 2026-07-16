@@ -42,30 +42,33 @@ type GenericRRset interface {
 	GetDomain() string
 
 	// Set Status functions
-	SetDuplicated(lastUpdateTime *metav1.Time, name string)
-	SetMissingZone(err error)
+	SetDuplicated()
+	SetMissingZone()
+	SetValidated()
 	SetZoneNotAvailable(zoneName string)
-	SetSynchronizationFailed(lastUpdateTime *metav1.Time, err error)
-	SetAvailable(lastUpdateTime *metav1.Time, name string)
+	SetUnprocessable(stage string, err error)
+	SetBadRequest(stage string, err error)
+	SetSynchronizationFailed(stage string, err error)
+	SetProcessed()
+	SetAvailable(name string)
+	SetSyncStatus(name string)
 }
 
-func setMissingZone(status *RRsetStatus, generation int64, err error) {
-	status.SyncStatus = ptr.To(PENDING_STATUS)
-	status.ObservedGeneration = &generation
+func setMissingZone(status *RRsetStatus, generation int64) {
 	condition := metav1.Condition{
-		Type:               "Available",
+		ObservedGeneration: generation,
+		Type:               "Valid",
 		Status:             metav1.ConditionFalse,
 		LastTransitionTime: metav1.NewTime(time.Now().UTC()),
 		Reason:             "ZoneMissing",
-		Message:            "Zone missing:" + err.Error(),
+		Message:            "No Zone found for RRset",
 	}
 	meta.SetStatusCondition(&status.Conditions, condition)
 }
 
 func setZoneNotAvailable(status *RRsetStatus, generation int64, zoneName string) {
-	status.SyncStatus = ptr.To(FAILED_STATUS)
-	status.ObservedGeneration = &generation
 	condition := metav1.Condition{
+		ObservedGeneration: generation,
 		Type:               "Available",
 		Status:             metav1.ConditionFalse,
 		LastTransitionTime: metav1.NewTime(time.Now().UTC()),
@@ -75,46 +78,138 @@ func setZoneNotAvailable(status *RRsetStatus, generation int64, zoneName string)
 	meta.SetStatusCondition(&status.Conditions, condition)
 }
 
-func setRRsetDuplicated(status *RRsetStatus, generation int64, lastUpdateTime *metav1.Time, name string) {
-	status.SyncStatus = ptr.To(FAILED_STATUS)
-	status.ObservedGeneration = &generation
-	status.LastUpdateTime = lastUpdateTime
-	status.DnsEntryName = &name
+func setRRsetDuplicated(status *RRsetStatus, generation int64) {
 	condition := metav1.Condition{
-		Type:               "Available",
+		ObservedGeneration: generation,
+		Type:               "Valid",
 		Status:             metav1.ConditionFalse,
-		LastTransitionTime: *lastUpdateTime,
+		LastTransitionTime: metav1.NewTime(time.Now().UTC()),
 		Reason:             "Duplicated",
 		Message:            "At least another ClusterRRset/RRset exists with the same name",
 	}
 	meta.SetStatusCondition(&status.Conditions, condition)
 }
 
-func setRRsetSynchronizationFailed(status *RRsetStatus, generation int64, lastUpdateTime *metav1.Time, err error) {
-	status.SyncStatus = ptr.To(FAILED_STATUS)
-	status.ObservedGeneration = &generation
-	status.LastUpdateTime = lastUpdateTime
+func setRRsetValidated(status *RRsetStatus, generation int64) {
 	condition := metav1.Condition{
-		Type:               "Available",
+		ObservedGeneration: generation,
+		Type:               "Valid",
+		Status:             metav1.ConditionTrue,
+		LastTransitionTime: metav1.NewTime(time.Now().UTC()),
+		Reason:             "Valid",
+		Message:            "Valid",
+	}
+	meta.SetStatusCondition(&status.Conditions, condition)
+}
+
+func setRRsetUnprocessable(stage string, status *RRsetStatus, generation int64, err error) {
+	condition := metav1.Condition{
+		ObservedGeneration: generation,
+		Type:               stage,
 		Status:             metav1.ConditionFalse,
-		LastTransitionTime: *lastUpdateTime,
+		LastTransitionTime: metav1.NewTime(time.Now().UTC()),
+		Reason:             "Unprocessable",
+		Message:            "Unprocessable:" + err.Error(),
+	}
+	meta.SetStatusCondition(&status.Conditions, condition)
+}
+
+func setRRsetBadRequest(stage string, status *RRsetStatus, generation int64, err error) {
+	condition := metav1.Condition{
+		ObservedGeneration: generation,
+		Type:               stage,
+		Status:             metav1.ConditionFalse,
+		LastTransitionTime: metav1.NewTime(time.Now().UTC()),
+		Reason:             "BadRequest",
+		Message:            "BadRequest:" + err.Error(),
+	}
+	meta.SetStatusCondition(&status.Conditions, condition)
+}
+
+func setRRsetSynchronizationFailed(stage string, status *RRsetStatus, generation int64, err error) {
+	condition := metav1.Condition{
+		ObservedGeneration: generation,
+		Type:               stage,
+		Status:             metav1.ConditionFalse,
+		LastTransitionTime: metav1.NewTime(time.Now().UTC()),
 		Reason:             "SynchronizationFailed",
 		Message:            "Synchronization failed:" + err.Error(),
 	}
 	meta.SetStatusCondition(&status.Conditions, condition)
 }
 
-func setRRsetAvailable(status *RRsetStatus, generation int64, lastUpdateTime *metav1.Time, name string) {
-	status.SyncStatus = ptr.To(SYNCED_STATUS)
-	status.ObservedGeneration = &generation
-	status.LastUpdateTime = lastUpdateTime
+func setRRsetProcessed(status *RRsetStatus, generation int64) {
+	condition := metav1.Condition{
+		ObservedGeneration: generation,
+		Type:               "Processed",
+		Status:             metav1.ConditionTrue,
+		LastTransitionTime: metav1.NewTime(time.Now().UTC()),
+		Reason:             "Processed",
+		Message:            "Processed",
+	}
+	meta.SetStatusCondition(&status.Conditions, condition)
+}
+
+func setRRsetAvailable(status *RRsetStatus, generation int64, name string) {
 	status.DnsEntryName = &name
 	condition := metav1.Condition{
+		ObservedGeneration: generation,
 		Type:               "Available",
 		Status:             metav1.ConditionTrue,
-		LastTransitionTime: *lastUpdateTime,
+		LastTransitionTime: metav1.NewTime(time.Now().UTC()),
 		Reason:             "Succeeded",
 		Message:            "Succeeded",
 	}
 	meta.SetStatusCondition(&status.Conditions, condition)
+}
+func calculateRRsetSyncStatusAndGeneration(status *RRsetStatus, generation int64) (string, int64) {
+	var validGeneration, processedGeneration, availableGeneration int64
+	var validCondition, processedCondition, availableCondition, hasProcessedCondition bool
+
+	if c := meta.FindStatusCondition(status.Conditions, "Valid"); c != nil {
+		validCondition = c.Status == metav1.ConditionTrue
+		validGeneration = c.ObservedGeneration
+	}
+
+	if c := meta.FindStatusCondition(status.Conditions, "Processed"); c != nil {
+		hasProcessedCondition = true
+		processedCondition = c.Status == metav1.ConditionTrue
+		processedGeneration = c.ObservedGeneration
+	}
+
+	if c := meta.FindStatusCondition(status.Conditions, "Available"); c != nil {
+		availableGeneration = c.ObservedGeneration
+		availableCondition = c.Status == metav1.ConditionTrue
+	}
+
+	// The Zone/ClusterZone is available for a previous generation
+	if availableCondition && availableGeneration < generation {
+		return "Stale", availableGeneration
+	}
+
+	if !validCondition {
+		return "Invalid", validGeneration
+	}
+
+	if !hasProcessedCondition {
+		return "Valid", validGeneration
+	}
+
+	if !processedCondition {
+		return "Unprocessed", processedGeneration
+	}
+
+	if !availableCondition {
+		return "Processed", processedGeneration
+	}
+
+	return "Synced", availableGeneration
+}
+
+func setRRsetSyncStatus(status *RRsetStatus, generation int64, name string) {
+	calculatedSyncStatus, calculatedGeneration := calculateRRsetSyncStatusAndGeneration(status, generation)
+	status.SyncStatus = ptr.To(calculatedSyncStatus)
+	status.ObservedGeneration = &generation
+	status.SyncGeneration = &calculatedGeneration
+	status.DnsEntryName = &name
 }

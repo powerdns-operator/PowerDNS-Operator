@@ -108,22 +108,42 @@ func (c *ClusterRRset) GetDomain() string {
 	return fmt.Sprintf("%s.", strings.TrimSuffix(c.Spec.ZoneRef.Name, "."))
 }
 
-func (c *ClusterRRset) SetMissingZone(err error) {
-	setMissingZone(&c.Status, c.Generation, err)
+func (c *ClusterRRset) SetMissingZone() {
+	setMissingZone(&c.Status, c.Generation)
 }
 
 func (c *ClusterRRset) SetZoneNotAvailable(zoneName string) {
 	setZoneNotAvailable(&c.Status, c.Generation, zoneName)
 }
 
-func (c *ClusterRRset) SetDuplicated(lastUpdateTime *metav1.Time, name string) {
-	setRRsetDuplicated(&c.Status, c.Generation, lastUpdateTime, name)
+func (c *ClusterRRset) SetDuplicated() {
+	setRRsetDuplicated(&c.Status, c.Generation)
 }
 
-func (c *ClusterRRset) SetSynchronizationFailed(lastUpdateTime *metav1.Time, err error) {
-	setRRsetSynchronizationFailed(&c.Status, c.Generation, lastUpdateTime, err)
+func (c *ClusterRRset) SetValidated() {
+	setRRsetValidated(&c.Status, c.Generation)
 }
 
-func (c *ClusterRRset) SetAvailable(lastUpdateTime *metav1.Time, name string) {
-	setRRsetAvailable(&c.Status, c.Generation, lastUpdateTime, name)
+func (c *ClusterRRset) SetUnprocessable(stage string, err error) {
+	setRRsetUnprocessable(stage, &c.Status, c.Generation, err)
+}
+
+func (c *ClusterRRset) SetBadRequest(stage string, err error) {
+	setRRsetBadRequest(stage, &c.Status, c.Generation, err)
+}
+
+func (c *ClusterRRset) SetSynchronizationFailed(stage string, err error) {
+	setRRsetSynchronizationFailed(stage, &c.Status, c.Generation, err)
+}
+
+func (c *ClusterRRset) SetProcessed() {
+	setRRsetProcessed(&c.Status, c.Generation)
+}
+
+func (c *ClusterRRset) SetAvailable(name string) {
+	setRRsetAvailable(&c.Status, c.Generation, name)
+}
+
+func (c *ClusterRRset) SetSyncStatus(name string) {
+	setRRsetSyncStatus(&c.Status, c.Generation, name)
 }
