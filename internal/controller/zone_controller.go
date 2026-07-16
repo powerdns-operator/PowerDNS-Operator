@@ -26,17 +26,6 @@ import (
 	dnsv1alpha2 "github.com/powerdns-operator/powerdns-operator/api/v1alpha2"
 )
 
-const (
-	RESOURCES_FINALIZER_NAME   = "dns.cav.enablers.ob/external-resources"
-	METRICS_FINALIZER_NAME     = "dns.cav.enablers.ob/metrics"
-	DEFAULT_TTL_FOR_NS_RECORDS = uint32(1500)
-
-	ZONE_NOT_FOUND_MSG  = "Not Found"
-	ZONE_NOT_FOUND_CODE = 404
-	ZONE_CONFLICT_MSG   = "Conflict"
-	ZONE_CONFLICT_CODE  = 409
-)
-
 // ZoneReconciler reconciles a Zone object
 type ZoneReconciler struct {
 	client.Client

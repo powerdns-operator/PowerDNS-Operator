@@ -142,7 +142,7 @@ func (gzr *GenericZoneReconciler) getZoneExternalResources(ctx context.Context, 
 	log := gzr.log.WithValues("domain", domain)
 	zoneRes, err := gzr.PDNSClient.Zones.Get(ctx, domain)
 	if err != nil {
-		if err.Error() != ZONE_NOT_FOUND_MSG {
+		if err.Error() != NOT_FOUND_ERROR_MSG {
 			return nil, fmt.Errorf("PowerDNS API returned an error while getting external resource: %w", err)
 		}
 	}
@@ -224,7 +224,7 @@ func (gzr *GenericZoneReconciler) deleteZoneExternalResources(ctx context.Contex
 	log := gzr.log.WithValues("kind", zone.GetKind(), "name", zone.GetName(), "namespace", zone.GetNamespace())
 	err := gzr.PDNSClient.Zones.Delete(ctx, zone.GetName())
 	// Zone may have already been deleted and it is not an error
-	if err != nil && err.Error() != ZONE_NOT_FOUND_MSG {
+	if err != nil && err.Error() != NOT_FOUND_ERROR_MSG {
 		return fmt.Errorf("PowerDNS API returned an error while deleting external resource: %w", err)
 	}
 	log.V(1).Info("External resource deleted")

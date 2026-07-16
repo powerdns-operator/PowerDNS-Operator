@@ -324,7 +324,7 @@ func (m mockZonesClient) Add(ctx context.Context, zone *powerdns.Zone) (*powerdn
 	}
 
 	if _, ok := readFromZonesMap(makeCanonical(*zone.Name)); ok {
-		return &powerdns.Zone{}, powerdns.Error{StatusCode: ZONE_CONFLICT_CODE, Status: fmt.Sprintf("%d %s", ZONE_CONFLICT_CODE, ZONE_CONFLICT_MSG), Message: ZONE_CONFLICT_MSG}
+		return &powerdns.Zone{}, powerdns.Error{StatusCode: CONFLICT_ERROR_CODE, Status: fmt.Sprintf("%d %s", CONFLICT_ERROR_CODE, CONFLICT_ERROR_MSG), Message: CONFLICT_ERROR_MSG}
 	}
 
 	// Serial initialization
@@ -371,7 +371,7 @@ func (m mockZonesClient) Get(ctx context.Context, domain string) (*powerdns.Zone
 	if z, ok := readFromZonesMap(makeCanonical(domain)); ok {
 		return z, nil
 	}
-	return &powerdns.Zone{}, powerdns.Error{StatusCode: ZONE_NOT_FOUND_CODE, Status: fmt.Sprintf("%d %s", ZONE_NOT_FOUND_CODE, ZONE_NOT_FOUND_MSG), Message: ZONE_NOT_FOUND_MSG}
+	return &powerdns.Zone{}, powerdns.Error{StatusCode: NOT_FOUND_ERROR_CODE, Status: fmt.Sprintf("%d %s", NOT_FOUND_ERROR_CODE, NOT_FOUND_ERROR_MSG), Message: NOT_FOUND_ERROR_MSG}
 }
 
 func (m mockZonesClient) Delete(ctx context.Context, domain string) error {
@@ -387,7 +387,7 @@ func (m mockZonesClient) Delete(ctx context.Context, domain string) error {
 
 	deleteFromRecordsMap(makeCanonical(domain))
 	if _, ok := readFromZonesMap(makeCanonical(domain)); !ok {
-		return powerdns.Error{StatusCode: ZONE_NOT_FOUND_CODE, Status: fmt.Sprintf("%d %s", ZONE_NOT_FOUND_CODE, ZONE_NOT_FOUND_MSG), Message: ZONE_NOT_FOUND_MSG}
+		return powerdns.Error{StatusCode: NOT_FOUND_ERROR_CODE, Status: fmt.Sprintf("%d %s", NOT_FOUND_ERROR_CODE, NOT_FOUND_ERROR_MSG), Message: NOT_FOUND_ERROR_MSG}
 	}
 	deleteFromZonesMap(makeCanonical(domain))
 	return nil
@@ -406,7 +406,7 @@ func (m mockZonesClient) Change(ctx context.Context, domain string, zone *powerd
 
 	localZone, ok := readFromZonesMap(makeCanonical(domain))
 	if !ok {
-		return powerdns.Error{StatusCode: ZONE_NOT_FOUND_CODE, Status: fmt.Sprintf("%d %s", ZONE_NOT_FOUND_CODE, ZONE_NOT_FOUND_MSG), Message: ZONE_NOT_FOUND_MSG}
+		return powerdns.Error{StatusCode: NOT_FOUND_ERROR_CODE, Status: fmt.Sprintf("%d %s", NOT_FOUND_ERROR_CODE, NOT_FOUND_ERROR_MSG), Message: NOT_FOUND_ERROR_MSG}
 	}
 	serial := localZone.Serial
 	if *zone.Kind != *localZone.Kind || *zone.Catalog != *localZone.Catalog || *zone.SOAEditAPI != *localZone.SOAEditAPI {
