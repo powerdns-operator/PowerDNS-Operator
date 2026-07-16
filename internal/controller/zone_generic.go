@@ -249,14 +249,9 @@ func (gzr *GenericZoneReconciler) zoneExternalResourcesReconcile(ctx context.Con
 			return fmt.Errorf("PowerDNS API returned an error while getting NS in external resource: %w", err)
 		}
 
-		// An issue exist on GET API Calls, comments for another RRSet are included although we filter
-		// See https://github.com/PowerDNS/pdns/issues/14539
-		// See https://github.com/PowerDNS/pdns/pull/14045
 		var filteredRRset powerdns.RRset
-		for _, rr := range ns {
-			if *rr.Name == makeCanonical(gz.GetName()) && *rr.Type == powerdns.RRTypeNS {
-				filteredRRset = rr
-			}
+		if len(ns) > 0 {
+			filteredRRset = ns[0]
 		}
 		var nameservers []string
 		for _, n := range filteredRRset.Records {
