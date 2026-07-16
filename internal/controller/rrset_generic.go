@@ -180,15 +180,9 @@ func (grr *GenericRRsetReconciler) createOrUpdateRrsetExternalResources(ctx cont
 	if err != nil && !apierrors.IsNotFound(err) {
 		return false, err
 	}
-	// An issue exist on GET API Calls, comments for another RRSet are included although we filter
-	// See https://github.com/PowerDNS/pdns/issues/14539
-	// See https://github.com/PowerDNS/pdns/pull/14045
 	var filteredRecord powerdns.RRset
-	for _, fr := range records {
-		if *fr.Name == makeCanonical(name) {
-			filteredRecord = fr
-			break
-		}
+	if len(records) > 0 {
+		filteredRecord = records[0]
 	}
 	if filteredRecord.Name != nil && rrsetIsIdenticalToExternalRRset(rrset, filteredRecord) {
 		return false, nil
