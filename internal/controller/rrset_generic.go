@@ -59,7 +59,7 @@ func (grr *GenericRRsetReconciler) reconcileRRset(ctx context.Context, gr dnsv1a
 		if controllerutil.ContainsFinalizer(gr, RESOURCES_FINALIZER_NAME) {
 			log.V(1).Info("Removing resources finalizer from RRset")
 			// our finalizer is present, so lets handle any external dependency
-			if err := grr.deleteRrsetExternalResources(ctx, gr, zone); err != nil {
+			if err := grr.deleteRrsetExternalResources(ctx, gr, gr.GetDomain()); err != nil {
 				// if fail to delete the external resource, return with error
 				// so that it can be retried
 				return fmt.Errorf("failed to delete RRset external resources: %w", err)
@@ -135,7 +135,7 @@ func (grr *GenericRRsetReconciler) reconcileRRset(ctx context.Context, gr dnsv1a
 	// Create or Update
 	var changed bool
 	var err error
-	changed, err = grr.createOrUpdateRrsetExternalResources(ctx, gr, zone)
+	changed, err = grr.createOrUpdateRrsetExternalResources(ctx, gr, gr.GetDomain())
 	if changed {
 		lastUpdateTime = &metav1.Time{Time: time.Now().UTC()}
 	}
@@ -159,32 +159,32 @@ func (grr *GenericRRsetReconciler) reconcileRRset(ctx context.Context, gr dnsv1a
 	return nil
 }
 
-func (grr *GenericRRsetReconciler) deleteRrsetExternalResources(ctx context.Context, rrset dnsv1alpha2.GenericRRset, zone dnsv1alpha2.GenericZone) error {
-	PDNSClient := grr.PDNSClient
-	log := grr.log
-	err := PDNSClient.Records.Delete(ctx, zone.GetName(), getRRsetName(rrset), powerdns.RRType(rrset.GetSpec().Type))
-	if err != nil {
-		log.Error(err, "Failed to delete record")
-		return err
+func (grr *GenericRRsetReconciler) deleteRrsetExternalResources(ctx context.Context, rrset dnsv1alpha2.GenericRRset, domain string) error {
+	log := grr.log.WithValues("kind", rrset.GetKind(), "name", rrset.GetName(), "namespace", rrset.GetNamespace())
+	err := grr.PDNSClient.Records.Delete(ctx, domain, getRRsetName(rrset), powerdns.RRType(rrset.GetSpec().Type))
+	// RRset may have already been deleted and it is not an error
+	if err != nil && err.Error() != NOT_FOUND_ERROR_MSG {
+		return fmt.Errorf("PowerDNS API returned an error while deleting external resource: %w", err)
 	}
-
+	log.V(1).Info("External resource deleted")
 	return nil
 }
 
-func (grr *GenericRRsetReconciler) createOrUpdateRrsetExternalResources(ctx context.Context, rrset dnsv1alpha2.GenericRRset, zone dnsv1alpha2.GenericZone) (bool, error) {
-	PDNSClient := grr.PDNSClient
+func (grr *GenericRRsetReconciler) createOrUpdateRrsetExternalResources(ctx context.Context, rrset dnsv1alpha2.GenericRRset, domain string) (bool, error) {
+	log := grr.log.WithValues("kind", rrset.GetKind(), "name", rrset.GetName(), "namespace", rrset.GetNamespace())
 	name := getRRsetName(rrset)
 	rrType := powerdns.RRType(rrset.GetSpec().Type)
 	// Looking for a record with same Name and Type
-	records, err := PDNSClient.Records.Get(ctx, zone.GetObjectMeta().Name, name, &rrType)
+	records, err := grr.PDNSClient.Records.Get(ctx, domain, name, &rrType)
 	if err != nil && !apierrors.IsNotFound(err) {
-		return false, err
+		return false, fmt.Errorf("PowerDNS API returned an error while getting external resource: %w", err)
 	}
 	var filteredRecord powerdns.RRset
 	if len(records) > 0 {
 		filteredRecord = records[0]
 	}
 	if filteredRecord.Name != nil && rrsetIsIdenticalToExternalRRset(rrset, filteredRecord) {
+		log.V(1).Info("External resource is identical")
 		return false, nil
 	}
 
@@ -194,10 +194,11 @@ func (grr *GenericRRsetReconciler) createOrUpdateRrsetExternalResources(ctx cont
 	if rrset.GetSpec().Comment != nil {
 		comments = powerdns.WithComments(powerdns.Comment{Content: rrset.GetSpec().Comment, Account: &operatorAccount})
 	}
-	err = PDNSClient.Records.Change(ctx, zone.GetObjectMeta().Name, name, rrType, rrset.GetSpec().TTL, rrset.GetSpec().Records, comments)
+	err = grr.PDNSClient.Records.Change(ctx, domain, name, rrType, rrset.GetSpec().TTL, rrset.GetSpec().Records, comments)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("PowerDNS API returned an error while updating external resource: %w", err)
 	}
 
+	log.V(1).Info("External resource created or updated")
 	return true, nil
 }
