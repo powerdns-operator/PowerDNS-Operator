@@ -540,6 +540,16 @@ func (m mockRecordsClient) Change(ctx context.Context, domain string, name strin
 }
 
 func (m mockRecordsClient) Delete(ctx context.Context, domain string, name string, recordType powerdns.RRType) error {
+	// Preliminary test - Linked to 'wrong-rrset && wrong-type' test
+	// PowerDNS rejects a deletion request carrying an invalid type
+	if string(recordType) == "AA" {
+		return &powerdns.Error{
+			StatusCode: 422,
+			Status:     "422 Unprocessable Entity",
+			Message:    "RRset " + name + " IN AA: unknown type given",
+		}
+	}
+
 	deleteFromRecordsMap(makeCanonical(name))
 	return nil
 }

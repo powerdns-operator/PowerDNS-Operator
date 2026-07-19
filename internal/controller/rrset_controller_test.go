@@ -350,6 +350,60 @@ var _ = Describe("RRset Controller", func() {
 		})
 	})
 
+	Context("When updating RRset", func() {
+		It("should fail to update the resource Type", Label("rrset-modification", "type-immutability"), func() {
+			ctx := context.Background()
+
+			By("Getting the existing resource")
+			createdResource := &dnsv1alpha2.RRset{}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, rssetLookupKey, createdResource)
+				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.SYNCED_STATUS, metav1.ConditionTrue)
+			}, timeout, interval).Should(BeTrue())
+
+			By("Updating RRset Type")
+			resource := &dnsv1alpha2.RRset{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      resourceName,
+					Namespace: resourceNamespace,
+				},
+			}
+			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, resource, func() error {
+				resource.Spec.Type = "TXT"
+				return nil
+			})
+			Expect(err).To(HaveOccurred(), "Type update should be rejected")
+			Expect(err.Error()).To(ContainSubstring("Value is immutable"), "Type update should be rejected by the immutability validation rule")
+		})
+	})
+
+	Context("When updating RRset", func() {
+		It("should fail to update the resource ZoneRef", Label("rrset-modification", "zoneref-immutability"), func() {
+			ctx := context.Background()
+
+			By("Getting the existing resource")
+			createdResource := &dnsv1alpha2.RRset{}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, rssetLookupKey, createdResource)
+				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.SYNCED_STATUS, metav1.ConditionTrue)
+			}, timeout, interval).Should(BeTrue())
+
+			By("Updating RRset ZoneRef")
+			resource := &dnsv1alpha2.RRset{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      resourceName,
+					Namespace: resourceNamespace,
+				},
+			}
+			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, resource, func() error {
+				resource.Spec.ZoneRef.Name = "another-zone.org"
+				return nil
+			})
+			Expect(err).To(HaveOccurred(), "ZoneRef update should be rejected")
+			Expect(err.Error()).To(ContainSubstring("Value is immutable"), "ZoneRef update should be rejected by the immutability validation rule")
+		})
+	})
+
 	Context("When existing resource", func() {
 		It("should successfully recreate an existing rrset", Label("rrset-recreation"), func() {
 			ic := countRrsetsMetrics()
@@ -1185,6 +1239,15 @@ var _ = Describe("RRset Controller", func() {
 			Expect(createdResource.GetOwnerReferences()).NotTo(BeEmpty(), "RRset should have setOwnerReference")
 			Expect(createdResource.GetOwnerReferences()[0].Name).To(Equal(zoneRef), "RRset should have setOwnerReference to Zone")
 			Expect(createdResource.GetFinalizers()).To(ContainElement(RESOURCES_FINALIZER_NAME), "RRset should contain the finalizer")
+
+			By("Deleting the failed RRset")
+			Expect(k8sClient.Delete(ctx, createdResource)).To(Succeed())
+
+			By("Verifying the failed RRset has been deleted despite the backend error")
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, badTypeRRsetLookupKey, createdResource)
+				return apierrors.IsNotFound(err)
+			}, timeout, interval).Should(BeTrue(), "Finalizer should be released even if PowerDNS rejects the deletion with a 422 error")
 		})
 	})
 

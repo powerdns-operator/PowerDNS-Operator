@@ -189,6 +189,58 @@ var _ = Describe("ClusterRRset Controller", func() {
 		})
 	})
 
+	Context("When updating ClusterRRset", func() {
+		It("should fail to update the resource Type", Label("clusterrrset-modification", "type-immutability"), func() {
+			ctx := context.Background()
+
+			By("Getting the existing resource")
+			createdResource := &dnsv1alpha2.ClusterRRset{}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, clusterRrsetLookupKey, createdResource)
+				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.SYNCED_STATUS, metav1.ConditionTrue)
+			}, timeout, interval).Should(BeTrue())
+
+			By("Updating ClusterRRset Type")
+			resource := &dnsv1alpha2.ClusterRRset{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: resourceName,
+				},
+			}
+			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, resource, func() error {
+				resource.Spec.Type = "TXT"
+				return nil
+			})
+			Expect(err).To(HaveOccurred(), "Type update should be rejected")
+			Expect(err.Error()).To(ContainSubstring("Value is immutable"), "Type update should be rejected by the immutability validation rule")
+		})
+	})
+
+	Context("When updating ClusterRRset", func() {
+		It("should fail to update the resource ZoneRef", Label("clusterrrset-modification", "zoneref-immutability"), func() {
+			ctx := context.Background()
+
+			By("Getting the existing resource")
+			createdResource := &dnsv1alpha2.ClusterRRset{}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, clusterRrsetLookupKey, createdResource)
+				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.SYNCED_STATUS, metav1.ConditionTrue)
+			}, timeout, interval).Should(BeTrue())
+
+			By("Updating ClusterRRset ZoneRef Kind")
+			resource := &dnsv1alpha2.ClusterRRset{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: resourceName,
+				},
+			}
+			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, resource, func() error {
+				resource.Spec.ZoneRef.Kind = "Zone"
+				return nil
+			})
+			Expect(err).To(HaveOccurred(), "ZoneRef update should be rejected")
+			Expect(err.Error()).To(ContainSubstring("Value is immutable"), "ZoneRef update should be rejected by the immutability validation rule")
+		})
+	})
+
 	Context("When creating a RRset with an existing ClusterRRset with same FQDN", func() {
 		It("should reconcile the resource with Failed status", Label("rrset-creation", "existing-clusterrrset"), func() {
 			ctx := context.Background()

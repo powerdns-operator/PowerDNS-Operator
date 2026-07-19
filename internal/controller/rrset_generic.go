@@ -19,7 +19,6 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/joeig/go-powerdns/v3"
 	dnsv1alpha2 "github.com/powerdns-operator/powerdns-operator/api/v1alpha2"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -74,15 +73,17 @@ func (grr *GenericRRsetReconciler) reconcileRRset(ctx context.Context, gr dnsv1a
 	rrsetRes, err := grr.getRRsetExternalResources(ctx, gr.GetDomain(), gr)
 	if err != nil {
 		log.V(1).Error(err, "Failed to get zone external resources")
-		switch err.Error() {
-		case UNPROCESSABLE_ERROR_MSG:
+		switch pdnsErrorStatusCode(err) {
+		case UNPROCESSABLE_ERROR_CODE:
 			gr.SetUnprocessable("Processed", err)
-		case BAD_REQUEST_ERROR_MSG:
+			return nil
+		case BAD_REQUEST_ERROR_CODE:
 			gr.SetBadRequest("Processed", err)
+			return nil
 		default:
 			gr.SetSynchronizationFailed("Processed", err)
+			return fmt.Errorf("failed to get zone external resources: %w", err)
 		}
-		return fmt.Errorf("failed to get zone external resources: %w", err)
 	}
 
 	// Let's add the finalizer and update the object.
@@ -103,11 +104,11 @@ func (grr *GenericRRsetReconciler) reconcileRRset(ctx context.Context, gr dnsv1a
 		log.V(1).Info("External resource does not exist, creating it")
 		err := grr.createRrsetExternalResources(ctx, gr, gr.GetDomain())
 		if err != nil {
-			switch err.Error() {
-			case UNPROCESSABLE_ERROR_MSG:
+			switch pdnsErrorStatusCode(err) {
+			case UNPROCESSABLE_ERROR_CODE:
 				gr.SetUnprocessable("Processed", err)
 				return nil
-			case BAD_REQUEST_ERROR_MSG:
+			case BAD_REQUEST_ERROR_CODE:
 				gr.SetBadRequest("Processed", err)
 				return nil
 			default:
@@ -123,11 +124,11 @@ func (grr *GenericRRsetReconciler) reconcileRRset(ctx context.Context, gr dnsv1a
 		if !identical {
 			err := grr.updateRrsetExternalResources(ctx, gr, gr.GetDomain())
 			if err != nil {
-				switch err.Error() {
-				case UNPROCESSABLE_ERROR_MSG:
+				switch pdnsErrorStatusCode(err) {
+				case UNPROCESSABLE_ERROR_CODE:
 					gr.SetUnprocessable("Processed", err)
 					return nil
-				case BAD_REQUEST_ERROR_MSG:
+				case BAD_REQUEST_ERROR_CODE:
 					gr.SetBadRequest("Processed", err)
 					return nil
 				default:
@@ -159,7 +160,7 @@ func (grr *GenericRRsetReconciler) getRRsetExternalResources(ctx context.Context
 	name := getRRsetName(rrset)
 	rrType := powerdns.RRType(rrset.GetSpec().Type)
 	rrsets, err := grr.PDNSClient.Records.Get(ctx, domain, name, &rrType)
-	if err != nil && !apierrors.IsNotFound(err) {
+	if err != nil && pdnsErrorStatusCode(err) != NOT_FOUND_ERROR_CODE {
 		return nil, fmt.Errorf("PowerDNS API returned an error while getting external resource: %w", err)
 	}
 	log.V(1).WithValues("rrsets", rrsets).Info("External resource found")
@@ -175,9 +176,17 @@ func (grr *GenericRRsetReconciler) getRRsetExternalResources(ctx context.Context
 func (grr *GenericRRsetReconciler) deleteRrsetExternalResources(ctx context.Context, rrset dnsv1alpha2.GenericRRset, domain string) error {
 	log := grr.log.WithValues("kind", rrset.GetKind(), "name", rrset.GetName(), "namespace", rrset.GetNamespace())
 	err := grr.PDNSClient.Records.Delete(ctx, domain, getRRsetName(rrset), powerdns.RRType(rrset.GetSpec().Type))
-	// RRset may have already been deleted and it is not an error
-	if err != nil && err.Error() != NOT_FOUND_ERROR_MSG {
-		return fmt.Errorf("PowerDNS API returned an error while deleting external resource: %w", err)
+	if err != nil {
+		switch pdnsErrorStatusCode(err) {
+		case NOT_FOUND_ERROR_CODE:
+			// RRset or its zone may have already been deleted and it is not an error
+		case UNPROCESSABLE_ERROR_CODE:
+			// PowerDNS cannot process the RRset identity (e.g. invalid type),
+			// so it could never have stored it: there is nothing to delete and
+			// the finalizer must not stay stuck on it
+		default:
+			return fmt.Errorf("PowerDNS API returned an error while deleting external resource: %w", err)
+		}
 	}
 	log.V(1).Info("External resource deleted")
 	return nil

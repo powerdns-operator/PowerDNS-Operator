@@ -6,12 +6,12 @@ The `ClusterRRset` specification contains the following fields:
 
 | Field | Type | Required | Description |
 | ----- | ---- |:--------:| ----------- |
-| type | string | Y | Type of the record (e.g. "A", "PTR", "MX") |
-| name | string | Y | Name of the record |
+| type | string | Y | Type of the record (e.g. "A", "PTR", "MX"). This field is immutable: changing the type of a record requires deleting and recreating the `ClusterRRset` |
+| name | string | Y | Name of the record. This field is immutable |
 | ttl | uint32 | Y | DNS TTL of the records, in seconds
 | records | []string | Y | All records in this Resource Record Set
 | comment | string | N | Comment on RRSet |
-| zoneRef | ZoneRef | Y | ZoneRef reference the zone the ClusterRRSet depends on |
+| zoneRef | ZoneRef | Y | ZoneRef reference the zone the ClusterRRSet depends on. This field is immutable: moving a record to another zone requires deleting and recreating the `ClusterRRset` |
 
 The `ZoneRef` specification contains the following fields:
 

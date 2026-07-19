@@ -79,6 +79,9 @@ spec:
               type:
                 description: Type of the record (e.g. "A", "PTR", "MX").
                 type: string
+                x-kubernetes-validations:
+                - message: Value is immutable
+                  rule: self == oldSelf
               zoneRef:
                 description: ZoneRef reference the zone the RRSet depends on.
                 properties:
@@ -95,6 +98,9 @@ spec:
                 - kind
                 - name
                 type: object
+                x-kubernetes-validations:
+                - message: Value is immutable
+                  rule: self == oldSelf
             required:
             - name
             - records

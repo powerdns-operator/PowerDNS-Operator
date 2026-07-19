@@ -19,6 +19,7 @@ import (
 // RRsetSpec defines the desired state of RRset
 type RRsetSpec struct {
 	// Type of the record (e.g. "A", "PTR", "MX").
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Value is immutable"
 	Type string `json:"type"`
 	// Name of the record
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Value is immutable"
@@ -31,6 +32,7 @@ type RRsetSpec struct {
 	// +optional
 	Comment *string `json:"comment,omitempty"`
 	// ZoneRef reference the zone the RRSet depends on.
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Value is immutable"
 	ZoneRef ZoneRef `json:"zoneRef"`
 }
 

@@ -257,27 +257,30 @@ func setRRsetValidated(status *RRsetStatus, generation int64) {
 }
 
 func setRRsetUnprocessable(stage string, status *RRsetStatus, generation int64, err error) {
-	condition := metav1.Condition{
-		ObservedGeneration: generation,
-		Type:               stage,
-		Status:             metav1.ConditionFalse,
-		LastTransitionTime: metav1.NewTime(time.Now().UTC()),
-		Reason:             "Unprocessable",
-		Message:            "Unprocessable:" + err.Error(),
-	}
-	meta.SetStatusCondition(&status.Conditions, condition)
+	setRRsetRejected(stage, status, generation, "Unprocessable", "Unprocessable:"+err.Error())
 }
 
 func setRRsetBadRequest(stage string, status *RRsetStatus, generation int64, err error) {
-	condition := metav1.Condition{
-		ObservedGeneration: generation,
-		Type:               stage,
-		Status:             metav1.ConditionFalse,
-		LastTransitionTime: metav1.NewTime(time.Now().UTC()),
-		Reason:             "BadRequest",
-		Message:            "BadRequest:" + err.Error(),
+	setRRsetRejected(stage, status, generation, "BadRequest", "BadRequest:"+err.Error())
+}
+
+// setRRsetRejected records a definitive rejection of the RRset by the PowerDNS API
+// (Unprocessable Entity or Bad Request). The spec content itself is invalid, so the
+// "Valid" and "Available" conditions are set to False as well, leading to an
+// "Invalid" sync status until the spec is fixed.
+func setRRsetRejected(stage string, status *RRsetStatus, generation int64, reason string, message string) {
+	now := metav1.NewTime(time.Now().UTC())
+	for _, conditionType := range []string{stage, "Valid", "Available"} {
+		condition := metav1.Condition{
+			ObservedGeneration: generation,
+			Type:               conditionType,
+			Status:             metav1.ConditionFalse,
+			LastTransitionTime: now,
+			Reason:             reason,
+			Message:            message,
+		}
+		meta.SetStatusCondition(&status.Conditions, condition)
 	}
-	meta.SetStatusCondition(&status.Conditions, condition)
 }
 
 func setRRsetSynchronizationFailed(stage string, status *RRsetStatus, generation int64, err error) {

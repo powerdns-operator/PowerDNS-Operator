@@ -13,6 +13,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -21,6 +22,23 @@ import (
 	dnsv1alpha2 "github.com/powerdns-operator/powerdns-operator/api/v1alpha2"
 	"k8s.io/utils/ptr"
 )
+
+// pdnsErrorStatusCode returns the HTTP status code carried by a (possibly
+// wrapped) go-powerdns Error, or 0 if err does not carry one.
+// Matching on the status code is required because powerdns.Error.Error()
+// returns the API body message (e.g. "RRset ... unknown type given"),
+// not the HTTP status text.
+func pdnsErrorStatusCode(err error) int {
+	var pdnsErrPtr *powerdns.Error
+	if errors.As(err, &pdnsErrPtr) {
+		return pdnsErrPtr.StatusCode
+	}
+	var pdnsErr powerdns.Error
+	if errors.As(err, &pdnsErr) {
+		return pdnsErr.StatusCode
+	}
+	return 0
+}
 
 type pdnsRecordsClienter interface {
 	Delete(ctx context.Context, domain string, name string, recordType powerdns.RRType) error
