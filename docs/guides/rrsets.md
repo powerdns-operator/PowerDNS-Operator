@@ -11,7 +11,7 @@ The `RRset` specification contains the following fields:
 | ttl | uint32 | Y | DNS TTL of the records, in seconds
 | records | []string | Y | All records in this Resource Record Set
 | comment | string | N | Comment on RRSet |
-| zoneRef | ZoneRef | Y | ZoneRef reference the zone the RRSet depends on |
+| zoneRef | ZoneRef | Y | ZoneRef reference the zone the RRSet depends on. This field is immutable: moving a record to another zone requires deleting and recreating the `RRset` |
 
 The `ZoneRef` specification contains the following fields:
 
@@ -19,6 +19,10 @@ The `ZoneRef` specification contains the following fields:
 | ----- | ---- |:--------:| ----------- |
 | name | string | Y | Name of the `ClusterZone`/`Zone` |
 | kind | string | Y | Kind of zone (Zone/ClusterZone) |
+
+`zoneRef` is immutable as a whole: both `name` and `kind` are frozen once the
+`RRset` is created. See [Common Issues and Solutions](warnings.md#immutable-zoneref)
+for the rationale and the migration procedure.
 
 ## Example
 
