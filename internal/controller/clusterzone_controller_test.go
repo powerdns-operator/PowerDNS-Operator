@@ -114,8 +114,10 @@ var _ = Describe("ClusterZone Controller", func() {
 			Expect(getMockedKind(resourceName)).To(Equal(resourceKind), "Kind should be equal")
 			Expect(getMockedNameservers(resourceName)).To(Equal(resourceNameservers), "Nameservers should be equal")
 			Expect(getMockedCatalog(resourceName)).To(Equal(resourceCatalog), "Catalog should be equal")
+			Expect(getMockedZoneAccount(resourceName)).To(Equal(OperatorAccount), "Zone account should be stamped")
+			Expect(getMockedCommentAccount(resourceName, "NS")).To(Equal(OperatorAccount), "NS comment account should be stamped")
 			Expect(clusterzone.GetFinalizers()).To(ContainElement(RESOURCES_FINALIZER_NAME), "Zone should contain the finalizer")
-			Expect(fmt.Sprintf("%d", *(clusterzone.Status.Serial))).To(Equal(fmt.Sprintf("%s01", time.Now().UTC().Format("20060102"))), "Serial should be YYYYMMDD01")
+			Expect(fmt.Sprintf("%d", *(clusterzone.Status.Serial))).To(Equal(fmt.Sprintf("%s02", time.Now().UTC().Format("20060102"))), "Serial should be YYYYMMDD02 after NS stamp")
 		})
 	})
 	Context("When creating a Zone with an existing ClusterZone with same FQDN", func() {

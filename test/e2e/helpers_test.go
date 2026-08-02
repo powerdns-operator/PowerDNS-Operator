@@ -149,20 +149,28 @@ spec:
 }
 
 func getClusterRRsetManifest(name, recordType, recordName, recordTTL, recordContent, zoneName, kind string) string {
+	return getClusterRRsetManifestWithComment(name, recordType, recordName, recordTTL, recordContent, zoneName, kind, nil)
+}
+
+func getClusterRRsetManifestWithComment(name, recordType, recordName, recordTTL, recordContent, zoneName, kind string, comment *string) string {
+	commentYAML := ""
+	if comment != nil {
+		commentYAML = fmt.Sprintf("  comment: %q\n", *comment)
+	}
 	return fmt.Sprintf(`
 apiVersion: dns.cav.enablers.ob/v1alpha2
 kind: ClusterRRset
 metadata:
   name: %s
 spec:
-  type: %s
+%s  type: %s
   name: %s
   ttl: %s
   records: %s
   zoneRef:
     name: %s
     kind: %s
-`, name, recordType, recordName, recordTTL, recordContent, zoneName, kind)
+`, name, commentYAML, recordType, recordName, recordTTL, recordContent, zoneName, kind)
 }
 
 func getRRsetManifest(name, namespace, recordType, recordName, recordTTL, recordContent, zoneName, kind string) string {

@@ -13,6 +13,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -24,13 +25,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
+// errNSStampAfterCreate: Zones.Add succeeded but NS stamp failed; do not sticky-Failed.
+var errNSStampAfterCreate = errors.New("failed to stamp NS after zone create")
+
 type GenericZoneReconciler struct {
 	client.Client
 	log        logr.Logger
 	PDNSClient PdnsClienter
+	Drift      DriftConfig
 }
 
-//nolint:unparam // Always return ctrl.Result{} is ok
 func (gzr *GenericZoneReconciler) reconcileZone(ctx context.Context, gz dnsv1alpha2.GenericZone, isModified bool, isDeleted bool) error {
 	log := gzr.log.WithValues("kind", gz.GetKind(), "name", gz.GetName(), "namespace", gz.GetNamespace())
 	isInFailedStatus := (gz.GetStatus().SyncStatus != nil && *gz.GetStatus().SyncStatus == dnsv1alpha2.FAILED_STATUS)
@@ -78,8 +82,8 @@ func (gzr *GenericZoneReconciler) reconcileZone(ctx context.Context, gz dnsv1alp
 		return nil
 	}
 
-	// We cannot exit previously (at the early moments of reconcile), because we have to allow deletion process
-	if isInFailedStatus && !isModified {
+	// Sticky Failed + no Spec change: skip PDNS unless drift interval is set.
+	if isInFailedStatus && !isModified && gzr.Drift.Interval == 0 {
 		// Update resource metrics
 		updateZonesMetrics(gz)
 		return nil
@@ -120,7 +124,10 @@ func (gzr *GenericZoneReconciler) reconcileZone(ctx context.Context, gz dnsv1alp
 
 	err = gzr.zoneExternalResourcesReconcile(ctx, zoneRes, gz)
 	if err != nil {
-		gz.SetSynchronizationFailed(err)
+		// Zone already in PDNS; requeue without sticky Failed so NS stamp can finish.
+		if !errors.Is(err, errNSStampAfterCreate) {
+			gz.SetSynchronizationFailed(err)
+		}
 		return err
 	}
 
@@ -130,10 +137,19 @@ func (gzr *GenericZoneReconciler) reconcileZone(ctx context.Context, gz dnsv1alp
 		return err
 	}
 
+	// Clear before Succeeded so a failed clear is retried (avoids skipping grace).
+	if err := clearOrphanZoneMetadata(ctx, gz.GetName(), gzr.PDNSClient, log); err != nil {
+		return err
+	}
+
 	gz.SetAvailable(zoneRes)
 
 	// Update resource metrics
 	updateZonesMetrics(gz)
+
+	if gzr.Drift.Interval > 0 {
+		detectOrphanRrsets(ctx, gz, zoneRes, gzr.Client, gzr.PDNSClient, log, gzr.Drift.OrphanRRsetCleanup, gzr.Drift.OrphanRRsetGrace)
+	}
 
 	return nil
 }
@@ -171,6 +187,7 @@ func (gzr *GenericZoneReconciler) createZoneExternalResources(ctx context.Contex
 		SOAEditAPI:  zone.GetSpec().SOAEditAPI,
 		Nameservers: zone.GetSpec().Nameservers,
 		Catalog:     catalog,
+		Account:     ptr.To(OperatorAccount),
 	}
 
 	_, err := gzr.PDNSClient.Zones.Add(ctx, &z)
@@ -197,6 +214,7 @@ func (gzr *GenericZoneReconciler) updateZoneExternalResources(ctx context.Contex
 		Nameservers: zone.GetSpec().Nameservers,
 		Catalog:     catalog,
 		SOAEditAPI:  zone.GetSpec().SOAEditAPI,
+		Account:     ptr.To(OperatorAccount),
 	})
 	if err != nil {
 		return fmt.Errorf("PowerDNS API returned an error while updating external resource: %w", err)
@@ -212,7 +230,7 @@ func (gzr *GenericZoneReconciler) updateNsOnZoneExternalResources(ctx context.Co
 		nameserversCanonical = append(nameserversCanonical, makeCanonical(n))
 	}
 
-	err := gzr.PDNSClient.Records.Change(ctx, makeCanonical(zone.GetName()), makeCanonical(zone.GetName()), powerdns.RRTypeNS, ttl, nameserversCanonical)
+	err := gzr.PDNSClient.Records.Change(ctx, makeCanonical(zone.GetName()), makeCanonical(zone.GetName()), powerdns.RRTypeNS, ttl, nameserversCanonical, powerdns.WithComments(operatorComment(nil)))
 	if err != nil {
 		return fmt.Errorf("PowerDNS API returned an error while updating NS in external resource: %w", err)
 	}
@@ -240,6 +258,11 @@ func (gzr *GenericZoneReconciler) zoneExternalResourcesReconcile(ctx context.Con
 		if err != nil {
 			return fmt.Errorf("failed to create external resources: %w", err)
 		}
+		// Zones.Add omits NS comments; stamp operator account separately.
+		err = gzr.updateNsOnZoneExternalResources(ctx, gz, DEFAULT_TTL_FOR_NS_RECORDS)
+		if err != nil {
+			return fmt.Errorf("%w: %w", errNSStampAfterCreate, err)
+		}
 		log.V(1).Info("External resource created")
 	} else {
 		log.V(1).Info("External resource exists, comparing content and updating it if necessary")
@@ -262,9 +285,14 @@ func (gzr *GenericZoneReconciler) zoneExternalResourcesReconcile(ctx context.Con
 		// Nameservers changes  => patch RRSet
 		// Other changes        => patch Zone
 		zoneIdentical, nsIdentical := zoneIsIdenticalToExternalZone(gz, zoneRes, nameservers)
+		if !hasOperatorAccount(filteredRRset.Comments) {
+			nsIdentical = false
+		}
 
 		// Nameservers changes
 		if !nsIdentical {
+			log.Info("correcting managed PDNS drift", "kind", "ns", "zone", gz.GetName())
+			incManagedCorrection("ns")
 			log.V(1).Info("NS in external resource are not identical, updating them")
 			ttl := ptr.To(DEFAULT_TTL_FOR_NS_RECORDS)
 			if filteredRRset.TTL != nil {
@@ -278,6 +306,8 @@ func (gzr *GenericZoneReconciler) zoneExternalResourcesReconcile(ctx context.Con
 		}
 		// Other changes
 		if !zoneIdentical {
+			log.Info("correcting managed PDNS drift", "kind", "zone", "zone", gz.GetName())
+			incManagedCorrection("zone")
 			log.V(1).Info("External resource is not identical, updating it")
 			err := gzr.updateZoneExternalResources(ctx, gz)
 			if err != nil {

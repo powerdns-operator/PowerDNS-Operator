@@ -69,6 +69,32 @@ kubectl apply -f https://github.com/powerdns-operator/PowerDNS-Operator/releases
 | `PDNS_API_INSECURE` | Insecure connections with PowerDNS API | No | "False" |
 | `PDNS_API_CA_PATH` | Path to Certificate Authority | No | None |
 
+### Operator Flags
+
+Pass these as container args on the manager Deployment (or via Helm values that map to them). High-level behavior: [FAQ](faq.md#does-the-operator-check-for-configuration-drift); metrics: [Metrics](../guides/metrics.md); cleanup risks: [Warnings](../guides/warnings.md).
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--drift-check-interval` | `0` | Periodic re-GET of PowerDNS and re-apply of Kubernetes desired state. Zero disables periodic drift/orphan scans (event-driven reconcile only). Example: `5m` |
+| `--orphan-rrset-cleanup` | `false` | With interval > 0, flag orphan RRsets then delete them after `--orphan-rrset-grace` |
+| `--orphan-rrset-grace` | `1h` | Wall-clock wait after an RRset is flagged before deletion |
+| `--orphan-zone-cleanup` | `false` | With interval > 0, flag orphan zones then delete them after `--orphan-zone-grace` |
+| `--orphan-zone-grace` | `1h` | Wall-clock wait after a zone is flagged before deletion |
+
+Startup fails if either cleanup flag is set with `--drift-check-interval=0`, or if a cleanup flag is set with a non-positive matching grace.
+
+Grace markers are stored in PowerDNS (stateless operator): RRset comment content `powerdns-operator:orphan-since:<unix-epoch-seconds>`; zone metadata kind `X-POWERDNS-OPERATOR-ORPHAN-SINCE` = unix epoch seconds. User `spec.comment` values that use that RRset prefix are stripped on write. Inventory list errors are fail-closed (no flag/delete). Orphan zone detection uses the PowerDNS zone list `account` field — zones whose list payload omits `account` are not flagged.
+
+Example Deployment args for detect-only drift (no cleanup):
+
+```yaml
+args:
+  - --leader-elect
+  - --health-probe-bind-address=:8081
+  - --metrics-bind-address=:8080
+  - --drift-check-interval=5m
+```
+
 ### Verification
 
 ```bash

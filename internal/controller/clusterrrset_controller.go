@@ -34,6 +34,7 @@ type ClusterRRsetReconciler struct {
 	client.Client
 	Scheme     *runtime.Scheme
 	PDNSClient PdnsClienter
+	Drift      DriftConfig
 }
 
 func init() {
@@ -71,6 +72,7 @@ func (r *ClusterRRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		PDNSClient: r.PDNSClient,
 		scheme:     r.Scheme,
 		log:        log,
+		Drift:      r.Drift,
 	}
 
 	// Position metrics finalizer as soon as possible
@@ -174,20 +176,23 @@ func (r *ClusterRRsetReconciler) Reconcile(ctx context.Context, req ctrl.Request
 					return ctrl.Result{}, fmt.Errorf("failed to remove finalizer: %w", err)
 				}
 			}
+			return ctrl.Result{}, nil
 		}
 
-		return ctrl.Result{}, nil
+		return r.Drift.Result(), nil
 	}
 
-	err = grr.reconcileRRset(ctx, rrset, zone, isModified, isDeleted, lastUpdateTime)
-	if err != nil {
+	if err := grr.reconcileRRset(ctx, rrset, zone, isModified, isDeleted, lastUpdateTime); err != nil {
 		if apierrors.IsConflict(err) {
 			log.Info("Conflict on ClusterRRSet owner reference, retrying")
 			return ctrl.Result{Requeue: true}, nil
 		}
 		return ctrl.Result{}, fmt.Errorf("failed to reconcile ClusterRRset: %w", err)
 	}
-	return ctrl.Result{}, nil
+	if isDeleted {
+		return ctrl.Result{}, nil
+	}
+	return r.Drift.Result(), nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

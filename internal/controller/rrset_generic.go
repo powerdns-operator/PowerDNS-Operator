@@ -31,6 +31,7 @@ type GenericRRsetReconciler struct {
 	log        logr.Logger
 	PDNSClient PdnsClienter
 	scheme     *runtime.Scheme
+	Drift      DriftConfig
 }
 
 func (grr *GenericRRsetReconciler) reconcileRRset(ctx context.Context, gr dnsv1alpha2.GenericRRset, zone dnsv1alpha2.GenericZone, isModified bool, isDeleted bool, lastUpdateTime *metav1.Time) error {
@@ -95,8 +96,8 @@ func (grr *GenericRRsetReconciler) reconcileRRset(ctx context.Context, gr dnsv1a
 		return fmt.Errorf("failed to set owner reference: %w", err)
 	}
 
-	// We cannot exit previously (at the early moments of reconcile), because we have to allow deletion process
-	if isInFailedStatus && !isModified {
+	// Sticky Failed + no Spec change: skip PDNS unless drift interval is set.
+	if isInFailedStatus && !isModified && grr.Drift.Interval == 0 {
 		// Update resource metrics
 		updateRrsetsMetrics(getRRsetName(gr), gr)
 		return nil
@@ -188,13 +189,12 @@ func (grr *GenericRRsetReconciler) createOrUpdateRrsetExternalResources(ctx cont
 		return false, nil
 	}
 
-	// Create or Update
-	operatorAccount := "powerdns-operator"
-	comments := func(*powerdns.RRset) {}
-	if rrset.GetSpec().Comment != nil {
-		comments = powerdns.WithComments(powerdns.Comment{Content: rrset.GetSpec().Comment, Account: &operatorAccount})
+	if filteredRecord.Name != nil {
+		log.Info("correcting managed PDNS drift", "kind", "rrset", "name", name, "type", rrset.GetSpec().Type)
+		incManagedCorrection("rrset")
 	}
-	err = grr.PDNSClient.Records.Change(ctx, domain, name, rrType, rrset.GetSpec().TTL, rrset.GetSpec().Records, comments)
+
+	err = grr.PDNSClient.Records.Change(ctx, domain, name, rrType, rrset.GetSpec().TTL, rrset.GetSpec().Records, powerdns.WithComments(operatorComment(rrset.GetSpec().Comment)))
 	if err != nil {
 		return false, fmt.Errorf("PowerDNS API returned an error while updating external resource: %w", err)
 	}

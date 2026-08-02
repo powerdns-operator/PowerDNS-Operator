@@ -27,6 +27,7 @@ https://github.com/user-attachments/assets/cc43b03e-ed0d-4112-941d-0b53cc2ad3be
 - **RBAC Integration**: Fine-grained access control with Kubernetes RBAC
 - **Helm Support**: Easy deployment with Helm charts
 - **Metrics & Monitoring**: Built-in Prometheus metrics (Grafana dashboards coming soon)
+- **Optional drift & orphan detection**: Periodic PowerDNS re-check via `--drift-check-interval`; opt-in orphan cleanup
 - **GitOps Ready**: Perfect for GitOps workflows with ArgoCD, Flux, or similar tools
 
 ## 📋 Prerequisites

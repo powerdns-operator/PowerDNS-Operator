@@ -22,6 +22,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/joeig/go-powerdns/v3"
 	dnsv1alpha2 "github.com/powerdns-operator/powerdns-operator/api/v1alpha2"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -36,8 +37,9 @@ var (
 func init() {
 	m = NewMockClient()
 	PDNSClient = PdnsClienter{
-		Records: m.Records,
-		Zones:   m.Zones,
+		Records:  m.Records,
+		Zones:    m.Zones,
+		Metadata: m.Metadata,
 	}
 	ctx = context.Background()
 	gzr = GenericZoneReconciler{
@@ -82,6 +84,7 @@ func setupTestCase() func() {
 	return func() {
 		resetZonesMap()
 		resetRecordsMap()
+		resetMetadataMap()
 	}
 }
 
@@ -179,6 +182,11 @@ func TestCreateExternalResources(t *testing.T) {
 		t.Run(tc.description, func(t *testing.T) {
 			err := gzr.createZoneExternalResources(ctx, tc.genericZone)
 			assertZoneAPIError(t, err, tc.e, "creating external resource")
+			if err == nil {
+				if got := getMockedZoneAccount(tc.genericZone.GetObjectMeta().Name); got != OperatorAccount {
+					t.Errorf("zone account: got %q, want %q", got, OperatorAccount)
+				}
+			}
 		})
 	}
 }
@@ -256,6 +264,11 @@ func TestUpdateNsOnExternalResources(t *testing.T) {
 		t.Run(tc.description, func(t *testing.T) {
 			err := gzr.updateNsOnZoneExternalResources(ctx, tc.genericZone, ttl)
 			assertZoneAPIError(t, err, tc.e, "updating NS in external resource")
+			if err == nil {
+				if got := getMockedCommentAccount(tc.genericZone.GetObjectMeta().Name, "NS"); got != OperatorAccount {
+					t.Errorf("NS comment account: got %q, want %q", got, OperatorAccount)
+				}
+			}
 		})
 	}
 }
@@ -373,23 +386,26 @@ func TestCreateOrUpdateRrsetExternalResources(t *testing.T) {
 	)
 
 	var testCases = []struct {
-		description string
-		genericZone dnsv1alpha2.GenericZone
-		rrset       *dnsv1alpha2.RRset
-		want        bool
-		e           error
+		description    string
+		genericZone    dnsv1alpha2.GenericZone
+		rrset          *dnsv1alpha2.RRset
+		want           bool
+		e              error
+		wantCorrection bool
 	}{
-		{"RRset creation", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: zoneName, Namespace: namespace}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, &dnsv1alpha2.RRset{ObjectMeta: metav1.ObjectMeta{Name: rrsetFqdn2, Namespace: namespace}, Spec: dnsv1alpha2.RRsetSpec{ZoneRef: dnsv1alpha2.ZoneRef{Name: zoneName, Kind: "Zone"}, Type: rrsetType2, Name: rrsetName2, TTL: rrsetTTL2, Records: rrsetRecords2, Comment: &rrsetComment2}}, true, nil},
-		{"RRset update", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: zoneName, Namespace: namespace}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, &dnsv1alpha2.RRset{ObjectMeta: metav1.ObjectMeta{Name: rrsetFqdn1, Namespace: namespace}, Spec: dnsv1alpha2.RRsetSpec{ZoneRef: dnsv1alpha2.ZoneRef{Name: zoneName, Kind: "Zone"}, Type: rrsetType1, Name: rrsetName1, TTL: rrsetTTL1, Records: rrsetRecords1, Comment: &rrsetComment1}}, true, nil},
-		{"RRset identical", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: zoneName, Namespace: namespace}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, &dnsv1alpha2.RRset{ObjectMeta: metav1.ObjectMeta{Name: rrsetFqdn1, Namespace: namespace}, Spec: dnsv1alpha2.RRsetSpec{ZoneRef: dnsv1alpha2.ZoneRef{Name: zoneName, Kind: "Zone"}, Type: rrsetType1, Name: rrsetName1, TTL: rrsetTTL1, Records: rrsetRecords1, Comment: &rrsetComment1}}, false, nil},
+		{"RRset creation", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: zoneName, Namespace: namespace}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, &dnsv1alpha2.RRset{ObjectMeta: metav1.ObjectMeta{Name: rrsetFqdn2, Namespace: namespace}, Spec: dnsv1alpha2.RRsetSpec{ZoneRef: dnsv1alpha2.ZoneRef{Name: zoneName, Kind: "Zone"}, Type: rrsetType2, Name: rrsetName2, TTL: rrsetTTL2, Records: rrsetRecords2, Comment: &rrsetComment2}}, true, nil, false},
+		{"RRset update", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: zoneName, Namespace: namespace}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, &dnsv1alpha2.RRset{ObjectMeta: metav1.ObjectMeta{Name: rrsetFqdn1, Namespace: namespace}, Spec: dnsv1alpha2.RRsetSpec{ZoneRef: dnsv1alpha2.ZoneRef{Name: zoneName, Kind: "Zone"}, Type: rrsetType1, Name: rrsetName1, TTL: rrsetTTL1, Records: rrsetRecords1, Comment: &rrsetComment1}}, true, nil, true},
+		{"RRset identical", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: zoneName, Namespace: namespace}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, &dnsv1alpha2.RRset{ObjectMeta: metav1.ObjectMeta{Name: rrsetFqdn1, Namespace: namespace}, Spec: dnsv1alpha2.RRsetSpec{ZoneRef: dnsv1alpha2.ZoneRef{Name: zoneName, Kind: "Zone"}, Type: rrsetType1, Name: rrsetName1, TTL: rrsetTTL1, Records: rrsetRecords1, Comment: &rrsetComment1}}, false, nil, false},
 	}
 
 	// Mock initialization
 	teardownTestCase := setupTestCase()
 	defer teardownTestCase()
 
+	before := testutil.ToFloat64(pdnsManagedCorrectionsTotal.WithLabelValues("rrset"))
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
+			beforeCase := testutil.ToFloat64(pdnsManagedCorrectionsTotal.WithLabelValues("rrset"))
 			modified, err := grr.createOrUpdateRrsetExternalResources(ctx, tc.rrset, tc.rrset.GetDomain())
 			if !cmp.Equal(modified, tc.want) {
 				t.Errorf("got %v, want %v", modified, tc.want)
@@ -397,6 +413,22 @@ func TestCreateOrUpdateRrsetExternalResources(t *testing.T) {
 			if !cmp.Equal(err, tc.e) {
 				t.Errorf("got %v, want %v", err, tc.e)
 			}
+			if err == nil {
+				if got := getMockedCommentAccount(getRRsetName(tc.rrset), tc.rrset.GetSpec().Type); got != OperatorAccount {
+					t.Errorf("RRset comment account: got %q, want %q", got, OperatorAccount)
+				}
+			}
+			afterCase := testutil.ToFloat64(pdnsManagedCorrectionsTotal.WithLabelValues("rrset"))
+			if tc.wantCorrection && afterCase != beforeCase+1 {
+				t.Errorf("correction counter: got delta %v, want 1", afterCase-beforeCase)
+			}
+			if !tc.wantCorrection && afterCase != beforeCase {
+				t.Errorf("correction counter: got delta %v, want 0", afterCase-beforeCase)
+			}
 		})
+	}
+	after := testutil.ToFloat64(pdnsManagedCorrectionsTotal.WithLabelValues("rrset"))
+	if after != before+1 {
+		t.Errorf("total rrset corrections across cases: got %v, want %v", after-before, 1.0)
 	}
 }

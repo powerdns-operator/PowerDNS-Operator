@@ -58,8 +58,9 @@ var (
 )
 
 var (
-	zones   sync.Map
-	records sync.Map
+	zones    sync.Map
+	records  sync.Map
+	metadata sync.Map
 )
 
 const (
@@ -139,9 +140,16 @@ func resetZonesMap() {
 	zones.Clear()
 }
 
-// resetZonesMap removes all entries from the Zones sync.Map
 func resetRecordsMap() {
 	records.Clear()
+}
+
+func resetMetadataMap() {
+	metadata.Clear()
+}
+
+func metadataKey(domain string, kind powerdns.MetadataKind) string {
+	return makeCanonical(domain) + "|" + string(kind)
 }
 
 func TestControllers(t *testing.T) {
@@ -163,6 +171,9 @@ var _ = BeforeSuite(func() {
 		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "config", "crd", "bases")},
 		ErrorIfCRDPathMissing: true,
 	}
+
+	// Loopback fallback when there is no default route (CI/sandbox).
+	testEnv.ControlPlane.GetAPIServer().Configure().Set("advertise-address", "127.0.0.1")
 
 	// Retrieve the first found binary directory to allow running tests from IDEs
 	if getFirstFoundEnvTestBinaryDir() != "" {
@@ -195,8 +206,9 @@ var _ = BeforeSuite(func() {
 		Client: k8sManager.GetClient(),
 		Scheme: k8sManager.GetScheme(),
 		PDNSClient: PdnsClienter{
-			Records: m.Records,
-			Zones:   m.Zones,
+			Records:  m.Records,
+			Zones:    m.Zones,
+			Metadata: m.Metadata,
 		},
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
@@ -205,8 +217,9 @@ var _ = BeforeSuite(func() {
 		Client: k8sManager.GetClient(),
 		Scheme: k8sManager.GetScheme(),
 		PDNSClient: PdnsClienter{
-			Records: m.Records,
-			Zones:   m.Zones,
+			Records:  m.Records,
+			Zones:    m.Zones,
+			Metadata: m.Metadata,
 		},
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
@@ -215,8 +228,9 @@ var _ = BeforeSuite(func() {
 		Client: k8sManager.GetClient(),
 		Scheme: k8sManager.GetScheme(),
 		PDNSClient: PdnsClienter{
-			Records: m.Records,
-			Zones:   m.Zones,
+			Records:  m.Records,
+			Zones:    m.Zones,
+			Metadata: m.Metadata,
 		},
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
@@ -225,8 +239,9 @@ var _ = BeforeSuite(func() {
 		Client: k8sManager.GetClient(),
 		Scheme: k8sManager.GetScheme(),
 		PDNSClient: PdnsClienter{
-			Records: m.Records,
-			Zones:   m.Zones,
+			Records:  m.Records,
+			Zones:    m.Zones,
+			Metadata: m.Metadata,
 		},
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
@@ -298,18 +313,33 @@ func getFirstFoundEnvTestBinaryDir() string {
 }
 
 type mockClient struct {
-	Zones   mockZonesClient
-	Records mockRecordsClient
+	Zones    mockZonesClient
+	Records  mockRecordsClient
+	Metadata mockMetadataClient
 }
 
 type mockZonesClient struct{}
 type mockRecordsClient struct{}
+type mockMetadataClient struct{}
 
 func NewMockClient() mockClient {
 	return mockClient{
-		Zones:   mockZonesClient{},
-		Records: mockRecordsClient{},
+		Zones:    mockZonesClient{},
+		Records:  mockRecordsClient{},
+		Metadata: mockMetadataClient{},
 	}
+}
+
+func (m mockZonesClient) List(ctx context.Context) ([]powerdns.Zone, error) {
+	results := make([]powerdns.Zone, 0)
+	zones.Range(func(key, value any) bool {
+		z, ok := readFromZonesMap(key.(string))
+		if ok && z.Name != nil {
+			results = append(results, *z)
+		}
+		return true
+	})
+	return results, nil
 }
 
 func (m mockZonesClient) Add(ctx context.Context, zone *powerdns.Zone) (*powerdns.Zone, error) {
@@ -390,6 +420,7 @@ func (m mockZonesClient) Delete(ctx context.Context, domain string) error {
 		return powerdns.Error{StatusCode: NOT_FOUND_ERROR_CODE, Status: fmt.Sprintf("%d %s", NOT_FOUND_ERROR_CODE, NOT_FOUND_ERROR_MSG), Message: NOT_FOUND_ERROR_MSG}
 	}
 	deleteFromZonesMap(makeCanonical(domain))
+	metadata.Delete(metadataKey(domain, OrphanSinceMetadataKind))
 	return nil
 }
 
@@ -409,8 +440,12 @@ func (m mockZonesClient) Change(ctx context.Context, domain string, zone *powerd
 		return powerdns.Error{StatusCode: NOT_FOUND_ERROR_CODE, Status: fmt.Sprintf("%d %s", NOT_FOUND_ERROR_CODE, NOT_FOUND_ERROR_MSG), Message: NOT_FOUND_ERROR_MSG}
 	}
 	serial := localZone.Serial
-	if *zone.Kind != *localZone.Kind || *zone.Catalog != *localZone.Catalog || *zone.SOAEditAPI != *localZone.SOAEditAPI {
-		switch *zone.SOAEditAPI {
+	changed := ptr.Deref(zone.Kind, "") != ptr.Deref(localZone.Kind, "") ||
+		ptr.Deref(zone.Catalog, "") != ptr.Deref(localZone.Catalog, "") ||
+		ptr.Deref(zone.SOAEditAPI, "") != ptr.Deref(localZone.SOAEditAPI, "") ||
+		ptr.Deref(zone.Account, "") != ptr.Deref(localZone.Account, "")
+	if changed {
+		switch ptr.Deref(zone.SOAEditAPI, "") {
 		case "EPOCH":
 			serial = ptr.To(uint32(time.Now().UTC().Unix()))
 		case "INCREASE":
@@ -480,7 +515,7 @@ func (m mockRecordsClient) Change(ctx context.Context, domain string, name strin
 
 	var isRRsetIdentical, isNewRRset, ok bool
 	var rrset *powerdns.RRset
-	var comment, specifiedComment string
+	var comment, specifiedComment, specifiedAccount, account string
 
 	// The specified comment is included inside the opt function (through .WithComments)
 	// So to extract it, we need to apply opt() function on an empty RRSet
@@ -490,8 +525,10 @@ func (m mockRecordsClient) Change(ctx context.Context, domain string, name strin
 	for _, opt := range options {
 		opt(fakeRrset)
 	}
-	if len(fakeRrset.Comments) > 0 {
-		specifiedComment = *fakeRrset.Comments[0].Content
+	hasSpecifiedComments := len(fakeRrset.Comments) > 0
+	if hasSpecifiedComments {
+		specifiedComment = ptr.Deref(fakeRrset.Comments[0].Content, "")
+		specifiedAccount = ptr.Deref(fakeRrset.Comments[0].Account, "")
 	}
 
 	if rrset, ok = readFromRecordsMap(makeCanonical(name)); !ok {
@@ -507,9 +544,10 @@ func (m mockRecordsClient) Change(ctx context.Context, domain string, name strin
 		}
 
 		for _, c := range rrset.Comments {
-			comment = *c.Content
+			comment = ptr.Deref(c.Content, "")
+			account = ptr.Deref(c.Account, "")
 		}
-		isRRsetIdentical = reflect.DeepEqual(localRecords, content) && reflect.DeepEqual(*rrset.TTL, ttl) && reflect.DeepEqual(comment, specifiedComment)
+		isRRsetIdentical = stringSlicesEqualUnordered(localRecords, content) && reflect.DeepEqual(*rrset.TTL, ttl) && reflect.DeepEqual(comment, specifiedComment) && reflect.DeepEqual(account, specifiedAccount)
 	}
 
 	rrset.Name = &name
@@ -518,8 +556,11 @@ func (m mockRecordsClient) Change(ctx context.Context, domain string, name strin
 	rrset.ChangeType = powerdns.ChangeTypePtr(powerdns.ChangeTypeReplace)
 	rrset.Records = make([]powerdns.Record, 0)
 	rrset.Comments = []powerdns.Comment{}
-	if specifiedComment != "" {
-		rrset.Comments = append(rrset.Comments, powerdns.Comment{Content: &specifiedComment})
+	if hasSpecifiedComments {
+		rrset.Comments = append(rrset.Comments, powerdns.Comment{
+			Content: ptr.To(specifiedComment),
+			Account: ptr.To(specifiedAccount),
+		})
 	}
 
 	for _, c := range content {
@@ -541,6 +582,36 @@ func (m mockRecordsClient) Change(ctx context.Context, domain string, name strin
 
 func (m mockRecordsClient) Delete(ctx context.Context, domain string, name string, recordType powerdns.RRType) error {
 	deleteFromRecordsMap(makeCanonical(name))
+	return nil
+}
+
+func (m mockMetadataClient) Get(ctx context.Context, domain string, kind powerdns.MetadataKind) (*powerdns.Metadata, error) {
+	value, ok := metadata.Load(metadataKey(domain, kind))
+	if !ok {
+		return nil, powerdns.Error{StatusCode: NOT_FOUND_ERROR_CODE, Status: fmt.Sprintf("%d %s", NOT_FOUND_ERROR_CODE, NOT_FOUND_ERROR_MSG), Message: NOT_FOUND_ERROR_MSG}
+	}
+	values, _ := value.([]string)
+	return &powerdns.Metadata{
+		Kind:     powerdns.MetadataKindPtr(kind),
+		Metadata: values,
+	}, nil
+}
+
+func (m mockMetadataClient) Set(ctx context.Context, domain string, kind powerdns.MetadataKind, values []string) (*powerdns.Metadata, error) {
+	copied := append([]string(nil), values...)
+	metadata.Store(metadataKey(domain, kind), copied)
+	return &powerdns.Metadata{
+		Kind:     powerdns.MetadataKindPtr(kind),
+		Metadata: copied,
+	}, nil
+}
+
+func (m mockMetadataClient) Delete(ctx context.Context, domain string, kind powerdns.MetadataKind) error {
+	key := metadataKey(domain, kind)
+	if _, ok := metadata.Load(key); !ok {
+		return powerdns.Error{StatusCode: NOT_FOUND_ERROR_CODE, Status: fmt.Sprintf("%d %s", NOT_FOUND_ERROR_CODE, NOT_FOUND_ERROR_MSG), Message: NOT_FOUND_ERROR_MSG}
+	}
+	metadata.Delete(key)
 	return nil
 }
 
@@ -583,10 +654,34 @@ func getMockedTTL(rrsetName, rrsetType string) (result uint32) {
 }
 
 func getMockedComment(rrsetName, rrsetType string) (result string) {
-	rrset, _ := readFromRecordsMap(makeCanonical(rrsetName))
-	if string(*rrset.Type) == rrsetType {
-		result = *rrset.Comments[0].Content
+	rrset, ok := readFromRecordsMap(makeCanonical(rrsetName))
+	if !ok || rrset.Type == nil {
+		return
 	}
+	if string(*rrset.Type) == rrsetType && len(rrset.Comments) > 0 {
+		result = ptr.Deref(rrset.Comments[0].Content, "")
+	}
+	return
+}
+
+func getMockedCommentAccount(rrsetName, rrsetType string) (result string) {
+	rrset, ok := readFromRecordsMap(makeCanonical(rrsetName))
+	if !ok || rrset.Type == nil {
+		return
+	}
+	if string(*rrset.Type) == rrsetType {
+		for _, c := range rrset.Comments {
+			if ptr.Deref(c.Account, "") != "" {
+				return ptr.Deref(c.Account, "")
+			}
+		}
+	}
+	return
+}
+
+func getMockedZoneAccount(zoneName string) (result string) {
+	zone, _ := readFromZonesMap(makeCanonical(zoneName))
+	result = ptr.Deref(zone.Account, "")
 	return
 }
 

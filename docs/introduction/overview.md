@@ -4,7 +4,7 @@
 
 ![architecture](./../assets/architecture.png)
 
-The PowerDNS Operator extends Kubernetes with Custom Resource Definitions (CRDs) to manage PowerDNS zones and records declaratively. The operator watches for changes to these resources and reconciles them with the PowerDNS API.
+The PowerDNS Operator extends Kubernetes with Custom Resource Definitions (CRDs) to manage PowerDNS zones and records declaratively. The operator watches for changes to these resources and reconciles them with the PowerDNS API. Optionally, `--drift-check-interval` enables periodic drift correction and orphan detection against PowerDNS (cleanup remains opt-in); see the [FAQ](faq.md).
 
 ## Resource Model
 

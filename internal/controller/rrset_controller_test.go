@@ -189,6 +189,7 @@ var _ = Describe("RRset Controller", func() {
 			Expect(getMockedRecordsForType(resourceName, resourceType)).To(Equal(resourceRecords))
 			Expect(getMockedTTL(resourceName, resourceType)).To(Equal(resourceTTL))
 			Expect(getMockedComment(resourceName, resourceType)).To(Equal(resourceComment))
+			Expect(getMockedCommentAccount(resourceName, resourceType)).To(Equal(OperatorAccount), "RRset comment account should be stamped")
 			Expect(createdResource.GetOwnerReferences()).NotTo(BeEmpty(), "RRset should have setOwnerReference")
 			Expect(createdResource.GetOwnerReferences()[0].Name).To(Equal(zoneRef), "RRset should have setOwnerReference to Zone")
 			Expect(createdResource.GetFinalizers()).To(ContainElement(RESOURCES_FINALIZER_NAME), "RRset should contain the finalizer")
