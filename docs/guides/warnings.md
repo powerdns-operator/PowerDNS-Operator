@@ -43,7 +43,7 @@ Parsing record content: Data field in DNS should start with quote (") at positio
 ## Common Error Scenarios
 
 ### Zone Conflicts
-- **Error**: Zone shows "Failed" status with "Already existing Zone" message
+- **Error**: Zone shows "Failed" status with message "At least another ClusterZone/Zone exists with the same name"
 - **Cause**: Multiple zones with the same FQDN
 - **Solution**: Remove duplicate zones or use different names
 
@@ -57,6 +57,14 @@ Parsing record content: Data field in DNS should start with quote (") at positio
 - **Cause**: PowerDNS API unreachable or authentication failed
 - **Solution**: Check API URL, key, and network connectivity
 
+### Orphan Cleanup
+
+- **Risk**: `--orphan-rrset-cleanup` / `--orphan-zone-cleanup` delete operator-marked PowerDNS resources that have no matching CR after a grace period. Normal CR deletion still removes the PDNS object immediately via finalizers; grace applies only to leftovers (no matching CR).
+- **Cause**: Intentional opt-in cleanup when drift checking is enabled
+- **Solution**: Leave cleanup off for detect-only (metrics/logs only). Start with a longer grace. Never set a user `spec.comment` to `powerdns-operator:orphan-since:…` (RRset marker; stripped on write). Zone grace uses metadata `X-POWERDNS-OPERATOR-ORPHAN-SINCE` = unix epoch seconds
+
+See [Getting Started](../introduction/getting-started.md#operator-flags) for flags and [Metrics](metrics.md) for gauges/counters.
+
 ## Best Practices
 
 1. **Use canonical names** for CNAME, PTR, MX, and SRV records
@@ -64,3 +72,4 @@ Parsing record content: Data field in DNS should start with quote (") at positio
 3. **Create zones before records** to avoid dependency issues
 4. **Check for duplicates** before creating resources
 5. **Monitor metrics** for failed reconciliations
+6. **Treat orphan cleanup as destructive** — enable only after reviewing orphan gauges/logs

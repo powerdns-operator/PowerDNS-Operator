@@ -31,6 +31,7 @@ type ClusterZoneReconciler struct {
 	client.Client
 	Scheme     *runtime.Scheme
 	PDNSClient PdnsClienter
+	Drift      DriftConfig
 }
 
 func init() {
@@ -63,6 +64,7 @@ func (r *ClusterZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		Client:     r.Client,
 		PDNSClient: r.PDNSClient,
 		log:        log,
+		Drift:      r.Drift,
 	}
 
 	// Position metrics finalizer as soon as possible
@@ -96,11 +98,13 @@ func (r *ClusterZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		meta.RemoveStatusCondition(&zone.Status.Conditions, "Available")
 	}
 
-	err = gzr.reconcileZone(ctx, zone, isModified, isDeleted)
-	if err != nil {
+	if err := gzr.reconcileZone(ctx, zone, isModified, isDeleted); err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to reconcile ClusterZone: %w", err)
 	}
-	return ctrl.Result{}, nil
+	if isDeleted {
+		return ctrl.Result{}, nil
+	}
+	return r.Drift.Result(), nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

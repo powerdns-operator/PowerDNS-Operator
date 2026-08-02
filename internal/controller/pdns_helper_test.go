@@ -13,6 +13,7 @@ package controller
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/joeig/go-powerdns/v3"
@@ -30,6 +31,7 @@ func TestZoneIsIdenticalToExternalZone(t *testing.T) {
 		kind         = powerdns.ZoneKind(MASTER_KIND_ZONE)
 		nameservers1 = []string{"ns1.example1.org", "ns2.example1.org"}
 		soaEditApi1  = "EPOCH"
+		account      = OperatorAccount
 
 		catalog  = "catalog.org."
 		catalog1 = "catalog1.org."
@@ -63,9 +65,35 @@ func TestZoneIsIdenticalToExternalZone(t *testing.T) {
 				Kind:       &kind,
 				Catalog:    &catalog,
 				SOAEditAPI: &soaEditApi,
+				Account:    &account,
 			},
 			nameservers,
 			true,
+			true,
+		},
+		{
+			"Different Zones on Account",
+			&dnsv1alpha2.Zone{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: namespace,
+				},
+				Spec: dnsv1alpha2.ZoneSpec{
+					Kind:        MASTER_KIND_ZONE,
+					Nameservers: nameservers,
+					Catalog:     &catalog,
+					SOAEditAPI:  &soaEditApi,
+				},
+			},
+			&powerdns.Zone{
+				ID:         &name,
+				Name:       &name,
+				Kind:       &kind,
+				Catalog:    &catalog,
+				SOAEditAPI: &soaEditApi,
+			},
+			nameservers,
+			false,
 			true,
 		},
 		{
@@ -88,10 +116,37 @@ func TestZoneIsIdenticalToExternalZone(t *testing.T) {
 				Kind:       &kind,
 				Catalog:    &catalog,
 				SOAEditAPI: &soaEditApi,
+				Account:    &account,
 			},
 			nameservers1,
 			true,
 			false,
+		},
+		{
+			"Identical Zones with NS in different order",
+			&dnsv1alpha2.Zone{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: namespace,
+				},
+				Spec: dnsv1alpha2.ZoneSpec{
+					Kind:        MASTER_KIND_ZONE,
+					Nameservers: nameservers,
+					Catalog:     &catalog,
+					SOAEditAPI:  &soaEditApi,
+				},
+			},
+			&powerdns.Zone{
+				ID:         &name,
+				Name:       &name,
+				Kind:       &kind,
+				Catalog:    &catalog,
+				SOAEditAPI: &soaEditApi,
+				Account:    &account,
+			},
+			[]string{"ns2.example.org", "ns1.example.org"},
+			true,
+			true,
 		},
 		{
 			"Different Zones on Kind",
@@ -113,6 +168,7 @@ func TestZoneIsIdenticalToExternalZone(t *testing.T) {
 				Kind:       &kind,
 				Catalog:    &catalog,
 				SOAEditAPI: &soaEditApi,
+				Account:    &account,
 			},
 			nameservers,
 			false,
@@ -138,6 +194,7 @@ func TestZoneIsIdenticalToExternalZone(t *testing.T) {
 				Kind:       &kind,
 				Catalog:    &catalog,
 				SOAEditAPI: &soaEditApi,
+				Account:    &account,
 			},
 			nameservers,
 			false,
@@ -163,6 +220,7 @@ func TestZoneIsIdenticalToExternalZone(t *testing.T) {
 				Kind:       &kind,
 				Catalog:    &catalog,
 				SOAEditAPI: &soaEditApi,
+				Account:    &account,
 			},
 			nameservers,
 			false,
@@ -192,6 +250,8 @@ func TestRrsetIsIdenticalToExternalRRset(t *testing.T) {
 		namespace      = "example"
 		recordComment1 = "nothing to tell"
 		recordComment2 = "really nothing to tell"
+		emptyComment   = ""
+		account        = OperatorAccount
 		recordType1    = "A"
 		recordType2    = "AAAA"
 		recordTtl1     = uint32(1500)
@@ -201,6 +261,19 @@ func TestRrsetIsIdenticalToExternalRRset(t *testing.T) {
 		recordContent3 = "2001:0dc8:86a4:0000:0000:7a2f:2360:2341"
 		records        = []string{recordContent1, recordContent2}
 	)
+
+	baseRecords := []powerdns.Record{
+		{
+			Content:  &recordContent1,
+			Disabled: ptr.To(false),
+			SetPTR:   ptr.To(false),
+		},
+		{
+			Content:  &recordContent2,
+			Disabled: ptr.To(false),
+			SetPTR:   ptr.To(false),
+		},
+	}
 
 	var testCases = []struct {
 		description     string
@@ -228,31 +301,151 @@ func TestRrsetIsIdenticalToExternalRRset(t *testing.T) {
 				},
 			},
 			&powerdns.RRset{
-				Name: &fqdnName,
-				Type: (*powerdns.RRType)(&recordType1),
-				TTL:  &recordTtl1,
-				Records: []powerdns.Record{
-					{
-						Content:  &recordContent1,
-						Disabled: ptr.To(false),
-						SetPTR:   ptr.To(false),
-					},
-					{
-						Content:  &recordContent2,
-						Disabled: ptr.To(false),
-						SetPTR:   ptr.To(false),
-					},
-				},
+				Name:    &fqdnName,
+				Type:    (*powerdns.RRType)(&recordType1),
+				TTL:     &recordTtl1,
+				Records: baseRecords,
 				Comments: []powerdns.Comment{
 					{
 						Content: &recordComment1,
+						Account: &account,
 					},
 				},
 			},
 			true,
 		},
 		{
+			"Identical RRsets with empty operator comment",
+			&dnsv1alpha2.RRset{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: namespace,
+				},
+				Spec: dnsv1alpha2.RRsetSpec{
+					Name:    recordName,
+					Type:    recordType1,
+					TTL:     recordTtl1,
+					Records: records,
+					ZoneRef: dnsv1alpha2.ZoneRef{
+						Name: zoneName,
+						Kind: "Zone",
+					},
+				},
+			},
+			&powerdns.RRset{
+				Name:    &fqdnName,
+				Type:    (*powerdns.RRType)(&recordType1),
+				TTL:     &recordTtl1,
+				Records: baseRecords,
+				Comments: []powerdns.Comment{
+					{
+						Content: &emptyComment,
+						Account: &account,
+					},
+				},
+			},
+			true,
+		},
+		{
+			"Identical after orphan-since prefix stripped from spec.comment",
+			&dnsv1alpha2.RRset{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: namespace,
+				},
+				Spec: dnsv1alpha2.RRsetSpec{
+					Comment: ptr.To(formatOrphanSinceComment(time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC))),
+					Name:    recordName,
+					Type:    recordType1,
+					TTL:     recordTtl1,
+					Records: records,
+					ZoneRef: dnsv1alpha2.ZoneRef{
+						Name: zoneName,
+						Kind: "Zone",
+					},
+				},
+			},
+			&powerdns.RRset{
+				Name:    &fqdnName,
+				Type:    (*powerdns.RRType)(&recordType1),
+				TTL:     &recordTtl1,
+				Records: baseRecords,
+				Comments: []powerdns.Comment{
+					{
+						Content: &emptyComment,
+						Account: &account,
+					},
+				},
+			},
+			true,
+		},
+		{
+			"Different RRsets missing operator account",
+			&dnsv1alpha2.RRset{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: namespace,
+				},
+				Spec: dnsv1alpha2.RRsetSpec{
+					Comment: &recordComment1,
+					Name:    recordName,
+					Type:    recordType1,
+					TTL:     recordTtl1,
+					Records: records,
+					ZoneRef: dnsv1alpha2.ZoneRef{
+						Name: zoneName,
+						Kind: "Zone",
+					},
+				},
+			},
+			&powerdns.RRset{
+				Name:    &fqdnName,
+				Type:    (*powerdns.RRType)(&recordType1),
+				TTL:     &recordTtl1,
+				Records: baseRecords,
+				Comments: []powerdns.Comment{
+					{
+						Content: &recordComment1,
+					},
+				},
+			},
+			false,
+		},
+		{
 			"Different RRsets on Comment",
+			&dnsv1alpha2.RRset{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: namespace,
+				},
+				Spec: dnsv1alpha2.RRsetSpec{
+					Comment: &recordComment1,
+					Name:    recordName,
+					Type:    recordType1,
+					TTL:     recordTtl1,
+					Records: records,
+					ZoneRef: dnsv1alpha2.ZoneRef{
+						Name: zoneName,
+						Kind: "Zone",
+					},
+				},
+			},
+			&powerdns.RRset{
+				Name:    &fqdnName,
+				Type:    (*powerdns.RRType)(&recordType1),
+				TTL:     &recordTtl1,
+				Records: baseRecords,
+				Comments: []powerdns.Comment{
+					{
+						Content: &recordComment2,
+						Account: &account,
+					},
+				},
+			},
+			false,
+		},
+		{
+			"Identical RRsets with records in different order",
 			&dnsv1alpha2.RRset{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
@@ -276,23 +469,24 @@ func TestRrsetIsIdenticalToExternalRRset(t *testing.T) {
 				TTL:  &recordTtl1,
 				Records: []powerdns.Record{
 					{
-						Content:  &recordContent1,
+						Content:  &recordContent2,
 						Disabled: ptr.To(false),
 						SetPTR:   ptr.To(false),
 					},
 					{
-						Content:  &recordContent2,
+						Content:  &recordContent1,
 						Disabled: ptr.To(false),
 						SetPTR:   ptr.To(false),
 					},
 				},
 				Comments: []powerdns.Comment{
 					{
-						Content: &recordComment2,
+						Content: &recordComment1,
+						Account: &account,
 					},
 				},
 			},
-			false,
+			true,
 		},
 		{
 			"Different RRsets on Records",
@@ -327,6 +521,7 @@ func TestRrsetIsIdenticalToExternalRRset(t *testing.T) {
 				Comments: []powerdns.Comment{
 					{
 						Content: &recordComment1,
+						Account: &account,
 					},
 				},
 			},
@@ -352,24 +547,14 @@ func TestRrsetIsIdenticalToExternalRRset(t *testing.T) {
 				},
 			},
 			&powerdns.RRset{
-				Name: &fqdnName,
-				Type: (*powerdns.RRType)(&recordType2),
-				TTL:  &recordTtl1,
-				Records: []powerdns.Record{
-					{
-						Content:  &recordContent1,
-						Disabled: ptr.To(false),
-						SetPTR:   ptr.To(false),
-					},
-					{
-						Content:  &recordContent2,
-						Disabled: ptr.To(false),
-						SetPTR:   ptr.To(false),
-					},
-				},
+				Name:    &fqdnName,
+				Type:    (*powerdns.RRType)(&recordType2),
+				TTL:     &recordTtl1,
+				Records: baseRecords,
 				Comments: []powerdns.Comment{
 					{
 						Content: &recordComment1,
+						Account: &account,
 					},
 				},
 			},
@@ -395,24 +580,14 @@ func TestRrsetIsIdenticalToExternalRRset(t *testing.T) {
 				},
 			},
 			&powerdns.RRset{
-				Name: &fqdnName,
-				Type: (*powerdns.RRType)(&recordType1),
-				TTL:  &recordTtl2,
-				Records: []powerdns.Record{
-					{
-						Content:  &recordContent1,
-						Disabled: ptr.To(false),
-						SetPTR:   ptr.To(false),
-					},
-					{
-						Content:  &recordContent2,
-						Disabled: ptr.To(false),
-						SetPTR:   ptr.To(false),
-					},
-				},
+				Name:    &fqdnName,
+				Type:    (*powerdns.RRType)(&recordType1),
+				TTL:     &recordTtl2,
+				Records: baseRecords,
 				Comments: []powerdns.Comment{
 					{
 						Content: &recordComment1,
+						Account: &account,
 					},
 				},
 			},
@@ -425,6 +600,85 @@ func TestRrsetIsIdenticalToExternalRRset(t *testing.T) {
 			ns := rrsetIsIdenticalToExternalRRset(tc.rrset, *tc.externalRrset)
 			if !cmp.Equal(ns, tc.rrsetsIdentical) {
 				t.Errorf("got %v, want %v", ns, tc.rrsetsIdentical)
+			}
+		})
+	}
+}
+
+func TestFindOrphanRrsets(t *testing.T) {
+	zone := "example.org."
+	www := "www.example.org."
+	mail := "mail.example.org."
+	opComment := []powerdns.Comment{operatorComment(nil)}
+	otherComment := []powerdns.Comment{{Content: ptr.To("manual"), Account: ptr.To("admin")}}
+
+	pdnsRrsets := []powerdns.RRset{
+		{Name: &zone, Type: ptr.To(powerdns.RRTypeSOA), Comments: opComment},
+		{Name: &zone, Type: ptr.To(powerdns.RRTypeNS), Comments: opComment},
+		{Name: &www, Type: ptr.To(powerdns.RRTypeA), Comments: opComment},
+		{Name: &mail, Type: ptr.To(powerdns.RRTypeA), Comments: opComment},
+		{Name: &mail, Type: ptr.To(powerdns.RRTypeMX), Comments: otherComment},
+	}
+
+	expected := map[string]struct{}{
+		rrsetIdentityKey(www, "A"): {},
+	}
+
+	orphans := findOrphanRrsets(zone, pdnsRrsets, expected)
+	if len(orphans) != 1 {
+		t.Fatalf("got %d orphans, want 1", len(orphans))
+	}
+	if ptr.Deref(orphans[0].Name, "") != mail || ptr.Deref(orphans[0].Type, "") != powerdns.RRTypeA {
+		t.Errorf("unexpected orphan: name=%v type=%v", ptr.Deref(orphans[0].Name, ""), ptr.Deref(orphans[0].Type, ""))
+	}
+}
+
+func TestFindOrphanZones(t *testing.T) {
+	managed := "orphan.example.org."
+	known := "known.example.org."
+	unmarked := "manual.example.org."
+	account := OperatorAccount
+
+	pdnsZones := []powerdns.Zone{
+		{Name: &managed, Account: &account},
+		{Name: &known, Account: &account},
+		{Name: &unmarked, Account: ptr.To("admin")},
+		{Name: ptr.To("empty-account.example.org.")},
+	}
+	expected := map[string]struct{}{
+		makeCanonical(known): {},
+	}
+
+	orphans := findOrphanZones(pdnsZones, expected)
+	if len(orphans) != 1 {
+		t.Fatalf("got %d orphans, want 1: %v", len(orphans), orphans)
+	}
+	if orphans[0] != makeCanonical(managed) {
+		t.Errorf("got orphan %q, want %q", orphans[0], makeCanonical(managed))
+	}
+
+	if got := findOrphanZones(nil, expected); len(got) != 0 {
+		t.Errorf("empty input: got %v, want empty", got)
+	}
+}
+
+func TestDriftResult(t *testing.T) {
+	var testCases = []struct {
+		description string
+		interval    time.Duration
+		wantAfter   time.Duration
+	}{
+		{"disabled", 0, 0},
+		{"enabled", 5 * time.Minute, 5 * time.Minute},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			got := DriftConfig{Interval: tc.interval}.Result()
+			if got.RequeueAfter != tc.wantAfter {
+				t.Errorf("RequeueAfter: got %v, want %v", got.RequeueAfter, tc.wantAfter)
+			}
+			if got.Requeue {
+				t.Errorf("Requeue should be false, got true")
 			}
 		})
 	}

@@ -35,7 +35,54 @@ var (
 		},
 		[]string{"status", "name"},
 	)
+	pdnsManagedCorrectionsTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "powerdns_operator_managed_corrections_total",
+			Help: "Count of PowerDNS rewrites after managed identity mismatch (drift corrections)",
+		},
+		[]string{"kind"},
+	)
+	pdnsOrphanRrsetsMetric = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "powerdns_operator_orphan_rrsets",
+			Help: "Count of operator-marked PDNS RRsets with no matching Kubernetes CR, per zone",
+		},
+		[]string{"zone"},
+	)
+	pdnsOrphanZonesMetric = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "powerdns_operator_orphan_zones",
+			Help: "Count of operator-marked PDNS zones with no matching Kubernetes Zone/ClusterZone CR",
+		},
+	)
+	pdnsOrphanDeletionsTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "powerdns_operator_orphan_deletions_total",
+			Help: "Count of orphan PDNS resources deleted after grace elapsed",
+		},
+		[]string{"kind"},
+	)
 )
+
+func incManagedCorrection(kind string) {
+	pdnsManagedCorrectionsTotal.WithLabelValues(kind).Inc()
+}
+
+func incOrphanDeletion(kind string) {
+	pdnsOrphanDeletionsTotal.WithLabelValues(kind).Inc()
+}
+
+func setOrphanRrsetsMetric(zone string, count float64) {
+	pdnsOrphanRrsetsMetric.WithLabelValues(zone).Set(count)
+}
+
+func removeOrphanRrsetsMetric(zone string) {
+	pdnsOrphanRrsetsMetric.DeleteLabelValues(zone)
+}
+
+func setOrphanZonesMetric(count float64) {
+	pdnsOrphanZonesMetric.Set(count)
+}
 
 func updateRrsetsMetrics(fqdn string, gr dnsv1alpha2.GenericRRset) {
 	switch gr.(type) {
@@ -107,6 +154,7 @@ func removeZonesMetrics(gz dnsv1alpha2.GenericZone) {
 			},
 		)
 	}
+	removeOrphanRrsetsMetric(gz.GetName())
 }
 
 //nolint:unparam

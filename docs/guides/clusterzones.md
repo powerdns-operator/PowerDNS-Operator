@@ -65,11 +65,17 @@ sequenceDiagram
             
             alt Zone doesn't exist in PowerDNS
                 C->>P: POST /api/v1/servers/localhost/zones
-                Note over P: Create Zone with NS records
+                Note over P: Create Zone (account=powerdns-operator) with NS records
                 P-->>C: Zone Created Successfully
+                C->>P: PATCH apex NS RRset
+                Note over P: Stamp NS comment account=powerdns-operator
             else Zone exists in PowerDNS
-                C->>C: Compare desired vs actual state
-                alt Differences found
+                C->>C: Compare zone + apex NS (incl. operator account)
+                alt NS differences
+                    C->>P: PATCH apex NS RRset
+                    P-->>C: NS Updated Successfully
+                end
+                alt Zone differences
                     C->>P: PATCH /api/v1/servers/localhost/zones/example.com
                     P-->>C: Zone Updated Successfully
                 end

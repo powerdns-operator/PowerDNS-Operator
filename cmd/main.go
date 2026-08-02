@@ -64,6 +64,11 @@ func main() {
 	var probeAddr string
 	var secureMetrics bool
 	var enableHTTP2 bool
+	var driftCheckInterval time.Duration
+	var orphanRRsetCleanup bool
+	var orphanRRsetGrace time.Duration
+	var orphanZoneCleanup bool
+	var orphanZoneGrace time.Duration
 	var tlsOpts []func(*tls.Config)
 
 	// Get environment variables for PowerDNS API configuration
@@ -116,6 +121,18 @@ func main() {
 	flag.BoolVar(&apiInsecure, "pdns-api-insecure", apiInsecure,
 		"Enable insecure connections to PowerDNS API")
 	flag.StringVar(&apiCAPath, "pdns-api-ca-path", apiCAPath, "The path to certificate authority")
+	flag.DurationVar(&driftCheckInterval, "drift-check-interval", 0,
+		"How often to re-check PowerDNS for drift against Kubernetes desired state. "+
+			"Zero (default) disables periodic drift checks; reconcile remains event-driven only. "+
+			"Example: 5m")
+	flag.BoolVar(&orphanRRsetCleanup, "orphan-rrset-cleanup", false,
+		"When set with --drift-check-interval > 0, flag orphan RRsets then delete them after --orphan-rrset-grace")
+	flag.DurationVar(&orphanRRsetGrace, "orphan-rrset-grace", time.Hour,
+		"How long an orphan RRset must remain flagged before deletion (used only with --orphan-rrset-cleanup)")
+	flag.BoolVar(&orphanZoneCleanup, "orphan-zone-cleanup", false,
+		"When set with --drift-check-interval > 0, flag orphan zones then delete them after --orphan-zone-grace")
+	flag.DurationVar(&orphanZoneGrace, "orphan-zone-grace", time.Hour,
+		"How long an orphan zone must remain flagged before deletion (used only with --orphan-zone-cleanup)")
 
 	opts := zap.Options{
 		Development: false,
@@ -140,6 +157,19 @@ func main() {
 		os.Exit(1)
 	}
 	setupLog.Info("PowerDNS API vhost", "vhost", apiVhost)
+
+	if (orphanRRsetCleanup || orphanZoneCleanup) && driftCheckInterval == 0 {
+		setupLog.Error(nil, "orphan cleanup requires --drift-check-interval > 0")
+		os.Exit(1)
+	}
+	if orphanRRsetCleanup && orphanRRsetGrace <= 0 {
+		setupLog.Error(nil, "--orphan-rrset-grace must be > 0 when --orphan-rrset-cleanup is set")
+		os.Exit(1)
+	}
+	if orphanZoneCleanup && orphanZoneGrace <= 0 {
+		setupLog.Error(nil, "--orphan-zone-grace must be > 0 when --orphan-zone-cleanup is set")
+		os.Exit(1)
+	}
 
 	// if the enable-http2 flag is false (the default), http/2 should be disabled
 	// due to its vulnerabilities. More specifically, disabling http/2 will
@@ -266,46 +296,50 @@ func main() {
 		setupLog.Error(err, "unable to initialize connection with PowerDNS server")
 		os.Exit(1)
 	}
+	drift := controller.DriftConfig{
+		Interval:           driftCheckInterval,
+		OrphanRRsetCleanup: orphanRRsetCleanup,
+		OrphanRRsetGrace:   orphanRRsetGrace,
+		OrphanZoneCleanup:  orphanZoneCleanup,
+		OrphanZoneGrace:    orphanZoneGrace,
+	}
+	pdns := controller.PdnsClienter{
+		Records:  pdnsClient.Records,
+		Zones:    pdnsClient.Zones,
+		Metadata: pdnsClient.Metadata,
+	}
 	if err = (&controller.ZoneReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-		PDNSClient: controller.PdnsClienter{
-			Records: pdnsClient.Records,
-			Zones:   pdnsClient.Zones,
-		},
+		Client:     mgr.GetClient(),
+		Scheme:     mgr.GetScheme(),
+		PDNSClient: pdns,
+		Drift:      drift,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Zone")
 		os.Exit(1)
 	}
 	if err = (&controller.RRsetReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-		PDNSClient: controller.PdnsClienter{
-			Records: pdnsClient.Records,
-			Zones:   pdnsClient.Zones,
-		},
+		Client:     mgr.GetClient(),
+		Scheme:     mgr.GetScheme(),
+		PDNSClient: pdns,
+		Drift:      drift,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "RRset")
 		os.Exit(1)
 	}
 	if err = (&controller.ClusterZoneReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-		PDNSClient: controller.PdnsClienter{
-			Records: pdnsClient.Records,
-			Zones:   pdnsClient.Zones,
-		},
+		Client:     mgr.GetClient(),
+		Scheme:     mgr.GetScheme(),
+		PDNSClient: pdns,
+		Drift:      drift,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ClusterZone")
 		os.Exit(1)
 	}
 	if err = (&controller.ClusterRRsetReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-		PDNSClient: controller.PdnsClienter{
-			Records: pdnsClient.Records,
-			Zones:   pdnsClient.Zones,
-		},
+		Client:     mgr.GetClient(),
+		Scheme:     mgr.GetScheme(),
+		PDNSClient: pdns,
+		Drift:      drift,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ClusterRRset")
 		os.Exit(1)
@@ -321,7 +355,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	setupLog.Info("starting manager")
+	setupLog.Info("starting manager",
+		"driftCheckInterval", driftCheckInterval,
+		"orphanRRsetCleanup", orphanRRsetCleanup,
+		"orphanRRsetGrace", orphanRRsetGrace,
+		"orphanZoneCleanup", orphanZoneCleanup,
+		"orphanZoneGrace", orphanZoneGrace,
+	)
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)

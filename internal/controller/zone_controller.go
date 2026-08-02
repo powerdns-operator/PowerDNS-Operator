@@ -31,11 +31,16 @@ type ZoneReconciler struct {
 	client.Client
 	Scheme     *runtime.Scheme
 	PDNSClient PdnsClienter
+	Drift      DriftConfig
 }
 
 func init() {
 	// Register custom metrics with the global prometheus registry
 	metrics.Registry.MustRegister(zonesStatusesMetric)
+	metrics.Registry.MustRegister(pdnsManagedCorrectionsTotal)
+	metrics.Registry.MustRegister(pdnsOrphanRrsetsMetric)
+	metrics.Registry.MustRegister(pdnsOrphanZonesMetric)
+	metrics.Registry.MustRegister(pdnsOrphanDeletionsTotal)
 }
 
 //+kubebuilder:rbac:groups=dns.cav.enablers.ob,resources=zones,verbs=get;list;watch;create;update;patch;delete
@@ -63,6 +68,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		Client:     r.Client,
 		PDNSClient: r.PDNSClient,
 		log:        log,
+		Drift:      r.Drift,
 	}
 
 	// Position metrics finalizer as soon as possible
@@ -96,12 +102,13 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		meta.RemoveStatusCondition(&zone.Status.Conditions, "Available")
 	}
 
-	err = gzr.reconcileZone(ctx, zone, isModified, isDeleted)
-	if err != nil {
+	if err := gzr.reconcileZone(ctx, zone, isModified, isDeleted); err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to reconcile Zone: %w", err)
 	}
-
-	return ctrl.Result{}, nil
+	if isDeleted {
+		return ctrl.Result{}, nil
+	}
+	return r.Drift.Result(), nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -117,6 +124,20 @@ func (r *ZoneReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}); err != nil {
 		return err
 	}
+
+	if r.Drift.Interval > 0 {
+		if err := mgr.Add(orphanZoneDetector{
+			client:   mgr.GetClient(),
+			pdns:     r.PDNSClient,
+			interval: r.Drift.Interval,
+			cleanup:  r.Drift.OrphanZoneCleanup,
+			grace:    r.Drift.OrphanZoneGrace,
+			log:      mgr.GetLogger().WithName("orphan-zone-detector"),
+		}); err != nil {
+			return err
+		}
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&dnsv1alpha2.Zone{}).
 		Owns(&dnsv1alpha2.ClusterRRset{}).

@@ -117,8 +117,10 @@ var _ = Describe("Zone Controller", func() {
 			Expect(getMockedKind(resourceName)).To(Equal(resourceKind), "Kind should be equal")
 			Expect(getMockedNameservers(resourceName)).To(Equal(resourceNameservers), "Nameservers should be equal")
 			Expect(getMockedCatalog(resourceName)).To(Equal(resourceCatalog), "Catalog should be equal")
+			Expect(getMockedZoneAccount(resourceName)).To(Equal(OperatorAccount), "Zone account should be stamped")
+			Expect(getMockedCommentAccount(resourceName, "NS")).To(Equal(OperatorAccount), "NS comment account should be stamped")
 			Expect(zone.GetFinalizers()).To(ContainElement(RESOURCES_FINALIZER_NAME), "Zone should contain the finalizer")
-			Expect(fmt.Sprintf("%d", *(zone.Status.Serial))).To(Equal(fmt.Sprintf("%s01", time.Now().UTC().Format("20060102"))), "Serial should be YYYYMMDD01")
+			Expect(fmt.Sprintf("%d", *(zone.Status.Serial))).To(Equal(fmt.Sprintf("%s02", time.Now().UTC().Format("20060102"))), "Serial should be YYYYMMDD02 after NS stamp")
 		})
 	})
 
@@ -352,8 +354,11 @@ var _ = Describe("Zone Controller", func() {
 				return len(getMockedNameservers(recreationResourceName)) > 0
 			}, timeout, interval).Should(BeTrue())
 			Expect(getMockedNameservers(recreationResourceName)).To(Equal(recreationResourceNameservers), "Nameservers should be equal")
+			Expect(getMockedZoneAccount(recreationResourceName)).To(Equal(OperatorAccount), "Zone account should be stamped")
+			Expect(getMockedCommentAccount(recreationResourceName, "NS")).To(Equal(OperatorAccount), "NS comment account should be stamped")
 
-			expectedSerial := initialSerial + uint32(1)
+			// NS stamp + zone account each bump the mock serial
+			expectedSerial := initialSerial + uint32(2)
 			Expect(*(updatedZone.Status.Serial)).To(Equal(expectedSerial), "Serial should be incremented")
 		})
 	})

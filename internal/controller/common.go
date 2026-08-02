@@ -13,6 +13,7 @@ package controller
 
 import (
 	"context"
+	"time"
 
 	"github.com/go-logr/logr"
 	dnsv1alpha2 "github.com/powerdns-operator/powerdns-operator/api/v1alpha2"
@@ -31,6 +32,22 @@ const (
 	CONFLICT_ERROR_MSG   = "Conflict"
 	CONFLICT_ERROR_CODE  = 409
 )
+
+// DriftConfig holds periodic PDNS drift checks and optional orphan cleanup.
+type DriftConfig struct {
+	Interval           time.Duration
+	OrphanRRsetCleanup bool
+	OrphanRRsetGrace   time.Duration
+	OrphanZoneCleanup  bool
+	OrphanZoneGrace    time.Duration
+}
+
+func (c DriftConfig) Result() ctrl.Result {
+	if c.Interval > 0 {
+		return ctrl.Result{RequeueAfter: c.Interval}
+	}
+	return ctrl.Result{}
+}
 
 func ownObject(ctx context.Context, zone dnsv1alpha2.GenericZone, rrset dnsv1alpha2.GenericRRset, scheme *runtime.Scheme, cl client.Client, log logr.Logger) error {
 	err := ctrl.SetControllerReference(zone, rrset, scheme)

@@ -10,7 +10,7 @@ The `ClusterRRset` specification contains the following fields:
 | name | string | Y | Name of the record |
 | ttl | uint32 | Y | DNS TTL of the records, in seconds
 | records | []string | Y | All records in this Resource Record Set
-| comment | string | N | Comment on RRSet |
+| comment | string | N | Comment on RRSet. Do not use the reserved prefix `powerdns-operator:orphan-since:` (stripped on write; used for orphan grace markers) |
 | zoneRef | ZoneRef | Y | ZoneRef reference the zone the ClusterRRSet depends on |
 
 The `ZoneRef` specification contains the following fields:

@@ -12,7 +12,15 @@
 
 ### Does the operator check for configuration drift?
 
-**No.** The operator only reconciles on Kubernetes events (create, update, delete). It does not periodically check for drift between Kubernetes resources and PowerDNS. This feature may be added in future versions.
+**Optionally.** By default (`--drift-check-interval=0`), the operator only reconciles on Kubernetes events (create, update, delete). Set a non-zero interval (for example `5m`) to periodically re-GET PowerDNS, re-apply the Kubernetes desired state for managed resources, and retry sticky `Failed` resources.
+
+When drift checking is enabled, the operator also **detects** orphans (operator-marked PowerDNS zones/RRsets with no matching CR) via logs and [metrics](../guides/metrics.md). It does **not** delete them unless orphan cleanup is explicitly enabled — that is opt-in and destructive; see [Warnings](../guides/warnings.md).
+
+Flag defaults and Deployment examples: [Getting Started](getting-started.md#operator-flags).
+
+### How does the operator mark resources it manages in PowerDNS?
+
+Every Zone the operator writes gets `account` set to `powerdns-operator`. Every RRset (including Zone-managed NS records) gets a comment with `account` set to `powerdns-operator` (comment content is the CR `spec.comment`, or empty when unset). After an upgrade, existing unmarked resources are rewritten on their next reconcile (or on the next drift-check interval if enabled).
 
 ## Technical Questions
 
@@ -37,6 +45,8 @@ Check for:
 - PowerDNS API connectivity issues
 - Invalid zone configuration (nameservers, etc.)
 - PowerDNS Operator logs
+
+With `--drift-check-interval=0` (default), sticky `Failed` resources are not re-tried against PowerDNS until the Spec changes. Enabling a non-zero interval retries them on that schedule.
 
 ### My records are not being created
 
