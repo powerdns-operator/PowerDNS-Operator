@@ -60,15 +60,55 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+      # Pull requests don't push, so the image must be loaded locally to be scanned.
+      # Only a single platform can be loaded; the step above still builds them all.
+      - name: Load image into the local Docker daemon
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        if: github.event_name == 'pull_request'
+        with:
+          context: .
+          load: true
+          provenance: false
+          platforms: linux/amd64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      # Advisory on pull requests: a newly published CVE is rarely related to the
+      # change under review. Findings go to the job summary; pushes still fail.
       - name: Run Trivy vulnerability scanner
+        id: trivy
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        if: github.event_name != 'pull_request'
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
         env:
           TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
         with:
           image-ref: ${{ inputs.image-name }}:${{ steps.meta.outputs.version }}
           format: "table"
+          output: "trivy-report.txt"
           exit-code: "1"
           ignore-unfixed: true
           vuln-type: "os,library"
           severity: "CRITICAL,HIGH"
+
+      - name: Report Trivy findings
+        if: always() && steps.trivy.conclusion != 'skipped'
+        run: |
+          {
+            echo "## Trivy scan"
+            echo
+            echo "Fixable \`CRITICAL\`/\`HIGH\` vulnerabilities in \`${{ inputs.image-name }}:${{ steps.meta.outputs.version }}\`."
+            echo
+            if [ -s trivy-report.txt ]; then
+              echo '```'
+              cat trivy-report.txt
+              echo '```'
+            else
+              echo "None found."
+            fi
+            if [ "${{ steps.trivy.outcome }}" = "failure" ] && [ "${{ github.event_name }}" = "pull_request" ]; then
+              echo
+              echo "> [!WARNING]"
+              echo "> Vulnerabilities were found. This does not block the merge, but the"
+              echo "> same scan fails the build once the change lands on a branch."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
