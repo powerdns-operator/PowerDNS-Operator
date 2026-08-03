@@ -10,6 +10,15 @@
 
 ## Breaking Changes
 
+### Breaking changes introduced in v0.7.x versions
+
+* `rrset.spec.zoneRef` and `clusterrrset.spec.zoneRef` are now immutable, `kind` and `name` alike
+
+Existing resources remain valid and are not invalidated: the rule is only evaluated on
+update. However, any GitOps pipeline that rewrote `zoneRef` in place will now be rejected
+by the API server. Moving a record to another zone requires deleting and recreating the
+`RRset`/`ClusterRRset` — see [Common Issues and Solutions](../guides/warnings.md#immutable-zoneref).
+
 ### Breaking changes introduced in v0.4.x versions
 
 We noticed lacks of security and delegation possibilities with <=v0.3.x versions, so we decided to split previous `Zone` in 2 differents Custom Resources: 
