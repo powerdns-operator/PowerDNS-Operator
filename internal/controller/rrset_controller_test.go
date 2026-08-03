@@ -350,6 +350,46 @@ var _ = Describe("RRset Controller", func() {
 		})
 	})
 
+	Context("When updating RRset", func() {
+		It("should fail to update the resource ZoneRef Name", Label("rrset-modification", "zoneref-immutability"), func() {
+			ctx := context.Background()
+
+			By("Updating RRset zoneRef name")
+			resource := &dnsv1alpha2.RRset{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      resourceName,
+					Namespace: resourceNamespace,
+				},
+			}
+			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, resource, func() error {
+				resource.Spec.ZoneRef.Name = "another-zone.org"
+				return nil
+			})
+			Expect(err).To(HaveOccurred(), "ZoneRef name update should be rejected")
+			Expect(err.Error()).To(ContainSubstring("Value is immutable"), "ZoneRef name update should be rejected by the immutability validation rule")
+		})
+	})
+
+	Context("When updating RRset", func() {
+		It("should fail to update the resource ZoneRef Kind", Label("rrset-modification", "zoneref-kind-immutability"), func() {
+			ctx := context.Background()
+
+			By("Updating RRset zoneRef kind")
+			resource := &dnsv1alpha2.RRset{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      resourceName,
+					Namespace: resourceNamespace,
+				},
+			}
+			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, resource, func() error {
+				resource.Spec.ZoneRef.Kind = "ClusterZone"
+				return nil
+			})
+			Expect(err).To(HaveOccurred(), "ZoneRef kind update should be rejected")
+			Expect(err.Error()).To(ContainSubstring("Value is immutable"), "ZoneRef kind update should be rejected by the immutability validation rule")
+		})
+	})
+
 	Context("When existing resource", func() {
 		It("should successfully recreate an existing rrset", Label("rrset-recreation"), func() {
 			ic := countRrsetsMetrics()

@@ -31,6 +31,7 @@ type RRsetSpec struct {
 	// +optional
 	Comment *string `json:"comment,omitempty"`
 	// ZoneRef reference the zone the RRSet depends on.
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Value is immutable"
 	ZoneRef ZoneRef `json:"zoneRef"`
 }
 
