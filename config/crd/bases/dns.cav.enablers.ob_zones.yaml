@@ -366,6 +366,14 @@ spec:
               syncGeneration:
                 format: int64
                 type: integer
+              syncSpec:
+                description: |-
+                  SyncSpec holds the definition of the Zone as it was the last time it has
+                  been successfully synchronized with the PowerDNS API.
+                  It is unset as long as the Zone has never been successfully synchronized.
+                  It is stored as an opaque snapshot: the spec validation rules constrain what the
+                  user asks for, not what has already been synchronized.
+                x-kubernetes-preserve-unknown-fields: true
               syncStatus:
                 type: string
             type: object

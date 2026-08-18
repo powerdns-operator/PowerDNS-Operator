@@ -115,7 +115,8 @@ func setZoneSynchronizationFailed(stage string, status *ZoneStatus, generation i
 	meta.SetStatusCondition(&status.Conditions, condition)
 }
 
-func setZoneProcessed(status *ZoneStatus, generation int64) {
+func setZoneProcessed(status *ZoneStatus, generation int64, spec *ZoneSpec) {
+	status.SyncSpec = spec.DeepCopy()
 	condition := metav1.Condition{
 		ObservedGeneration: generation,
 		Type:               "Processed",

@@ -137,8 +137,10 @@ func (c *ClusterRRset) SetSynchronizationFailed(stage string, err error) {
 	setRRsetSynchronizationFailed(stage, &c.Status, c.Generation, err)
 }
 
+// SetProcessed flags the ClusterRRset as successfully written to the PowerDNS API.
+// It captures the synchronized definition of the ClusterRRset.
 func (c *ClusterRRset) SetProcessed() {
-	setRRsetProcessed(&c.Status, c.Generation)
+	setRRsetProcessed(&c.Status, c.Generation, &c.Spec)
 }
 
 func (c *ClusterRRset) SetAvailable(name string) {

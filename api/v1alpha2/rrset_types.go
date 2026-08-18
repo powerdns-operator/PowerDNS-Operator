@@ -52,6 +52,15 @@ type RRsetStatus struct {
 	DnsEntryName   *string      `json:"dnsEntryName,omitempty"`
 	SyncStatus     *string      `json:"syncStatus,omitempty"`
 	SyncGeneration *int64       `json:"syncGeneration,omitempty"`
+	// SyncSpec holds the definition of the RRset as it was the last time it has
+	// been successfully synchronized with the PowerDNS API.
+	// It is unset as long as the RRset has never been successfully synchronized.
+	// It is stored as an opaque snapshot: the spec validation rules constrain what the
+	// user asks for, not what has already been synchronized.
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +optional
+	SyncSpec *RRsetSpec `json:"syncSpec,omitempty"`
 	// conditions represent the current state of the RRset resource.
 	// Each condition has a unique type and reflects the status of a specific aspect of the resource.
 	//
@@ -188,8 +197,10 @@ func (c *RRset) SetSynchronizationFailed(stage string, err error) {
 	setRRsetSynchronizationFailed(stage, &c.Status, c.Generation, err)
 }
 
+// SetProcessed flags the RRset as successfully written to the PowerDNS API.
+// It captures the synchronized definition of the RRset.
 func (c *RRset) SetProcessed() {
-	setRRsetProcessed(&c.Status, c.Generation)
+	setRRsetProcessed(&c.Status, c.Generation, &c.Spec)
 }
 
 func (c *RRset) SetAvailable(name string) {

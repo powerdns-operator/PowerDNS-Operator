@@ -34,10 +34,20 @@ type GenericRRsetReconciler struct {
 
 //nolint:unparam // Always return ctrl.Result{} is ok
 func (grr *GenericRRsetReconciler) deleteRRset(ctx context.Context, gr dnsv1alpha2.GenericRRset) error {
+	log := grr.log.WithValues("kind", gr.GetKind(), "name", gr.GetName(), "namespace", gr.GetNamespace())
 	finalizerRemoved := false
 	if controllerutil.ContainsFinalizer(gr, RESOURCES_FINALIZER_NAME) {
-		// our finalizer is present, so lets handle any external dependency
-		if err := grr.deleteRrsetExternalResources(ctx, gr, gr.GetDomain()); err != nil {
+		// our finalizer is present, so lets handle any external dependency.
+		// The external resource is addressed through the last synchronized definition and
+		// not through the spec: the spec may have been modified into something the PowerDNS
+		// API rejects (Stale RRset), in which case it does not designate the external
+		// resource anymore.
+		syncedSpec := gr.GetStatus().SyncSpec
+		if syncedSpec == nil {
+			// The RRset has never been synchronized: there is no external resource to delete,
+			// only the finalizer has to be released.
+			log.V(1).Info("RRset has never been synchronized, skipping external resources deletion")
+		} else if err := grr.deleteRrsetExternalResources(ctx, gr, syncedSpec); err != nil {
 			// if fail to delete the external resource, return with error
 			// so that it can be retried
 			return fmt.Errorf("failed to delete RRset external resources: %w", err)
@@ -160,9 +170,12 @@ func (grr *GenericRRsetReconciler) getRRsetExternalResources(ctx context.Context
 	return &result, nil
 }
 
-func (grr *GenericRRsetReconciler) deleteRrsetExternalResources(ctx context.Context, rrset dnsv1alpha2.GenericRRset, domain string) error {
+// deleteRrsetExternalResources deletes the external resource designated by spec, which is
+// the last definition successfully synchronized with the PowerDNS API and not necessarily
+// the current spec of the RRset.
+func (grr *GenericRRsetReconciler) deleteRrsetExternalResources(ctx context.Context, rrset dnsv1alpha2.GenericRRset, spec *dnsv1alpha2.RRsetSpec) error {
 	log := grr.log.WithValues("kind", rrset.GetKind(), "name", rrset.GetName(), "namespace", rrset.GetNamespace())
-	err := grr.PDNSClient.Records.Delete(ctx, domain, getRRsetName(rrset), powerdns.RRType(rrset.GetSpec().Type))
+	err := grr.PDNSClient.Records.Delete(ctx, getRRsetDomainFromSpec(spec), getRRsetNameFromSpec(spec), powerdns.RRType(spec.Type))
 	// RRset may have already been deleted and it is not an error
 	if err != nil && err.Error() != NOT_FOUND_ERROR_MSG {
 		return fmt.Errorf("PowerDNS API returned an error while deleting external resource: %w", err)

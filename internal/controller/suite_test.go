@@ -596,6 +596,17 @@ func (m mockRecordsClient) Change(ctx context.Context, domain string, name strin
 }
 
 func (m mockRecordsClient) Delete(ctx context.Context, domain string, name string, recordType powerdns.RRType) error {
+	// The PowerDNS API rejects an unknown record type on deletion too, so an RRset whose
+	// Type has been modified into an invalid one cannot be deleted through its current spec
+	// Linked to 'wrong-rrset && wrong-type' tests
+	if string(recordType) == "AA" {
+		return &powerdns.Error{
+			StatusCode: UNPROCESSABLE_ERROR_CODE,
+			Status:     fmt.Sprintf("%d %s", UNPROCESSABLE_ERROR_CODE, UNPROCESSABLE_ERROR_MSG),
+			Message:    "RRset " + name + " IN AA: unknown type given",
+		}
+	}
+
 	deleteFromRecordsMap(makeCanonical(name))
 	return nil
 }

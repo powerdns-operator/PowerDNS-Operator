@@ -124,8 +124,10 @@ func (c *ClusterZone) SetSynchronizationFailed(stage string, err error) {
 	setZoneSynchronizationFailed(stage, &c.Status, c.Generation, err)
 }
 
+// SetProcessed flags the ClusterZone as successfully written to the PowerDNS API.
+// It captures the synchronized definition of the ClusterZone.
 func (c *ClusterZone) SetProcessed() {
-	setZoneProcessed(&c.Status, c.Generation)
+	setZoneProcessed(&c.Status, c.Generation, &c.Spec)
 }
 
 func (c *ClusterZone) UnsetProcessed() {

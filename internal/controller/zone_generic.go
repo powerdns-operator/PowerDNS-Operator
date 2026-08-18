@@ -33,10 +33,15 @@ type GenericZoneReconciler struct {
 
 //nolint:unparam // Always return ctrl.Result{} is ok
 func (gzr *GenericZoneReconciler) deleteZone(ctx context.Context, gz dnsv1alpha2.GenericZone) error {
+	log := gzr.log.WithValues("kind", gz.GetKind(), "name", gz.GetName(), "namespace", gz.GetNamespace())
 	finalizerRemoved := false
 	if controllerutil.ContainsFinalizer(gz, RESOURCES_FINALIZER_NAME) {
 		// our finalizer is present, so lets handle any external dependency
-		if err := gzr.deleteZoneExternalResources(ctx, gz); err != nil {
+		if gz.GetStatus().SyncSpec == nil {
+			// The Zone has never been synchronized: there is no external resource to delete,
+			// only the finalizer has to be released.
+			log.V(1).Info("Zone has never been synchronized, skipping external resources deletion")
+		} else if err := gzr.deleteZoneExternalResources(ctx, gz); err != nil {
 			// if fail to delete the external resource, return with error
 			// so that it can be retried
 			return fmt.Errorf("failed to delete Zone external resources: %w", err)

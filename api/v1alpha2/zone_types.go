@@ -67,6 +67,15 @@ type ZoneStatus struct {
 	Catalog        *string `json:"catalog,omitempty"`
 	SyncStatus     *string `json:"syncStatus,omitempty"`
 	SyncGeneration *int64  `json:"syncGeneration,omitempty"`
+	// SyncSpec holds the definition of the Zone as it was the last time it has
+	// been successfully synchronized with the PowerDNS API.
+	// It is unset as long as the Zone has never been successfully synchronized.
+	// It is stored as an opaque snapshot: the spec validation rules constrain what the
+	// user asks for, not what has already been synchronized.
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +optional
+	SyncSpec *ZoneSpec `json:"syncSpec,omitempty"`
 	// conditions represent the current state of the Zone resource.
 	// Each condition has a unique type and reflects the status of a specific aspect of the resource.
 	//
@@ -191,8 +200,10 @@ func (c *Zone) SetSynchronizationFailed(stage string, err error) {
 	setZoneSynchronizationFailed(stage, &c.Status, c.Generation, err)
 }
 
+// SetProcessed flags the Zone as successfully written to the PowerDNS API.
+// It captures the synchronized definition of the Zone.
 func (c *Zone) SetProcessed() {
-	setZoneProcessed(&c.Status, c.Generation)
+	setZoneProcessed(&c.Status, c.Generation, &c.Spec)
 }
 
 func (c *Zone) UnsetProcessed() {

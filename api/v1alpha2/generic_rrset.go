@@ -138,7 +138,8 @@ func setRRsetSynchronizationFailed(stage string, status *RRsetStatus, generation
 	meta.SetStatusCondition(&status.Conditions, condition)
 }
 
-func setRRsetProcessed(status *RRsetStatus, generation int64) {
+func setRRsetProcessed(status *RRsetStatus, generation int64, spec *RRsetSpec) {
+	status.SyncSpec = spec.DeepCopy()
 	condition := metav1.Condition{
 		ObservedGeneration: generation,
 		Type:               "Processed",
