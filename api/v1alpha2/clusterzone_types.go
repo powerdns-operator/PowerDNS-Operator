@@ -12,6 +12,7 @@
 package v1alpha2
 
 import (
+	"github.com/joeig/go-powerdns/v3"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -66,4 +67,46 @@ func (z *ClusterZone) IsInExpectedStatus(
 		*z.Status.SyncStatus == expectedSyncStatus &&
 		currentAvailableCondition != nil &&
 		currentAvailableCondition.Status == expectedConditionStatus
+}
+
+var _ GenericZone = &ClusterZone{}
+
+func (c *ClusterZone) GetObjectMeta() *metav1.ObjectMeta {
+	return &c.ObjectMeta
+}
+
+func (c *ClusterZone) GetKind() string {
+	return "ClusterZone"
+}
+
+func (c *ClusterZone) GetTypeMeta() *metav1.TypeMeta {
+	return &c.TypeMeta
+}
+
+func (c *ClusterZone) GetSpec() *ZoneSpec {
+	return &c.Spec
+}
+
+func (c *ClusterZone) GetStatus() ZoneStatus {
+	return c.Status
+}
+
+func (c *ClusterZone) SetStatus(status ZoneStatus) {
+	c.Status = status
+}
+
+func (c *ClusterZone) Copy() GenericZone {
+	return c.DeepCopy()
+}
+
+func (c *ClusterZone) SetDuplicated() {
+	setZoneDuplicated(&c.Status, c.Generation)
+}
+
+func (c *ClusterZone) SetSynchronizationFailed(err error) {
+	setZoneSynchronizationFailed(&c.Status, c.Generation, err)
+}
+
+func (c *ClusterZone) SetAvailable(zoneRes *powerdns.Zone) {
+	setZoneAvailable(&c.Status, c.Generation, zoneRes)
 }

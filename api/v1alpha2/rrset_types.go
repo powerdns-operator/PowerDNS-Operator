@@ -12,6 +12,9 @@
 package v1alpha2
 
 import (
+	"fmt"
+	"strings"
+
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -119,4 +122,58 @@ func (r *RRset) IsInExpectedStatus(
 		*r.Status.SyncStatus == expectedSyncStatus &&
 		currentAvailableCondition != nil &&
 		currentAvailableCondition.Status == expectedConditionStatus
+}
+
+var _ GenericRRset = &RRset{}
+
+func (c *RRset) GetObjectMeta() *metav1.ObjectMeta {
+	return &c.ObjectMeta
+}
+
+func (c *RRset) GetKind() string {
+	return "RRset"
+}
+
+func (c *RRset) GetTypeMeta() *metav1.TypeMeta {
+	return &c.TypeMeta
+}
+
+func (c *RRset) GetSpec() *RRsetSpec {
+	return &c.Spec
+}
+
+func (c *RRset) GetStatus() RRsetStatus {
+	return c.Status
+}
+
+func (c *RRset) SetStatus(status RRsetStatus) {
+	c.Status = status
+}
+
+func (c *RRset) Copy() GenericRRset {
+	return c.DeepCopy()
+}
+
+func (c *RRset) GetDomain() string {
+	return fmt.Sprintf("%s.", strings.TrimSuffix(c.Spec.ZoneRef.Name, "."))
+}
+
+func (c *RRset) SetMissingZone(err error) {
+	setMissingZone(&c.Status, c.Generation, err)
+}
+
+func (c *RRset) SetZoneNotAvailable(zoneName string) {
+	setZoneNotAvailable(&c.Status, c.Generation, zoneName)
+}
+
+func (c *RRset) SetDuplicated(lastUpdateTime *metav1.Time, name string) {
+	setRRsetDuplicated(&c.Status, c.Generation, lastUpdateTime, name)
+}
+
+func (c *RRset) SetSynchronizationFailed(lastUpdateTime *metav1.Time, err error) {
+	setRRsetSynchronizationFailed(&c.Status, c.Generation, lastUpdateTime, err)
+}
+
+func (c *RRset) SetAvailable(lastUpdateTime *metav1.Time, name string) {
+	setRRsetAvailable(&c.Status, c.Generation, lastUpdateTime, name)
 }
