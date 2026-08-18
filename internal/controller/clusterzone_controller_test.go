@@ -19,7 +19,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -78,25 +77,8 @@ var _ = Describe("ClusterZone Controller", func() {
 	})
 
 	AfterEach(func() {
-		ctx := context.Background()
-		resource := &dnsv1alpha2.ClusterZone{}
-		err := k8sClient.Get(ctx, typeNamespacedName, resource)
-		Expect(err).NotTo(HaveOccurred())
-
-		By("Cleanup the specific resource instance ClusterZone")
-		Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
-
-		By("Verifying the resource has been deleted")
-		// Waiting for the resource to be fully deleted
-		Eventually(func() bool {
-			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			return apierrors.IsNotFound(err)
-		}, timeout, interval).Should(BeTrue())
-		// Confirm that resource is deleted in the backend
-		Eventually(func() bool {
-			_, found := readFromZonesMap(makeCanonical(resourceName))
-			return found
-		}, timeout, interval).Should(BeFalse())
+		By("Cleaning up DNS resources created by the spec")
+		cleanupAllTestDNSResources(timeout, interval)
 	})
 
 	Context("When existing resource", func() {
@@ -107,7 +89,7 @@ var _ = Describe("ClusterZone Controller", func() {
 			clusterzone := &dnsv1alpha2.ClusterZone{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, clusterzone)
-				return err == nil && clusterzone.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.SYNCED_STATUS, metav1.ConditionTrue)
+				return err == nil && clusterzone.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.SYNCED_STATUS, "Available", metav1.ConditionTrue)
 			}, timeout, interval).Should(BeTrue())
 			Expect(countClusterZonesMetrics()-ic).To(Equal(0), "No more metric should have been created")
 			Expect(getClusterZoneMetricWithLabels(dnsv1alpha2.SYNCED_STATUS, resourceName)).To(Equal(1.0), "metric should be 1.0")
@@ -155,7 +137,7 @@ var _ = Describe("ClusterZone Controller", func() {
 			// Waiting for the resource to be fully modified
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, updatedZone)
-				return err == nil && updatedZone.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.INVALID_STATUS, metav1.ConditionFalse)
+				return err == nil && updatedZone.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.INVALID_STATUS, "Valid", metav1.ConditionFalse)
 			}, timeout, interval).Should(BeTrue())
 		})
 	})

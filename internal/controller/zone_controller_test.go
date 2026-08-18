@@ -81,25 +81,8 @@ var _ = Describe("Zone Controller", func() {
 	})
 
 	AfterEach(func() {
-		ctx := context.Background()
-		resource := &dnsv1alpha2.Zone{}
-		err := k8sClient.Get(ctx, typeNamespacedName, resource)
-		Expect(err).NotTo(HaveOccurred())
-
-		By("Cleanup the specific resource instance Zone")
-		Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
-
-		By("Verifying the resource has been deleted")
-		// Waiting for the resource to be fully deleted
-		Eventually(func() bool {
-			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			return apierrors.IsNotFound(err)
-		}, timeout, interval).Should(BeTrue())
-		// Confirm that resource is deleted in the backend
-		Eventually(func() bool {
-			_, found := readFromZonesMap(makeCanonical(resourceName))
-			return found
-		}, timeout, interval).Should(BeFalse())
+		By("Cleaning up DNS resources created by the spec")
+		cleanupAllTestDNSResources(timeout, interval)
 	})
 
 	Context("When existing resource", func() {
@@ -110,7 +93,7 @@ var _ = Describe("Zone Controller", func() {
 			zone := &dnsv1alpha2.Zone{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, zone)
-				return err == nil && zone.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.SYNCED_STATUS, metav1.ConditionTrue)
+				return err == nil && zone.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.SYNCED_STATUS, "Available", metav1.ConditionTrue)
 			}, timeout, interval).Should(BeTrue())
 			Expect(countZonesMetrics()-ic).To(Equal(0), "No more metric should have been created")
 			Expect(getZoneMetricWithLabels(dnsv1alpha2.SYNCED_STATUS, resourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
@@ -154,7 +137,7 @@ var _ = Describe("Zone Controller", func() {
 			// Waiting for the resource to be fully modified
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, modifiedZone)
-				return err == nil && modifiedZone.IsInExpectedStatus(MODIFIED_GENERATION, dnsv1alpha2.SYNCED_STATUS, metav1.ConditionTrue)
+				return err == nil && modifiedZone.IsInExpectedStatus(MODIFIED_GENERATION, dnsv1alpha2.SYNCED_STATUS, "Available", metav1.ConditionTrue)
 			}, timeout, interval).Should(BeTrue())
 			expectedSerial := initialSerial + uint32(1)
 			Expect(getMockedNameservers(resourceName)).To(Equal(modifiedResourceNameservers), "Nameservers should be equal")
@@ -288,10 +271,13 @@ var _ = Describe("Zone Controller", func() {
 			// Waiting for the resource to be fully modified
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, modifiedZone)
-				return err == nil && modifiedZone.IsInExpectedStatus(MODIFIED_GENERATION, dnsv1alpha2.SYNCED_STATUS, metav1.ConditionTrue)
+				return err == nil && modifiedZone.IsInExpectedStatus(MODIFIED_GENERATION, dnsv1alpha2.SYNCED_STATUS, "Available", metav1.ConditionTrue)
 			}, timeout, interval).Should(BeTrue())
 			Expect(getMockedSOAEditAPI(resourceName)).To(Equal(modifiedResourceSOAEditAPI), "SOA-Edit-API should have changed")
-			Expect(*(modifiedZone.Status.Serial)).To(Equal(epochSerial), "Serial should have changed")
+			// EPOCH serial is Unix time; allow a small window so the assertion
+			// does not fail if the mock Change() runs in the next second.
+			Expect(*(modifiedZone.Status.Serial)).To(BeNumerically(">=", epochSerial), "Serial should have changed to EPOCH")
+			Expect(*(modifiedZone.Status.Serial)).To(BeNumerically("<=", uint32(time.Now().UTC().Unix())+1), "EPOCH serial should be close to now")
 		})
 	})
 
@@ -340,7 +326,7 @@ var _ = Describe("Zone Controller", func() {
 			// Waiting for the resource to be fully modified
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, updatedZone)
-				return err == nil && updatedZone.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.SYNCED_STATUS, metav1.ConditionTrue)
+				return err == nil && updatedZone.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.SYNCED_STATUS, "Available", metav1.ConditionTrue)
 			}, timeout, interval).Should(BeTrue())
 
 			Eventually(func() bool {
@@ -493,7 +479,7 @@ var _ = Describe("Zone Controller", func() {
 			// Waiting for the resource to be fully modified
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, updatedZone)
-				return err == nil && updatedZone.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.INVALID_STATUS, metav1.ConditionFalse)
+				return err == nil && updatedZone.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.INVALID_STATUS, "Valid", metav1.ConditionFalse)
 			}, timeout, interval).Should(BeTrue())
 		})
 	})
@@ -531,7 +517,7 @@ var _ = Describe("Zone Controller", func() {
 			// Waiting for the resource to be fully modified
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, updatedZone)
-				return err == nil && updatedZone.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.INVALID_STATUS, metav1.ConditionFalse)
+				return err == nil && updatedZone.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.INVALID_STATUS, "Valid", metav1.ConditionFalse)
 			}, timeout, interval).Should(BeTrue())
 		})
 	})

@@ -41,6 +41,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	dnsv1alpha2 "github.com/powerdns-operator/powerdns-operator/api/v1alpha2"
 	//+kubebuilder:scaffold:imports
@@ -144,6 +145,57 @@ func resetRecordsMap() {
 	records.Clear()
 }
 
+// cleanupAllTestDNSResources deletes leftover CRs between specs. envtest does not
+// run garbage collection, so extra RRsets/Zones created by a spec would otherwise
+// keep reconciling and make later metric/status assertions flaky.
+func cleanupAllTestDNSResources(timeout, interval time.Duration) {
+	GinkgoHelper()
+	ctx := context.Background()
+
+	rrsets := &dnsv1alpha2.RRsetList{}
+	Expect(k8sClient.List(ctx, rrsets)).To(Succeed())
+	for i := range rrsets.Items {
+		Expect(client.IgnoreNotFound(k8sClient.Delete(ctx, &rrsets.Items[i]))).To(Succeed())
+	}
+
+	clusterRrsets := &dnsv1alpha2.ClusterRRsetList{}
+	Expect(k8sClient.List(ctx, clusterRrsets)).To(Succeed())
+	for i := range clusterRrsets.Items {
+		Expect(client.IgnoreNotFound(k8sClient.Delete(ctx, &clusterRrsets.Items[i]))).To(Succeed())
+	}
+
+	Eventually(func() int {
+		r := &dnsv1alpha2.RRsetList{}
+		c := &dnsv1alpha2.ClusterRRsetList{}
+		Expect(k8sClient.List(ctx, r)).To(Succeed())
+		Expect(k8sClient.List(ctx, c)).To(Succeed())
+		return len(r.Items) + len(c.Items)
+	}, timeout, interval).Should(Equal(0))
+
+	zonesList := &dnsv1alpha2.ZoneList{}
+	Expect(k8sClient.List(ctx, zonesList)).To(Succeed())
+	for i := range zonesList.Items {
+		Expect(client.IgnoreNotFound(k8sClient.Delete(ctx, &zonesList.Items[i]))).To(Succeed())
+	}
+
+	clusterZones := &dnsv1alpha2.ClusterZoneList{}
+	Expect(k8sClient.List(ctx, clusterZones)).To(Succeed())
+	for i := range clusterZones.Items {
+		Expect(client.IgnoreNotFound(k8sClient.Delete(ctx, &clusterZones.Items[i]))).To(Succeed())
+	}
+
+	Eventually(func() int {
+		z := &dnsv1alpha2.ZoneList{}
+		cz := &dnsv1alpha2.ClusterZoneList{}
+		Expect(k8sClient.List(ctx, z)).To(Succeed())
+		Expect(k8sClient.List(ctx, cz)).To(Succeed())
+		return len(z.Items) + len(cz.Items)
+	}, timeout, interval).Should(Equal(0))
+
+	resetZonesMap()
+	resetRecordsMap()
+}
+
 func TestControllers(t *testing.T) {
 	RegisterFailHandler(Fail)
 
@@ -186,6 +238,10 @@ var _ = BeforeSuite(func() {
 
 	k8sManager, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: scheme.Scheme,
+		// Disable the default :8080 metrics server so repeated `go test`
+		// invocations do not fail with "bind: address already in use".
+		Metrics:                metricsserver.Options{BindAddress: "0"},
+		HealthProbeBindAddress: "0",
 	})
 	Expect(err).ToNot(HaveOccurred())
 

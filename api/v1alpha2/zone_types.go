@@ -125,9 +125,10 @@ func init() {
 func (z *Zone) IsInExpectedStatus(
 	expectedMinimumObservedGeneration int64,
 	expectedSyncStatus string,
+	expectedConditionType string,
 	expectedConditionStatus metav1.ConditionStatus,
 ) bool {
-	currentAvailableCondition := meta.FindStatusCondition(z.Status.Conditions, "Available")
+	currentAvailableCondition := meta.FindStatusCondition(z.Status.Conditions, expectedConditionType)
 	return z.Status.ObservedGeneration != nil &&
 		*z.Status.ObservedGeneration >= expectedMinimumObservedGeneration &&
 		z.Status.SyncStatus != nil &&

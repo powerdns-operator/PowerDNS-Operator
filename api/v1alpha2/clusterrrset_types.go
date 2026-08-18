@@ -63,9 +63,10 @@ func init() {
 func (r *ClusterRRset) IsInExpectedStatus(
 	expectedMinimumObservedGeneration int64,
 	expectedSyncStatus string,
+	expectedConditionType string,
 	expectedConditionStatus metav1.ConditionStatus,
 ) bool {
-	currentAvailableCondition := meta.FindStatusCondition(r.Status.Conditions, "Available")
+	currentAvailableCondition := meta.FindStatusCondition(r.Status.Conditions, expectedConditionType)
 	return r.Status.ObservedGeneration != nil &&
 		*r.Status.ObservedGeneration >= expectedMinimumObservedGeneration &&
 		r.Status.SyncStatus != nil &&

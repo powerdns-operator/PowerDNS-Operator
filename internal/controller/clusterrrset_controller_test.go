@@ -18,7 +18,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -135,36 +134,8 @@ var _ = Describe("ClusterRRset Controller", func() {
 	})
 
 	AfterEach(func() {
-		ctx := context.Background()
-		resource := &dnsv1alpha2.ClusterRRset{}
-		err := k8sClient.Get(ctx, clusterRrsetLookupKey, resource)
-		Expect(err).NotTo(HaveOccurred())
-
-		By("Cleaning up the specific resource instance RRset")
-		Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
-
-		By("Verifying the resource has been deleted")
-		Eventually(func() bool {
-			err := k8sClient.Get(ctx, clusterRrsetLookupKey, resource)
-			return apierrors.IsNotFound(err)
-		}, timeout, interval).Should(BeTrue())
-
-		By("Cleaning up the specific resource instance Zone")
-		zone := &dnsv1alpha2.ClusterZone{}
-		err = k8sClient.Get(ctx, clusterZoneLookupKey, zone)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(k8sClient.Delete(ctx, zone)).To(Succeed())
-
-		By("Verifying the resource has been deleted")
-		Eventually(func() bool {
-			err := k8sClient.Get(ctx, clusterZoneLookupKey, zone)
-			return apierrors.IsNotFound(err)
-		}, timeout, interval).Should(BeTrue())
-		// Confirm that resource is deleted in the backend
-		Eventually(func() bool {
-			_, found := readFromZonesMap(makeCanonical(zone.Name))
-			return found
-		}, timeout, interval).Should(BeFalse())
+		By("Cleaning up DNS resources created by the spec")
+		cleanupAllTestDNSResources(timeout, interval)
 	})
 
 	Context("When existing resource", func() {
@@ -175,7 +146,7 @@ var _ = Describe("ClusterRRset Controller", func() {
 			createdResource := &dnsv1alpha2.ClusterRRset{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, clusterRrsetLookupKey, createdResource)
-				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.SYNCED_STATUS, metav1.ConditionTrue)
+				return err == nil && createdResource.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.SYNCED_STATUS, "Available", metav1.ConditionTrue)
 			}, timeout, interval).Should(BeTrue())
 
 			Expect(countClusterRrsetsMetrics()-ic).To(Equal(0), "No more metric should have been created")
@@ -275,7 +246,7 @@ var _ = Describe("ClusterRRset Controller", func() {
 			// Waiting for the resource to be fully modified
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, recreatedRrset)
-				return err == nil && recreatedRrset.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.INVALID_STATUS, metav1.ConditionFalse)
+				return err == nil && recreatedRrset.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.INVALID_STATUS, "Valid", metav1.ConditionFalse)
 			}, timeout, interval).Should(BeTrue())
 		})
 	})
