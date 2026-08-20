@@ -40,7 +40,7 @@ var _ = Describe("ClusterZone", Ordered, func() {
 		Expect(utils.ApplyManifest(manifest)).To(Succeed())
 
 		By("checking the ClusterZone reaches Succeeded sync status")
-		expectSyncSucceeded("clusterzone", zoneName, "")
+		expectSyncSynced("clusterzone", zoneName, "")
 
 		By("checking the zone exists in PowerDNS")
 		Eventually(func(g Gomega) {

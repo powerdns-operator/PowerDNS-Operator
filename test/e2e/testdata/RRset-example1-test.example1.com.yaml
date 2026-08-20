@@ -1,0 +1,16 @@
+# Records of type 'A' in 'example1.com' zone
+# test.example1.com.      IN    A    192.168.1.1
+apiVersion: dns.cav.enablers.ob/v1alpha2
+kind: RRset
+metadata:
+  name: test.example1.com
+  namespace: example1
+spec:
+  type: A
+  name: test
+  ttl: 300
+  records:
+    - 192.168.1.1
+  zoneRef:
+    name: example1.com
+    kind: Zone
