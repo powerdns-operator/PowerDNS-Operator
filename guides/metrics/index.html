@@ -1031,20 +1031,20 @@
 <h2 id="example-metrics">Example Metrics<a class="headerlink" href="#example-metrics" title="Permanent link">⚓</a></h2>
 <p>Based on the <a href="../introduction/overview/#resource-model">example configuration</a>:</p>
 <div class="highlight"><pre><span></span><code># Cluster zones
-clusterzones_status{name=&quot;example.org&quot;,status=&quot;Succeeded&quot;} 1
+clusterzones_status{name="example.org",status="Succeeded"} 1
 
 # Cluster records
-clusterrrsets_status{fqdn=&quot;example.org.&quot;,name=&quot;mx.example.org&quot;,status=&quot;Succeeded&quot;,type=&quot;MX&quot;} 1
-clusterrrsets_status{fqdn=&quot;example.org.&quot;,name=&quot;soa.example.org&quot;,status=&quot;Succeeded&quot;,type=&quot;SOA&quot;} 1
-clusterrrsets_status{fqdn=&quot;ns1.example.org.&quot;,name=&quot;ns1.example.org&quot;,status=&quot;Succeeded&quot;,type=&quot;A&quot;} 1
-clusterrrsets_status{fqdn=&quot;ns2.example.org.&quot;,name=&quot;ns2.example.org&quot;,status=&quot;Succeeded&quot;,type=&quot;A&quot;} 1
+clusterrrsets_status{fqdn="example.org.",name="mx.example.org",status="Succeeded",type="MX"} 1
+clusterrrsets_status{fqdn="example.org.",name="soa.example.org",status="Succeeded",type="SOA"} 1
+clusterrrsets_status{fqdn="ns1.example.org.",name="ns1.example.org",status="Succeeded",type="A"} 1
+clusterrrsets_status{fqdn="ns2.example.org.",name="ns2.example.org",status="Succeeded",type="A"} 1
 
 # Namespace zones
-zones_status{name=&quot;myapp1.example.org&quot;,namespace=&quot;myapp1&quot;,status=&quot;Succeeded&quot;} 1
+zones_status{name="myapp1.example.org",namespace="myapp1",status="Succeeded"} 1
 
 # Namespace records
-rrsets_status{fqdn=&quot;myapp1.example.org.&quot;,name=&quot;soa.myapp1.example.org&quot;,namespace=&quot;myapp1&quot;,status=&quot;Succeeded&quot;,type=&quot;SOA&quot;} 1
-rrsets_status{fqdn=&quot;front.myapp1.example.org.&quot;,name=&quot;front.myapp1.example.org&quot;,namespace=&quot;myapp1&quot;,status=&quot;Succeeded&quot;,type=&quot;A&quot;} 1
+rrsets_status{fqdn="myapp1.example.org.",name="soa.myapp1.example.org",namespace="myapp1",status="Succeeded",type="SOA"} 1
+rrsets_status{fqdn="front.myapp1.example.org.",name="front.myapp1.example.org",namespace="myapp1",status="Succeeded",type="A"} 1
 </code></pre></div>
 <h2 id="monitoring-setup">Monitoring Setup<a class="headerlink" href="#monitoring-setup" title="Permanent link">⚓</a></h2>
 <h3 id="servicemonitor">ServiceMonitor<a class="headerlink" href="#servicemonitor" title="Permanent link">⚓</a></h3>
