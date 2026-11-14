@@ -82,6 +82,7 @@ jobs:
         env:
           TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
         with:
+          version: "v0.76.2"
           image-ref: ${{ inputs.image-name }}:${{ steps.meta.outputs.version }}
           format: "table"
           output: "trivy-report.txt"
