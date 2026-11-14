@@ -12,6 +12,7 @@
 package v1alpha2
 
 import (
+	"github.com/joeig/go-powerdns/v3"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -132,4 +133,46 @@ func (z *Zone) IsInExpectedStatus(
 		*z.Status.SyncStatus == expectedSyncStatus &&
 		currentAvailableCondition != nil &&
 		currentAvailableCondition.Status == expectedConditionStatus
+}
+
+var _ GenericZone = &Zone{}
+
+func (c *Zone) GetObjectMeta() *metav1.ObjectMeta {
+	return &c.ObjectMeta
+}
+
+func (c *Zone) GetKind() string {
+	return "Zone"
+}
+
+func (c *Zone) GetTypeMeta() *metav1.TypeMeta {
+	return &c.TypeMeta
+}
+
+func (c *Zone) GetSpec() *ZoneSpec {
+	return &c.Spec
+}
+
+func (c *Zone) GetStatus() ZoneStatus {
+	return c.Status
+}
+
+func (c *Zone) SetStatus(status ZoneStatus) {
+	c.Status = status
+}
+
+func (c *Zone) Copy() GenericZone {
+	return c.DeepCopy()
+}
+
+func (c *Zone) SetDuplicated() {
+	setZoneDuplicated(&c.Status, c.Generation)
+}
+
+func (c *Zone) SetSynchronizationFailed(err error) {
+	setZoneSynchronizationFailed(&c.Status, c.Generation, err)
+}
+
+func (c *Zone) SetAvailable(zoneRes *powerdns.Zone) {
+	setZoneAvailable(&c.Status, c.Generation, zoneRes)
 }
