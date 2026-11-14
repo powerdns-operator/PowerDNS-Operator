@@ -58,9 +58,10 @@ func init() {
 func (z *ClusterZone) IsInExpectedStatus(
 	expectedMinimumObservedGeneration int64,
 	expectedSyncStatus string,
+	expectedConditionType string,
 	expectedConditionStatus metav1.ConditionStatus,
 ) bool {
-	currentAvailableCondition := meta.FindStatusCondition(z.Status.Conditions, "Available")
+	currentAvailableCondition := meta.FindStatusCondition(z.Status.Conditions, expectedConditionType)
 	return z.Status.ObservedGeneration != nil &&
 		*z.Status.ObservedGeneration >= expectedMinimumObservedGeneration &&
 		z.Status.SyncStatus != nil &&
@@ -103,10 +104,40 @@ func (c *ClusterZone) SetDuplicated() {
 	setZoneDuplicated(&c.Status, c.Generation)
 }
 
-func (c *ClusterZone) SetSynchronizationFailed(err error) {
-	setZoneSynchronizationFailed(&c.Status, c.Generation, err)
-}
-
 func (c *ClusterZone) SetAvailable(zoneRes *powerdns.Zone) {
 	setZoneAvailable(&c.Status, c.Generation, zoneRes)
+}
+
+func (c *ClusterZone) SetValidated() {
+	setZoneValidated(&c.Status, c.Generation)
+}
+
+func (c *ClusterZone) SetUnprocessable(stage string, err error) {
+	setZoneUnprocessable(stage, &c.Status, c.Generation, err)
+}
+
+func (c *ClusterZone) SetBadRequest(stage string, err error) {
+	setZoneBadRequest(stage, &c.Status, c.Generation, err)
+}
+
+func (c *ClusterZone) SetSynchronizationFailed(stage string, err error) {
+	setZoneSynchronizationFailed(stage, &c.Status, c.Generation, err)
+}
+
+// SetProcessed flags the ClusterZone as successfully written to the PowerDNS API.
+// It captures the synchronized definition of the ClusterZone.
+func (c *ClusterZone) SetProcessed() {
+	setZoneProcessed(&c.Status, c.Generation, &c.Spec)
+}
+
+func (c *ClusterZone) UnsetProcessed() {
+	unsetZoneProcessed(&c.Status)
+}
+
+func (c *ClusterZone) UnsetAvailable() {
+	unsetZoneAvailable(&c.Status)
+}
+
+func (c *ClusterZone) SetSyncStatus() {
+	setZoneSyncStatusAndGeneration(&c.Status, c.Generation)
 }

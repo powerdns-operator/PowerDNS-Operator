@@ -25,13 +25,16 @@ import (
 
 var _ = Describe("Transversal", Ordered, func() {
 	ctx := context.Background()
-	namespaces := []string{"example1", "example2", "example3"}
+	namespaces := []string{"example1", "example2", "example3", "example4", "example5"}
 	clusterZoneHelloworldManifest := getManifestFromFile("testdata/ClusterZone-helloworld.com.yaml")
 	clusterZoneInAddrArpaManifest := getManifestFromFile("testdata/ClusterZone-1.168.192.in-addr.arpa.yaml")
 	zoneExample1Manifest := getManifestFromFile("testdata/Zone-example1-example1.com.yaml")
 	zoneDuplicatedHelloworldManifest := getManifestFromFile("testdata/Zone-example3-helloworld.com.yaml")
 	zoneExample2Manifest := getManifestFromFile("testdata/Zone-example2-example2.com.yaml")
 	zoneDuplicatedExample2Manifest := getManifestFromFile("testdata/Zone-example3-example2.com.yaml")
+	zoneExample4Manifest := getManifestFromFile("testdata/Zone-example4-example4.com.yaml")
+	zoneExample4ModificationManifest := getManifestFromFile("testdata/Zone-example4-example4.com-modification.yaml")
+	zoneExample5Manifest := getManifestFromFile("testdata/Zone-example5-example5.com.yaml")
 
 	clusterRRsetMXHelloworldManifest := getManifestFromFile("testdata/ClusterRRset-mx.helloworld.com.yaml")
 	clusterRRsetTestHelloworldManifest := getManifestFromFile("testdata/ClusterRRset-test.helloworld.com.yaml")
@@ -41,6 +44,7 @@ var _ = Describe("Transversal", Ordered, func() {
 	RRsetDefaultMXHelloworldManifest := getManifestFromFile("testdata/RRset-default-mx.helloworld.com.yaml")
 	RRsetDefaultTestHelloworldManifest := getManifestFromFile("testdata/RRset-default-test.helloworld.com.yaml")
 	RRsetDefaultTest1HelloworldManifest := getManifestFromFile("testdata/RRset-default-test1.helloworld.com.yaml")
+	RRsetExample1TestExample1Manifest := getManifestFromFile("testdata/RRset-example1-test.example1.com.yaml")
 	RRsetDefaultTest1FailedHelloworldManifest := getManifestFromFile("testdata/RRset-default-test1failed.helloworld.com.yaml")
 	RRsetDefaultTest2HelloworldManifest := getManifestFromFile("testdata/RRset-default-test2.helloworld.com.yaml")
 	RRsetDefaultTest3IPv4HelloworldManifest := getManifestFromFile("testdata/RRset-default-test3-ipv4.helloworld.com.yaml")
@@ -51,6 +55,8 @@ var _ = Describe("Transversal", Ordered, func() {
 	RRsetDefaultTest6HelloworldManifest := getManifestFromFile("testdata/RRset-default-test6.helloworld.com.yaml")
 	RRsetDefaultTXTHelloworldManifest := getManifestFromFile("testdata/RRset-default-txt.helloworld.com.yaml")
 	RRsetDefaultTestNozoneHelloworldManifest := getManifestFromFile("testdata/RRset-default-test.nozone.com.yaml")
+	RRsetExample5TestExample5Manifest := getManifestFromFile("testdata/RRset-example5-test.example5.com.yaml")
+	RRsetExample1TestExample1ModificationManifest := getManifestFromFile("testdata/RRset-example1-test.example1.com-modification.yaml")
 
 	BeforeAll(func() {
 		for _, namespace := range namespaces {
@@ -70,6 +76,8 @@ var _ = Describe("Transversal", Ordered, func() {
 		utils.DeleteManifest(zoneDuplicatedHelloworldManifest)
 		utils.DeleteManifest(zoneExample2Manifest)
 		utils.DeleteManifest(zoneDuplicatedExample2Manifest)
+		utils.DeleteManifest(zoneExample4Manifest)
+		utils.DeleteManifest(zoneExample5Manifest)
 		utils.DeleteManifest(clusterRRsetMXHelloworldManifest)
 		utils.DeleteManifest(clusterRRsetTestHelloworldManifest)
 		utils.DeleteManifest(clusterRRsetTestDuplicatedHelloworldManifest)
@@ -88,13 +96,15 @@ var _ = Describe("Transversal", Ordered, func() {
 		utils.DeleteManifest(RRsetDefaultTest6HelloworldManifest)
 		utils.DeleteManifest(RRsetDefaultTXTHelloworldManifest)
 		utils.DeleteManifest(RRsetDefaultTestNozoneHelloworldManifest)
+		utils.DeleteManifest(RRsetExample5TestExample5Manifest)
+		utils.DeleteManifest(RRsetExample1TestExample1Manifest)
 	})
 
 	Context("When applying a bunch of manifests", func() {
 		It("should successfully create a ClusterZone for the helloworld.com", func() {
 			By("applying the ClusterZone resource")
 			Expect(utils.ApplyManifest(clusterZoneHelloworldManifest)).To(Succeed())
-			expectSyncSucceeded("clusterzone", "helloworld.com", "")
+			expectSyncSynced("clusterzone", "helloworld.com", "")
 
 			By("checking the Zone exists in PowerDNS")
 			Eventually(func(g Gomega) {
@@ -106,7 +116,7 @@ var _ = Describe("Transversal", Ordered, func() {
 		It("should successfully create a ClusterZone for the in-addr.arpa", func() {
 			By("applying the ClusterZone resource")
 			Expect(utils.ApplyManifest(clusterZoneInAddrArpaManifest)).To(Succeed())
-			expectSyncSucceeded("clusterzone", "1.168.192.in-addr.arpa", "")
+			expectSyncSynced("clusterzone", "1.168.192.in-addr.arpa", "")
 
 			By("checking the Zone exists in PowerDNS")
 			Eventually(func(g Gomega) {
@@ -118,7 +128,7 @@ var _ = Describe("Transversal", Ordered, func() {
 		It("should successfully create a Zone for the example1.com", func() {
 			By("applying the Zone resource")
 			Expect(utils.ApplyManifest(zoneExample1Manifest)).To(Succeed())
-			expectSyncSucceeded("zone", "example1.com", "example1")
+			expectSyncSynced("zone", "example1.com", "example1")
 
 			By("checking the Zone exists in PowerDNS")
 			Eventually(func(g Gomega) {
@@ -130,13 +140,13 @@ var _ = Describe("Transversal", Ordered, func() {
 		It("should fail to create a duplicate Zone for the helloworld.com", func() {
 			By("applying the Zone resource")
 			Expect(utils.ApplyManifest(zoneDuplicatedHelloworldManifest)).To(Succeed())
-			expectSyncFailed("zone", "helloworld.com", "example3")
+			expectSyncInvalid("zone", "helloworld.com", "example3")
 		})
 
 		It("should successfully create a Zone for the example2.com", func() {
 			By("applying the Zone resource")
 			Expect(utils.ApplyManifest(zoneExample2Manifest)).To(Succeed())
-			expectSyncSucceeded("zone", "example2.com", "example2")
+			expectSyncSynced("zone", "example2.com", "example2")
 
 			By("checking the Zone exists in PowerDNS")
 			Eventually(func(g Gomega) {
@@ -145,16 +155,34 @@ var _ = Describe("Transversal", Ordered, func() {
 			}).WithTimeout(pollTimeout).WithPolling(pollInterval).Should(Succeed())
 		})
 
+		It("should successfully create a Zone for the example4.com", func() {
+			By("applying the Zone resource")
+			Expect(utils.ApplyManifest(zoneExample4Manifest)).To(Succeed())
+			expectSyncSynced("zone", "example4.com", "example4")
+
+			By("checking the Zone exists in PowerDNS")
+			Eventually(func(g Gomega) {
+				_, err := pdnsClient.Zones.Get(ctx, "example4.com")
+				g.Expect(err).NotTo(HaveOccurred())
+			}).WithTimeout(pollTimeout).WithPolling(pollInterval).Should(Succeed())
+		})
+
+		It("should fail to create an invalid Zone for the example5.com", func() {
+			By("applying the Zone resource")
+			Expect(utils.ApplyManifest(zoneExample5Manifest)).To(Succeed())
+			expectSyncUnprocessed("zone", "example5.com", "example5")
+		})
+
 		It("should fail to create a duplicated Zone for the example2.com", func() {
 			By("applying the Zone resource")
 			Expect(utils.ApplyManifest(zoneDuplicatedExample2Manifest)).To(Succeed())
-			expectSyncFailed("zone", "example2.com", "example3")
+			expectSyncInvalid("zone", "example2.com", "example3")
 		})
 
 		It("should successfully create a ClusterRRset for mx.helloworld.com", func() {
 			By("applying the ClusterRRset resource")
 			Expect(utils.ApplyManifest(clusterRRsetMXHelloworldManifest)).To(Succeed())
-			expectSyncSucceeded("clusterrrset", "mx.helloworld.com", "")
+			expectSyncSynced("clusterrrset", "mx.helloworld.com", "")
 
 			By("checking the MX record exists in PowerDNS")
 			Eventually(func(g Gomega) {
@@ -168,7 +196,7 @@ var _ = Describe("Transversal", Ordered, func() {
 		It("should successfully create a ClusterRRset for test.helloworld.com", func() {
 			By("applying the ClusterRRset resource")
 			Expect(utils.ApplyManifest(clusterRRsetTestHelloworldManifest)).To(Succeed())
-			expectSyncSucceeded("clusterrrset", "test.helloworld.com", "")
+			expectSyncSynced("clusterrrset", "test.helloworld.com", "")
 
 			By("checking the record exists in PowerDNS")
 			Eventually(func(g Gomega) {
@@ -182,13 +210,13 @@ var _ = Describe("Transversal", Ordered, func() {
 		It("should fail to create a duplicated ClusterRRset for test.helloworld.com", func() {
 			By("applying the ClusterRRset resource")
 			Expect(utils.ApplyManifest(clusterRRsetTestDuplicatedHelloworldManifest)).To(Succeed())
-			expectSyncFailed("clusterrrset", "test-duplicated.helloworld.com", "")
+			expectSyncInvalid("clusterrrset", "test-duplicated.helloworld.com", "")
 		})
 
 		It("should successfully create a RRset for 1.1.168.192.in-addr.arpa.helloworld.com", func() {
 			By("applying the RRset resource")
 			Expect(utils.ApplyManifest(RRsetDefaultInAddrArpaHelloworldManifest)).To(Succeed())
-			expectSyncSucceeded("rrset", "1.1.168.192.in-addr.arpa.helloworld.com", "")
+			expectSyncSynced("rrset", "1.1.168.192.in-addr.arpa.helloworld.com", "")
 
 			By("checking the record exists in PowerDNS")
 			Eventually(func(g Gomega) {
@@ -202,7 +230,7 @@ var _ = Describe("Transversal", Ordered, func() {
 		It("should successfully create a RRset for database.srv.helloworld.com", func() {
 			By("applying the RRset resource")
 			Expect(utils.ApplyManifest(RRsetDefaultDatabaseSrvHelloworldManifest)).To(Succeed())
-			expectSyncSucceeded("rrset", "database.srv.helloworld.com", "")
+			expectSyncSynced("rrset", "database.srv.helloworld.com", "")
 
 			By("checking the record exists in PowerDNS")
 			Eventually(func(g Gomega) {
@@ -216,19 +244,19 @@ var _ = Describe("Transversal", Ordered, func() {
 		It("should fail to create a duplicated RRset for mx.helloworld.com", func() {
 			By("applying the RRset resource")
 			Expect(utils.ApplyManifest(RRsetDefaultMXHelloworldManifest)).To(Succeed())
-			expectSyncFailed("rrset", "mx.helloworld.com", "default")
+			expectSyncInvalid("rrset", "mx.helloworld.com", "default")
 		})
 
 		It("should fail to create a duplicated RRset for test.helloworld.com", func() {
 			By("applying the RRset resource")
 			Expect(utils.ApplyManifest(RRsetDefaultTestHelloworldManifest)).To(Succeed())
-			expectSyncFailed("rrset", "test.helloworld.com", "default")
+			expectSyncInvalid("rrset", "test.helloworld.com", "default")
 		})
 
 		It("should successfully create a RRset for test1.helloworld.com", func() {
 			By("applying the RRset resource")
 			Expect(utils.ApplyManifest(RRsetDefaultTest1HelloworldManifest)).To(Succeed())
-			expectSyncSucceeded("rrset", "test1.helloworld.com", "default")
+			expectSyncSynced("rrset", "test1.helloworld.com", "default")
 
 			By("checking the record exists in PowerDNS")
 			Eventually(func(g Gomega) {
@@ -239,16 +267,30 @@ var _ = Describe("Transversal", Ordered, func() {
 			}).WithTimeout(pollTimeout).WithPolling(pollInterval).Should(Succeed())
 		})
 
+		It("should successfully create a synced RRset for test.example1.com", func() {
+			By("applying the RRset resource")
+			Expect(utils.ApplyManifest(RRsetExample1TestExample1Manifest)).To(Succeed())
+			expectSyncSynced("rrset", "test.example1.com", "example1")
+
+			By("checking the record exists in PowerDNS")
+			Eventually(func(g Gomega) {
+				rrset, err := findRRset(ctx, "example1.com", "test.example1.com", powerdns.RRTypeA)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(*rrset.TTL).To(Equal(uint32(300)))
+				g.Expect(rrsetContents(rrset)).To(ConsistOf("192.168.1.1"))
+			}).WithTimeout(pollTimeout).WithPolling(pollInterval).Should(Succeed())
+		})
+
 		It("should fail to create a duplicated RRset for test1failed.helloworld.com", func() {
 			By("applying the RRset resource")
 			Expect(utils.ApplyManifest(RRsetDefaultTest1FailedHelloworldManifest)).To(Succeed())
-			expectSyncFailed("rrset", "test1failed.helloworld.com", "default")
+			expectSyncInvalid("rrset", "test1failed.helloworld.com", "default")
 		})
 
 		It("should successfully create a RRset for test2.helloworld.com", func() {
 			By("applying the RRset resource")
 			Expect(utils.ApplyManifest(RRsetDefaultTest2HelloworldManifest)).To(Succeed())
-			expectSyncSucceeded("rrset", "test2.helloworld.com", "default")
+			expectSyncSynced("rrset", "test2.helloworld.com", "default")
 
 			By("checking the record exists in PowerDNS")
 			Eventually(func(g Gomega) {
@@ -262,7 +304,7 @@ var _ = Describe("Transversal", Ordered, func() {
 		It("should successfully create a RRset for test3-ipv4.helloworld.com", func() {
 			By("applying the RRset resource")
 			Expect(utils.ApplyManifest(RRsetDefaultTest3IPv4HelloworldManifest)).To(Succeed())
-			expectSyncSucceeded("rrset", "test3-ipv4.helloworld.com", "default")
+			expectSyncSynced("rrset", "test3-ipv4.helloworld.com", "default")
 
 			By("checking the record exists in PowerDNS")
 			Eventually(func(g Gomega) {
@@ -276,7 +318,7 @@ var _ = Describe("Transversal", Ordered, func() {
 		It("should successfully create a RRset for test3-ipv6.helloworld.com", func() {
 			By("applying the RRset resource")
 			Expect(utils.ApplyManifest(RRsetDefaultTest3IPv6HelloworldManifest)).To(Succeed())
-			expectSyncSucceeded("rrset", "test3-ipv6.helloworld.com", "default")
+			expectSyncSynced("rrset", "test3-ipv6.helloworld.com", "default")
 
 			By("checking the record exists in PowerDNS")
 			Eventually(func(g Gomega) {
@@ -290,7 +332,7 @@ var _ = Describe("Transversal", Ordered, func() {
 		It("should successfully create a RRset for test4.helloworld.com", func() {
 			By("applying the RRset resource")
 			Expect(utils.ApplyManifest(RRsetDefaultTest4HelloworldManifest)).To(Succeed())
-			expectSyncSucceeded("rrset", "test4.helloworld.com", "default")
+			expectSyncSynced("rrset", "test4.helloworld.com", "default")
 
 			By("checking the record exists in PowerDNS")
 			Eventually(func(g Gomega) {
@@ -304,7 +346,7 @@ var _ = Describe("Transversal", Ordered, func() {
 		It("should successfully create a RRset for test5.helloworld.com", func() {
 			By("applying the RRset resource")
 			Expect(utils.ApplyManifest(RRsetDefaultTest5HelloworldManifest)).To(Succeed())
-			expectSyncSucceeded("rrset", "test5.helloworld.com", "default")
+			expectSyncSynced("rrset", "test5.helloworld.com", "default")
 
 			By("checking the record exists in PowerDNS")
 			Eventually(func(g Gomega) {
@@ -318,7 +360,7 @@ var _ = Describe("Transversal", Ordered, func() {
 		It("should successfully create a RRset for test6-ok.helloworld.com", func() {
 			By("applying the RRset resource")
 			Expect(utils.ApplyManifest(RRsetDefaultTest6OKHelloworldManifest)).To(Succeed())
-			expectSyncSucceeded("rrset", "test6-ok.helloworld.com", "default")
+			expectSyncSynced("rrset", "test6-ok.helloworld.com", "default")
 
 			By("checking the record exists in PowerDNS")
 			Eventually(func(g Gomega) {
@@ -332,13 +374,13 @@ var _ = Describe("Transversal", Ordered, func() {
 		It("should fail to create a RRset for test6.helloworld.com", func() {
 			By("applying the RRset resource")
 			Expect(utils.ApplyManifest(RRsetDefaultTest6HelloworldManifest)).To(Succeed())
-			expectSyncFailed("rrset", "test6.helloworld.com", "default")
+			expectSyncUnprocessed("rrset", "test6.helloworld.com", "default")
 		})
 
 		It("should successfully create a RRset for txt.helloworld.com", func() {
 			By("applying the RRset resource")
 			Expect(utils.ApplyManifest(RRsetDefaultTXTHelloworldManifest)).To(Succeed())
-			expectSyncSucceeded("rrset", "txt.helloworld.com", "default")
+			expectSyncSynced("rrset", "txt.helloworld.com", "default")
 
 			By("checking the record exists in PowerDNS")
 			Eventually(func(g Gomega) {
@@ -352,7 +394,25 @@ var _ = Describe("Transversal", Ordered, func() {
 		It("should fail to create a RRset for test.nozone.com", func() {
 			By("applying the RRset resource")
 			Expect(utils.ApplyManifest(RRsetDefaultTestNozoneHelloworldManifest)).To(Succeed())
-			expectSyncPending("rrset", "test.nozone.com", "default")
+			expectSyncInvalid("rrset", "test.nozone.com", "default")
+		})
+
+		It("should fail to create a RRset for test.example5.com", func() {
+			By("applying the RRset resource")
+			Expect(utils.ApplyManifest(RRsetExample5TestExample5Manifest)).To(Succeed())
+			expectSyncInvalid("rrset", "test.example5.com", "example5")
+		})
+
+		It("should fail to update a synced RRset for test.example1.com", func() {
+			By("applying the RRset resource")
+			Expect(utils.ApplyManifest(RRsetExample1TestExample1ModificationManifest)).To(Succeed())
+			expectSyncStale("rrset", "test.example1.com", "example1")
+		})
+
+		It("should fail to update a synced Zone for example4.com", func() {
+			By("applying the Zone resource")
+			Expect(utils.ApplyManifest(zoneExample4ModificationManifest)).To(Succeed())
+			expectSyncStale("zone", "example4.com", "example4")
 		})
 	})
 })

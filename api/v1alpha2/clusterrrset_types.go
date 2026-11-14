@@ -63,9 +63,10 @@ func init() {
 func (r *ClusterRRset) IsInExpectedStatus(
 	expectedMinimumObservedGeneration int64,
 	expectedSyncStatus string,
+	expectedConditionType string,
 	expectedConditionStatus metav1.ConditionStatus,
 ) bool {
-	currentAvailableCondition := meta.FindStatusCondition(r.Status.Conditions, "Available")
+	currentAvailableCondition := meta.FindStatusCondition(r.Status.Conditions, expectedConditionType)
 	return r.Status.ObservedGeneration != nil &&
 		*r.Status.ObservedGeneration >= expectedMinimumObservedGeneration &&
 		r.Status.SyncStatus != nil &&
@@ -108,22 +109,44 @@ func (c *ClusterRRset) GetDomain() string {
 	return fmt.Sprintf("%s.", strings.TrimSuffix(c.Spec.ZoneRef.Name, "."))
 }
 
-func (c *ClusterRRset) SetMissingZone(err error) {
-	setMissingZone(&c.Status, c.Generation, err)
+func (c *ClusterRRset) SetMissingZone() {
+	setMissingZone(&c.Status, c.Generation)
 }
 
 func (c *ClusterRRset) SetZoneNotAvailable(zoneName string) {
 	setZoneNotAvailable(&c.Status, c.Generation, zoneName)
 }
 
-func (c *ClusterRRset) SetDuplicated(lastUpdateTime *metav1.Time, name string) {
-	setRRsetDuplicated(&c.Status, c.Generation, lastUpdateTime, name)
+func (c *ClusterRRset) SetDuplicated() {
+	setRRsetDuplicated(&c.Status, c.Generation)
 }
 
-func (c *ClusterRRset) SetSynchronizationFailed(lastUpdateTime *metav1.Time, err error) {
-	setRRsetSynchronizationFailed(&c.Status, c.Generation, lastUpdateTime, err)
+func (c *ClusterRRset) SetValidated() {
+	setRRsetValidated(&c.Status, c.Generation)
 }
 
-func (c *ClusterRRset) SetAvailable(lastUpdateTime *metav1.Time, name string) {
-	setRRsetAvailable(&c.Status, c.Generation, lastUpdateTime, name)
+func (c *ClusterRRset) SetUnprocessable(stage string, err error) {
+	setRRsetUnprocessable(stage, &c.Status, c.Generation, err)
+}
+
+func (c *ClusterRRset) SetBadRequest(stage string, err error) {
+	setRRsetBadRequest(stage, &c.Status, c.Generation, err)
+}
+
+func (c *ClusterRRset) SetSynchronizationFailed(stage string, err error) {
+	setRRsetSynchronizationFailed(stage, &c.Status, c.Generation, err)
+}
+
+// SetProcessed flags the ClusterRRset as successfully written to the PowerDNS API.
+// It captures the synchronized definition of the ClusterRRset.
+func (c *ClusterRRset) SetProcessed() {
+	setRRsetProcessed(&c.Status, c.Generation, &c.Spec)
+}
+
+func (c *ClusterRRset) SetAvailable(name string) {
+	setRRsetAvailable(&c.Status, c.Generation, name)
+}
+
+func (c *ClusterRRset) SetSyncStatus(name string) {
+	setRRsetSyncStatus(&c.Status, c.Generation, name)
 }

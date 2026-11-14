@@ -64,8 +64,18 @@ type ZoneStatus struct {
 	DNSsec *bool `json:"dnssec,omitempty"`
 	// The catalog this zone is a member of.
 	// +optional
-	Catalog    *string `json:"catalog,omitempty"`
-	SyncStatus *string `json:"syncStatus,omitempty"`
+	Catalog        *string `json:"catalog,omitempty"`
+	SyncStatus     *string `json:"syncStatus,omitempty"`
+	SyncGeneration *int64  `json:"syncGeneration,omitempty"`
+	// SyncSpec holds the definition of the Zone as it was the last time it has
+	// been successfully synchronized with the PowerDNS API.
+	// It is unset as long as the Zone has never been successfully synchronized.
+	// It is stored as an opaque snapshot: the spec validation rules constrain what the
+	// user asks for, not what has already been synchronized.
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +optional
+	SyncSpec *ZoneSpec `json:"syncSpec,omitempty"`
 	// conditions represent the current state of the Zone resource.
 	// Each condition has a unique type and reflects the status of a specific aspect of the resource.
 	//
@@ -124,9 +134,10 @@ func init() {
 func (z *Zone) IsInExpectedStatus(
 	expectedMinimumObservedGeneration int64,
 	expectedSyncStatus string,
+	expectedConditionType string,
 	expectedConditionStatus metav1.ConditionStatus,
 ) bool {
-	currentAvailableCondition := meta.FindStatusCondition(z.Status.Conditions, "Available")
+	currentAvailableCondition := meta.FindStatusCondition(z.Status.Conditions, expectedConditionType)
 	return z.Status.ObservedGeneration != nil &&
 		*z.Status.ObservedGeneration >= expectedMinimumObservedGeneration &&
 		z.Status.SyncStatus != nil &&
@@ -169,10 +180,40 @@ func (c *Zone) SetDuplicated() {
 	setZoneDuplicated(&c.Status, c.Generation)
 }
 
-func (c *Zone) SetSynchronizationFailed(err error) {
-	setZoneSynchronizationFailed(&c.Status, c.Generation, err)
-}
-
 func (c *Zone) SetAvailable(zoneRes *powerdns.Zone) {
 	setZoneAvailable(&c.Status, c.Generation, zoneRes)
+}
+
+func (c *Zone) SetValidated() {
+	setZoneValidated(&c.Status, c.Generation)
+}
+
+func (c *Zone) SetUnprocessable(stage string, err error) {
+	setZoneUnprocessable(stage, &c.Status, c.Generation, err)
+}
+
+func (c *Zone) SetBadRequest(stage string, err error) {
+	setZoneBadRequest(stage, &c.Status, c.Generation, err)
+}
+
+func (c *Zone) SetSynchronizationFailed(stage string, err error) {
+	setZoneSynchronizationFailed(stage, &c.Status, c.Generation, err)
+}
+
+// SetProcessed flags the Zone as successfully written to the PowerDNS API.
+// It captures the synchronized definition of the Zone.
+func (c *Zone) SetProcessed() {
+	setZoneProcessed(&c.Status, c.Generation, &c.Spec)
+}
+
+func (c *Zone) UnsetProcessed() {
+	unsetZoneProcessed(&c.Status)
+}
+
+func (c *Zone) UnsetAvailable() {
+	unsetZoneAvailable(&c.Status)
+}
+
+func (c *Zone) SetSyncStatus() {
+	setZoneSyncStatusAndGeneration(&c.Status, c.Generation)
 }

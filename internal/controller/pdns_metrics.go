@@ -1,10 +1,14 @@
 package controller
 
 import (
+	"sync"
+
 	dnsv1alpha2 "github.com/powerdns-operator/powerdns-operator/api/v1alpha2"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 )
+
+var metricsMu sync.Mutex
 
 var (
 	rrsetsStatusesMetric = prometheus.NewGaugeVec(
@@ -38,6 +42,12 @@ var (
 )
 
 func updateRrsetsMetrics(fqdn string, gr dnsv1alpha2.GenericRRset) {
+	if gr.GetStatus().SyncStatus == nil {
+		return
+	}
+	metricsMu.Lock()
+	defer metricsMu.Unlock()
+	removeRrsetMetricsLocked(gr)
 	switch gr.(type) {
 	case *dnsv1alpha2.RRset:
 		rrsetsStatusesMetric.With(map[string]string{
@@ -59,6 +69,12 @@ func updateRrsetsMetrics(fqdn string, gr dnsv1alpha2.GenericRRset) {
 
 }
 func removeRrsetMetrics(gr dnsv1alpha2.GenericRRset) {
+	metricsMu.Lock()
+	defer metricsMu.Unlock()
+	removeRrsetMetricsLocked(gr)
+}
+
+func removeRrsetMetricsLocked(gr dnsv1alpha2.GenericRRset) {
 	switch gr.(type) {
 	case *dnsv1alpha2.RRset:
 		rrsetsStatusesMetric.DeletePartialMatch(
@@ -77,6 +93,12 @@ func removeRrsetMetrics(gr dnsv1alpha2.GenericRRset) {
 }
 
 func updateZonesMetrics(gz dnsv1alpha2.GenericZone) {
+	if gz.GetStatus().SyncStatus == nil {
+		return
+	}
+	metricsMu.Lock()
+	defer metricsMu.Unlock()
+	removeZonesMetricsLocked(gz)
 	switch gz.(type) {
 	case *dnsv1alpha2.Zone:
 		zonesStatusesMetric.With(map[string]string{
@@ -92,6 +114,12 @@ func updateZonesMetrics(gz dnsv1alpha2.GenericZone) {
 	}
 }
 func removeZonesMetrics(gz dnsv1alpha2.GenericZone) {
+	metricsMu.Lock()
+	defer metricsMu.Unlock()
+	removeZonesMetricsLocked(gz)
+}
+
+func removeZonesMetricsLocked(gz dnsv1alpha2.GenericZone) {
 	switch gz.(type) {
 	case *dnsv1alpha2.Zone:
 		zonesStatusesMetric.DeletePartialMatch(

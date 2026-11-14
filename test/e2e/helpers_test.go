@@ -68,25 +68,25 @@ func rrsetContents(rrset *powerdns.RRset) []string {
 	return out
 }
 
-// expectSyncSucceeded waits until the resource reports a "Succeeded" syncStatus.
+// expectSyncSynced waits until the resource reports a "Succeeded" syncStatus.
 // namespace may be empty for cluster-scoped resources.
-func expectSyncSucceeded(kind, name, namespace string) {
+func expectSyncSynced(kind, name, namespace string) {
 	GinkgoHelper()
 	Eventually(func(g Gomega) {
 		status, err := utils.GetResourceField(kind, name, namespace, "{.status.syncStatus}")
 		g.Expect(err).NotTo(HaveOccurred())
-		g.Expect(status).To(Equal("Succeeded"))
+		g.Expect(status).To(Equal("Synced"))
 	}).WithTimeout(pollTimeout).WithPolling(pollInterval).Should(Succeed())
 }
 
-// expectSyncFailed waits until the resource reports a "Failed" syncStatus.
+// expectSyncInvalid waits until the resource reports a "Failed" syncStatus.
 // namespace may be empty for cluster-scoped resources.
-func expectSyncFailed(kind, name, namespace string) {
+func expectSyncInvalid(kind, name, namespace string) {
 	GinkgoHelper()
 	Eventually(func(g Gomega) {
 		status, err := utils.GetResourceField(kind, name, namespace, "{.status.syncStatus}")
 		g.Expect(err).NotTo(HaveOccurred())
-		g.Expect(status).To(Equal("Failed"))
+		g.Expect(status).To(Equal("Invalid"))
 	}).WithTimeout(pollTimeout).WithPolling(pollInterval).Should(Succeed())
 }
 
@@ -98,6 +98,28 @@ func expectSyncPending(kind, name, namespace string) {
 		status, err := utils.GetResourceField(kind, name, namespace, "{.status.syncStatus}")
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(status).To(Equal("Pending"))
+	}).WithTimeout(pollTimeout).WithPolling(pollInterval).Should(Succeed())
+}
+
+// expectSyncStale waits until the resource reports a "Stale" syncStatus.
+// namespace may be empty for cluster-scoped resources.
+func expectSyncStale(kind, name, namespace string) {
+	GinkgoHelper()
+	Eventually(func(g Gomega) {
+		status, err := utils.GetResourceField(kind, name, namespace, "{.status.syncStatus}")
+		g.Expect(err).NotTo(HaveOccurred())
+		g.Expect(status).To(Equal("Stale"))
+	}).WithTimeout(pollTimeout).WithPolling(pollInterval).Should(Succeed())
+}
+
+// expectSyncUnprocessed waits until the resource reports a "Unprocessed" syncStatus.
+// namespace may be empty for cluster-scoped resources.
+func expectSyncUnprocessed(kind, name, namespace string) {
+	GinkgoHelper()
+	Eventually(func(g Gomega) {
+		status, err := utils.GetResourceField(kind, name, namespace, "{.status.syncStatus}")
+		g.Expect(err).NotTo(HaveOccurred())
+		g.Expect(status).To(Equal("Unprocessed"))
 	}).WithTimeout(pollTimeout).WithPolling(pollInterval).Should(Succeed())
 }
 

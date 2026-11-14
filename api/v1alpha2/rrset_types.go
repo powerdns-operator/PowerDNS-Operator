@@ -51,6 +51,16 @@ type RRsetStatus struct {
 	LastUpdateTime *metav1.Time `json:"lastUpdateTime,omitempty"`
 	DnsEntryName   *string      `json:"dnsEntryName,omitempty"`
 	SyncStatus     *string      `json:"syncStatus,omitempty"`
+	SyncGeneration *int64       `json:"syncGeneration,omitempty"`
+	// SyncSpec holds the definition of the RRset as it was the last time it has
+	// been successfully synchronized with the PowerDNS API.
+	// It is unset as long as the RRset has never been successfully synchronized.
+	// It is stored as an opaque snapshot: the spec validation rules constrain what the
+	// user asks for, not what has already been synchronized.
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +optional
+	SyncSpec *RRsetSpec `json:"syncSpec,omitempty"`
 	// conditions represent the current state of the RRset resource.
 	// Each condition has a unique type and reflects the status of a specific aspect of the resource.
 	//
@@ -113,9 +123,10 @@ func init() {
 func (r *RRset) IsInExpectedStatus(
 	expectedMinimumObservedGeneration int64,
 	expectedSyncStatus string,
+	expectedConditionType string,
 	expectedConditionStatus metav1.ConditionStatus,
 ) bool {
-	currentAvailableCondition := meta.FindStatusCondition(r.Status.Conditions, "Available")
+	currentAvailableCondition := meta.FindStatusCondition(r.Status.Conditions, expectedConditionType)
 	return r.Status.ObservedGeneration != nil &&
 		*r.Status.ObservedGeneration >= expectedMinimumObservedGeneration &&
 		r.Status.SyncStatus != nil &&
@@ -158,22 +169,44 @@ func (c *RRset) GetDomain() string {
 	return fmt.Sprintf("%s.", strings.TrimSuffix(c.Spec.ZoneRef.Name, "."))
 }
 
-func (c *RRset) SetMissingZone(err error) {
-	setMissingZone(&c.Status, c.Generation, err)
+func (c *RRset) SetMissingZone() {
+	setMissingZone(&c.Status, c.Generation)
 }
 
 func (c *RRset) SetZoneNotAvailable(zoneName string) {
 	setZoneNotAvailable(&c.Status, c.Generation, zoneName)
 }
 
-func (c *RRset) SetDuplicated(lastUpdateTime *metav1.Time, name string) {
-	setRRsetDuplicated(&c.Status, c.Generation, lastUpdateTime, name)
+func (c *RRset) SetDuplicated() {
+	setRRsetDuplicated(&c.Status, c.Generation)
 }
 
-func (c *RRset) SetSynchronizationFailed(lastUpdateTime *metav1.Time, err error) {
-	setRRsetSynchronizationFailed(&c.Status, c.Generation, lastUpdateTime, err)
+func (c *RRset) SetValidated() {
+	setRRsetValidated(&c.Status, c.Generation)
 }
 
-func (c *RRset) SetAvailable(lastUpdateTime *metav1.Time, name string) {
-	setRRsetAvailable(&c.Status, c.Generation, lastUpdateTime, name)
+func (c *RRset) SetUnprocessable(stage string, err error) {
+	setRRsetUnprocessable(stage, &c.Status, c.Generation, err)
+}
+
+func (c *RRset) SetBadRequest(stage string, err error) {
+	setRRsetBadRequest(stage, &c.Status, c.Generation, err)
+}
+
+func (c *RRset) SetSynchronizationFailed(stage string, err error) {
+	setRRsetSynchronizationFailed(stage, &c.Status, c.Generation, err)
+}
+
+// SetProcessed flags the RRset as successfully written to the PowerDNS API.
+// It captures the synchronized definition of the RRset.
+func (c *RRset) SetProcessed() {
+	setRRsetProcessed(&c.Status, c.Generation, &c.Spec)
+}
+
+func (c *RRset) SetAvailable(name string) {
+	setRRsetAvailable(&c.Status, c.Generation, name)
+}
+
+func (c *RRset) SetSyncStatus(name string) {
+	setRRsetSyncStatus(&c.Status, c.Generation, name)
 }
