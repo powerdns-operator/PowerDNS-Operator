@@ -171,6 +171,7 @@ var _ = Describe("Transversal", Ordered, func() {
 			By("applying the Zone resource")
 			Expect(utils.ApplyManifest(zoneExample5Manifest)).To(Succeed())
 			expectSyncUnprocessed("zone", "example5.com", "example5")
+			expectProcessedReason("zone", "example5.com", "example5", "Unprocessable")
 		})
 
 		It("should fail to create a duplicated Zone for the example2.com", func() {
@@ -375,6 +376,7 @@ var _ = Describe("Transversal", Ordered, func() {
 			By("applying the RRset resource")
 			Expect(utils.ApplyManifest(RRsetDefaultTest6HelloworldManifest)).To(Succeed())
 			expectSyncUnprocessed("rrset", "test6.helloworld.com", "default")
+			expectProcessedReason("rrset", "test6.helloworld.com", "default", "Unprocessable")
 		})
 
 		It("should successfully create a RRset for txt.helloworld.com", func() {
@@ -407,12 +409,14 @@ var _ = Describe("Transversal", Ordered, func() {
 			By("applying the RRset resource")
 			Expect(utils.ApplyManifest(RRsetExample1TestExample1ModificationManifest)).To(Succeed())
 			expectSyncStale("rrset", "test.example1.com", "example1")
+			expectProcessedReason("rrset", "test.example1.com", "example1", "Unprocessable")
 		})
 
 		It("should fail to update a synced Zone for example4.com", func() {
 			By("applying the Zone resource")
 			Expect(utils.ApplyManifest(zoneExample4ModificationManifest)).To(Succeed())
 			expectSyncStale("zone", "example4.com", "example4")
+			expectProcessedReason("zone", "example4.com", "example4", "Unprocessable")
 		})
 	})
 })

@@ -13,6 +13,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -167,7 +168,7 @@ func TestCreateExternalResources(t *testing.T) {
 	}{
 		{"Valid Zone", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: name1, Namespace: namespace1}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi1}}, nil},
 		{"Valid ClusterZone", &dnsv1alpha2.ClusterZone{ObjectMeta: metav1.ObjectMeta{Name: name2}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers2, Catalog: &catalog, SOAEditAPI: &soaEditApi2}}, nil},
-		{"Already existing Zone", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, powerdns.Error{StatusCode: 409, Status: "409 Conflict", Message: "Conflict"}},
+		{"Already existing Zone", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, &powerdns.Error{StatusCode: 409, Status: "409 Conflict", Message: "Conflict"}},
 		{"communication error", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: FAKE_SITE, Namespace: namespace}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, &powerdns.Error{StatusCode: 500, Status: "500 Internal Server Error", Message: "Internal Server Error"}},
 	}
 
@@ -208,8 +209,8 @@ func TestUpdateExternalResources(t *testing.T) {
 	}{
 		{"Valid Zone", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace}, Spec: dnsv1alpha2.ZoneSpec{Kind: SLAVE_KIND_ZONE, Nameservers: nameservers, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, nil},
 		{"Valid ClusterZone", &dnsv1alpha2.ClusterZone{ObjectMeta: metav1.ObjectMeta{Name: name}, Spec: dnsv1alpha2.ZoneSpec{Kind: NATIVE_KIND_ZONE, Nameservers: nameservers, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, nil},
-		{"Non-existing Zone", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: name1, Namespace: namespace1}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi1}}, powerdns.Error{StatusCode: 404, Status: "404 Not Found", Message: "Not Found"}},
-		{"Non-existing ClusterZone", &dnsv1alpha2.ClusterZone{ObjectMeta: metav1.ObjectMeta{Name: name2}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers2, Catalog: &catalog, SOAEditAPI: &soaEditApi2}}, powerdns.Error{StatusCode: 404, Status: "404 Not Found", Message: "Not Found"}},
+		{"Non-existing Zone", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: name1, Namespace: namespace1}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers1, Catalog: &catalog, SOAEditAPI: &soaEditApi1}}, &powerdns.Error{StatusCode: 404, Status: "404 Not Found", Message: "Not Found"}},
+		{"Non-existing ClusterZone", &dnsv1alpha2.ClusterZone{ObjectMeta: metav1.ObjectMeta{Name: name2}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers2, Catalog: &catalog, SOAEditAPI: &soaEditApi2}}, &powerdns.Error{StatusCode: 404, Status: "404 Not Found", Message: "Not Found"}},
 		{"communication error", &dnsv1alpha2.Zone{ObjectMeta: metav1.ObjectMeta{Name: FAKE_SITE, Namespace: namespace}, Spec: dnsv1alpha2.ZoneSpec{Kind: MASTER_KIND_ZONE, Nameservers: nameservers, Catalog: &catalog, SOAEditAPI: &soaEditApi}}, &powerdns.Error{StatusCode: 500, Status: "500 Internal Server Error", Message: "Internal Server Error"}},
 	}
 
@@ -441,6 +442,30 @@ func TestUpdateRrsetExternalResources(t *testing.T) {
 			err := grr.updateRrsetExternalResources(ctx, tc.rrset, tc.rrset.GetDomain())
 			if !cmp.Equal(err, tc.e) {
 				t.Errorf("got %v, want %v", err, tc.e)
+			}
+		})
+	}
+}
+
+func TestPdnsStatusCode(t *testing.T) {
+	unprocessable := &powerdns.Error{StatusCode: UNPROCESSABLE_ERROR_CODE, Status: "422 Unprocessable Entity", Message: "RRset bad-ns.com. IN NS: non-hostname content ns1.bad-ns.com-."}
+	badRequest := &powerdns.Error{StatusCode: BAD_REQUEST_ERROR_CODE, Status: "400 Bad Request", Message: "Invalid JSON"}
+
+	var testCases = []struct {
+		description string
+		err         error
+		want        int
+	}{
+		{"PowerDNS error", unprocessable, UNPROCESSABLE_ERROR_CODE},
+		{"Wrapped PowerDNS error", fmt.Errorf("PowerDNS API returned an error while creating external resource: %w", badRequest), BAD_REQUEST_ERROR_CODE},
+		{"Other error", errors.New("connection refused"), 0},
+		{"No error", nil, 0},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if got := pdnsStatusCode(tc.err); got != tc.want {
+				t.Errorf("got %d, want %d", got, tc.want)
 			}
 		})
 	}

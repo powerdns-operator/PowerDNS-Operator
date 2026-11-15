@@ -20,6 +20,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -1194,6 +1195,9 @@ var _ = Describe("RRset Controller", func() {
 			Expect(getRrsetMetricWithLabels(badTypeResourceDNSName+"."+zoneRef+".", badTypeResourceType, dnsv1alpha2.UNPROCESSED_STATUS, badTypeResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(DnsFqdn, badTypeResourceType)).To(Equal([]string{}), "RRset should not have been created in backend")
 			Expect(*createdResource.Status.SyncStatus).To(Equal(dnsv1alpha2.UNPROCESSED_STATUS), "RRset status should be 'Unprocessed'")
+			processed := meta.FindStatusCondition(createdResource.Status.Conditions, "Processed")
+			Expect(processed).NotTo(BeNil(), "RRset should have a Processed condition")
+			Expect(processed.Reason).To(Equal("Unprocessable"), "PowerDNS 422 error should set the Unprocessable reason")
 			Expect(createdResource.GetOwnerReferences()).NotTo(BeEmpty(), "RRset should have setOwnerReference")
 			Expect(createdResource.GetOwnerReferences()[0].Name).To(Equal(zoneRef), "RRset should have setOwnerReference to Zone")
 			Expect(createdResource.GetFinalizers()).To(ContainElement(RESOURCES_FINALIZER_NAME), "RRset should contain the finalizer")
@@ -1257,6 +1261,9 @@ var _ = Describe("RRset Controller", func() {
 			Expect(getRrsetMetricWithLabels(badFormatResourceDNSName+"."+zoneRef+".", badFormatResourceType, dnsv1alpha2.UNPROCESSED_STATUS, badFormatResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(DnsFqdn, badFormatResourceType)).To(Equal([]string{}), "RRset should not have been created in backend")
 			Expect(*createdResource.Status.SyncStatus).To(Equal(dnsv1alpha2.UNPROCESSED_STATUS), "RRset status should be 'Unprocessed'")
+			processed := meta.FindStatusCondition(createdResource.Status.Conditions, "Processed")
+			Expect(processed).NotTo(BeNil(), "RRset should have a Processed condition")
+			Expect(processed.Reason).To(Equal("Unprocessable"), "PowerDNS 422 error should set the Unprocessable reason")
 			Expect(createdResource.GetOwnerReferences()).NotTo(BeEmpty(), "RRset should have setOwnerReference")
 			Expect(createdResource.GetOwnerReferences()[0].Name).To(Equal(zoneRef), "RRset should have setOwnerReference to Zone")
 			Expect(createdResource.GetFinalizers()).To(ContainElement(RESOURCES_FINALIZER_NAME), "RRset should contain the finalizer")
@@ -1320,6 +1327,9 @@ var _ = Describe("RRset Controller", func() {
 			Expect(getRrsetMetricWithLabels(unquotedResourceDNSName+"."+zoneRef+".", unquotedResourceType, dnsv1alpha2.UNPROCESSED_STATUS, unquotedResourceName, resourceNamespace)).To(Equal(1.0), "metric should be 1.0")
 			Expect(getMockedRecordsForType(DnsFqdn, unquotedResourceType)).To(Equal([]string{}), "RRset should not have been created in backend")
 			Expect(*createdResource.Status.SyncStatus).To(Equal(dnsv1alpha2.UNPROCESSED_STATUS), "RRset status should be 'Unprocessed'")
+			processed := meta.FindStatusCondition(createdResource.Status.Conditions, "Processed")
+			Expect(processed).NotTo(BeNil(), "RRset should have a Processed condition")
+			Expect(processed.Reason).To(Equal("Unprocessable"), "PowerDNS 422 error should set the Unprocessable reason")
 			Expect(createdResource.GetOwnerReferences()).NotTo(BeEmpty(), "RRset should have setOwnerReference")
 			Expect(createdResource.GetOwnerReferences()[0].Name).To(Equal(zoneRef), "RRset should have setOwnerReference to Zone")
 			Expect(createdResource.GetFinalizers()).To(ContainElement(RESOURCES_FINALIZER_NAME), "RRset should contain the finalizer")

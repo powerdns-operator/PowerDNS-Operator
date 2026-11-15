@@ -21,6 +21,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
@@ -519,6 +520,82 @@ var _ = Describe("Zone Controller", func() {
 				err := k8sClient.Get(ctx, typeNamespacedName, updatedZone)
 				return err == nil && updatedZone.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.INVALID_STATUS, "Valid", metav1.ConditionFalse)
 			}, timeout, interval).Should(BeTrue())
+		})
+	})
+	Context("When creating a Zone with a nameserver rejected by PowerDNS", func() {
+		It("should reconcile the resource with Unprocessed status", Label("zone-creation", "wrong-nameserver"), func() {
+			ctx := context.Background()
+			// Specific test variables
+			badNsResourceName := "bad-ns.org"
+			badNsResourceNamespace := "example1"
+			badNsResourceNameservers := []string{"ns1.bad-ns.org-", "ns2.bad-ns.org"}
+
+			By("Creating a Zone")
+			resource := &dnsv1alpha2.Zone{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      badNsResourceName,
+					Namespace: badNsResourceNamespace,
+				},
+			}
+			resource.SetResourceVersion("")
+			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, resource, func() error {
+				resource.Spec = dnsv1alpha2.ZoneSpec{
+					Kind:        NATIVE_KIND_ZONE,
+					Nameservers: badNsResourceNameservers,
+				}
+				return nil
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Getting the resource")
+			createdZone := &dnsv1alpha2.Zone{}
+			badNsTypeNamespacedName := types.NamespacedName{
+				Name:      badNsResourceName,
+				Namespace: badNsResourceNamespace,
+			}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, badNsTypeNamespacedName, createdZone)
+				return err == nil && createdZone.IsInExpectedStatus(FIRST_GENERATION, dnsv1alpha2.UNPROCESSED_STATUS, "Processed", metav1.ConditionFalse)
+			}, timeout, interval).Should(BeTrue())
+
+			processed := meta.FindStatusCondition(createdZone.Status.Conditions, "Processed")
+			Expect(processed).NotTo(BeNil(), "Zone should have a Processed condition")
+			Expect(processed.Reason).To(Equal("Unprocessable"), "PowerDNS 422 error should set the Unprocessable reason")
+			_, found := readFromZonesMap(makeCanonical(badNsResourceName))
+			Expect(found).To(BeFalse(), "Zone should not have been created in backend")
+			Expect(createdZone.GetFinalizers()).To(ContainElement(RESOURCES_FINALIZER_NAME), "Zone should contain the finalizer")
+		})
+	})
+	Context("When modifying a Zone with a nameserver rejected by PowerDNS", func() {
+		It("should reconcile the resource with Stale status", Label("zone-modification", "wrong-nameserver"), func() {
+			ctx := context.Background()
+			// Specific test variables
+			badNsResourceNameservers := []string{"ns1.example1.org-", "ns2.example1.org"}
+
+			By("Modifying the resource")
+			resource := &dnsv1alpha2.Zone{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      resourceName,
+					Namespace: resourceNamespace,
+				},
+			}
+			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, resource, func() error {
+				resource.Spec.Nameservers = badNsResourceNameservers
+				return nil
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Getting the modified resource")
+			modifiedZone := &dnsv1alpha2.Zone{}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, typeNamespacedName, modifiedZone)
+				return err == nil && modifiedZone.IsInExpectedStatus(MODIFIED_GENERATION, dnsv1alpha2.STALE_STATUS, "Processed", metav1.ConditionFalse)
+			}, timeout, interval).Should(BeTrue())
+
+			processed := meta.FindStatusCondition(modifiedZone.Status.Conditions, "Processed")
+			Expect(processed).NotTo(BeNil(), "Zone should have a Processed condition")
+			Expect(processed.Reason).To(Equal("Unprocessable"), "PowerDNS 422 error should set the Unprocessable reason")
+			Expect(getMockedNameservers(resourceName)).To(Equal(resourceNameservers), "Nameservers should not have been modified in backend")
 		})
 	})
 })

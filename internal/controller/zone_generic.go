@@ -74,10 +74,10 @@ func (gzr *GenericZoneReconciler) reconcileZone(ctx context.Context, gz dnsv1alp
 	zoneRes, err := gzr.getZoneExternalResources(ctx, gz.GetName())
 	if err != nil {
 		log.V(1).Error(err, "Failed to get zone external resources")
-		switch err.Error() {
-		case UNPROCESSABLE_ERROR_MSG:
+		switch pdnsStatusCode(err) {
+		case UNPROCESSABLE_ERROR_CODE:
 			gz.SetUnprocessable("Processed", err)
-		case BAD_REQUEST_ERROR_MSG:
+		case BAD_REQUEST_ERROR_CODE:
 			gz.SetBadRequest("Processed", err)
 		default:
 			gz.SetSynchronizationFailed("Processed", err)
@@ -103,11 +103,11 @@ func (gzr *GenericZoneReconciler) reconcileZone(ctx context.Context, gz dnsv1alp
 		log.V(1).Info("External resource does not exist, creating it")
 		err := gzr.createZoneExternalResources(ctx, gz)
 		if err != nil {
-			switch err.Error() {
-			case UNPROCESSABLE_ERROR_MSG:
+			switch pdnsStatusCode(err) {
+			case UNPROCESSABLE_ERROR_CODE:
 				gz.SetUnprocessable("Processed", err)
 				return nil
-			case BAD_REQUEST_ERROR_MSG:
+			case BAD_REQUEST_ERROR_CODE:
 				gz.SetBadRequest("Processed", err)
 				return nil
 			default:
@@ -134,14 +134,14 @@ func (gzr *GenericZoneReconciler) reconcileZone(ctx context.Context, gz dnsv1alp
 			log.V(1).Info("NS in external resource are not identical, updating them")
 			err := gzr.updateNsOnZoneExternalResources(ctx, gz, *ttl)
 			if err != nil {
-				switch err.Error() {
-				case UNPROCESSABLE_ERROR_MSG:
+				switch pdnsStatusCode(err) {
+				case UNPROCESSABLE_ERROR_CODE:
 					gz.SetUnprocessable("Processed", err)
 					return nil
-				case BAD_REQUEST_ERROR_MSG:
+				case BAD_REQUEST_ERROR_CODE:
 					gz.SetBadRequest("Processed", err)
 					return nil
-				case NOT_FOUND_ERROR_MSG:
+				case NOT_FOUND_ERROR_CODE:
 					return fmt.Errorf("failed to update NS in external resource: %w", err)
 				default:
 					gz.SetSynchronizationFailed("Processed", err)
@@ -155,34 +155,34 @@ func (gzr *GenericZoneReconciler) reconcileZone(ctx context.Context, gz dnsv1alp
 			log.V(1).Info("External resource is not identical, updating it")
 			err := gzr.updateZoneExternalResources(ctx, gz)
 			if err != nil {
-				switch err.Error() {
-				case NOT_FOUND_ERROR_MSG:
+				switch pdnsStatusCode(err) {
+				case NOT_FOUND_ERROR_CODE:
 					return fmt.Errorf("failed to update external resource: %w", err)
-				case UNPROCESSABLE_ERROR_MSG:
+				case UNPROCESSABLE_ERROR_CODE:
 					gz.SetUnprocessable("Processed", err)
-				case BAD_REQUEST_ERROR_MSG:
+				case BAD_REQUEST_ERROR_CODE:
 					gz.SetBadRequest("Processed", err)
 				default:
 					gz.SetSynchronizationFailed("Processed", err)
 				}
 				// Revert NS in external resource
-				err := gzr.revertNsOnZoneExternalResources(ctx, zoneRes, nameservers, *ttl)
-				if err != nil {
-					switch err.Error() {
-					case UNPROCESSABLE_ERROR_MSG:
-						gz.SetUnprocessable("Processed", err)
+				rerr := gzr.revertNsOnZoneExternalResources(ctx, zoneRes, nameservers, *ttl)
+				if rerr != nil {
+					switch pdnsStatusCode(rerr) {
+					case UNPROCESSABLE_ERROR_CODE:
+						gz.SetUnprocessable("Processed", rerr)
 						return nil
-					case BAD_REQUEST_ERROR_MSG:
-						gz.SetBadRequest("Processed", err)
+					case BAD_REQUEST_ERROR_CODE:
+						gz.SetBadRequest("Processed", rerr)
 						return nil
-					case NOT_FOUND_ERROR_MSG:
-						return fmt.Errorf("failed to revert NS in external resource: %w", err)
+					case NOT_FOUND_ERROR_CODE:
+						return fmt.Errorf("failed to revert NS in external resource: %w", rerr)
 					default:
-						gz.SetSynchronizationFailed("Processed", err)
-						return fmt.Errorf("failed to revert NS in external resource: %w", err)
+						gz.SetSynchronizationFailed("Processed", rerr)
+						return fmt.Errorf("failed to revert NS in external resource: %w", rerr)
 					}
 				}
-				return fmt.Errorf("failed to revert NS in external resource: %w", err)
+				return fmt.Errorf("failed to update external resource: %w", err)
 			}
 			log.V(1).Info("External resource updated")
 		}
@@ -192,12 +192,12 @@ func (gzr *GenericZoneReconciler) reconcileZone(ctx context.Context, gz dnsv1alp
 	// Update ZoneStatus
 	zoneRes, err = gzr.getZoneExternalResources(ctx, gz.GetName())
 	if err != nil {
-		switch err.Error() {
-		case UNPROCESSABLE_ERROR_MSG:
+		switch pdnsStatusCode(err) {
+		case UNPROCESSABLE_ERROR_CODE:
 			gz.SetUnprocessable("Available", err)
-		case BAD_REQUEST_ERROR_MSG:
+		case BAD_REQUEST_ERROR_CODE:
 			gz.SetBadRequest("Available", err)
-		case NOT_FOUND_ERROR_MSG:
+		case NOT_FOUND_ERROR_CODE:
 			gz.UnsetProcessed()
 			gz.UnsetAvailable()
 		default:
@@ -218,7 +218,7 @@ func (gzr *GenericZoneReconciler) getZoneExternalResources(ctx context.Context, 
 	log := gzr.log.WithValues("domain", domain)
 	zoneRes, err := gzr.PDNSClient.Zones.Get(ctx, domain)
 	if err != nil {
-		if err.Error() != NOT_FOUND_ERROR_MSG {
+		if pdnsStatusCode(err) != NOT_FOUND_ERROR_CODE {
 			return nil, fmt.Errorf("PowerDNS API returned an error while getting external resource: %w", err)
 		}
 	}
@@ -300,7 +300,7 @@ func (gzr *GenericZoneReconciler) deleteZoneExternalResources(ctx context.Contex
 	log := gzr.log.WithValues("kind", zone.GetKind(), "name", zone.GetName(), "namespace", zone.GetNamespace())
 	err := gzr.PDNSClient.Zones.Delete(ctx, zone.GetName())
 	// Zone may have already been deleted and it is not an error
-	if err != nil && err.Error() != NOT_FOUND_ERROR_MSG {
+	if err != nil && pdnsStatusCode(err) != NOT_FOUND_ERROR_CODE {
 		return fmt.Errorf("PowerDNS API returned an error while deleting external resource: %w", err)
 	}
 	log.V(1).Info("External resource deleted")

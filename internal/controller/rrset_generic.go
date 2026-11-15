@@ -80,10 +80,10 @@ func (grr *GenericRRsetReconciler) reconcileRRset(ctx context.Context, gr dnsv1a
 	rrsetRes, err := grr.getRRsetExternalResources(ctx, gr.GetDomain(), gr)
 	if err != nil {
 		log.V(1).Error(err, "Failed to get zone external resources")
-		switch err.Error() {
-		case UNPROCESSABLE_ERROR_MSG:
+		switch pdnsStatusCode(err) {
+		case UNPROCESSABLE_ERROR_CODE:
 			gr.SetUnprocessable("Processed", err)
-		case BAD_REQUEST_ERROR_MSG:
+		case BAD_REQUEST_ERROR_CODE:
 			gr.SetBadRequest("Processed", err)
 		default:
 			gr.SetSynchronizationFailed("Processed", err)
@@ -109,11 +109,11 @@ func (grr *GenericRRsetReconciler) reconcileRRset(ctx context.Context, gr dnsv1a
 		log.V(1).Info("External resource does not exist, creating it")
 		err := grr.createRrsetExternalResources(ctx, gr, gr.GetDomain())
 		if err != nil {
-			switch err.Error() {
-			case UNPROCESSABLE_ERROR_MSG:
+			switch pdnsStatusCode(err) {
+			case UNPROCESSABLE_ERROR_CODE:
 				gr.SetUnprocessable("Processed", err)
 				return nil
-			case BAD_REQUEST_ERROR_MSG:
+			case BAD_REQUEST_ERROR_CODE:
 				gr.SetBadRequest("Processed", err)
 				return nil
 			default:
@@ -129,11 +129,11 @@ func (grr *GenericRRsetReconciler) reconcileRRset(ctx context.Context, gr dnsv1a
 		if !identical {
 			err := grr.updateRrsetExternalResources(ctx, gr, gr.GetDomain())
 			if err != nil {
-				switch err.Error() {
-				case UNPROCESSABLE_ERROR_MSG:
+				switch pdnsStatusCode(err) {
+				case UNPROCESSABLE_ERROR_CODE:
 					gr.SetUnprocessable("Processed", err)
 					return nil
-				case BAD_REQUEST_ERROR_MSG:
+				case BAD_REQUEST_ERROR_CODE:
 					gr.SetBadRequest("Processed", err)
 					return nil
 				default:
@@ -177,7 +177,7 @@ func (grr *GenericRRsetReconciler) deleteRrsetExternalResources(ctx context.Cont
 	log := grr.log.WithValues("kind", rrset.GetKind(), "name", rrset.GetName(), "namespace", rrset.GetNamespace())
 	err := grr.PDNSClient.Records.Delete(ctx, getRRsetDomainFromSpec(spec), getRRsetNameFromSpec(spec), powerdns.RRType(spec.Type))
 	// RRset may have already been deleted and it is not an error
-	if err != nil && err.Error() != NOT_FOUND_ERROR_MSG {
+	if err != nil && pdnsStatusCode(err) != NOT_FOUND_ERROR_CODE {
 		return fmt.Errorf("PowerDNS API returned an error while deleting external resource: %w", err)
 	}
 	log.V(1).Info("External resource deleted")

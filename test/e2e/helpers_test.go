@@ -123,6 +123,17 @@ func expectSyncUnprocessed(kind, name, namespace string) {
 	}).WithTimeout(pollTimeout).WithPolling(pollInterval).Should(Succeed())
 }
 
+// expectProcessedReason waits until the Processed condition of the resource has the given reason.
+// namespace may be empty for cluster-scoped resources.
+func expectProcessedReason(kind, name, namespace, reason string) {
+	GinkgoHelper()
+	Eventually(func(g Gomega) {
+		got, err := utils.GetResourceField(kind, name, namespace, `{.status.conditions[?(@.type=="Processed")].reason}`)
+		g.Expect(err).NotTo(HaveOccurred())
+		g.Expect(got).To(Equal(reason))
+	}).WithTimeout(pollTimeout).WithPolling(pollInterval).Should(Succeed())
+}
+
 // applyAndDeferDelete applies a manifest and schedules its deletion at the end
 // of the current spec/container.
 func applyAndDeferDelete(manifest string) {

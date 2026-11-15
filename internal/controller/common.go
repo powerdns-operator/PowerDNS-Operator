@@ -11,6 +11,12 @@
 
 package controller
 
+import (
+	"errors"
+
+	"github.com/joeig/go-powerdns/v3"
+)
+
 const (
 	RESOURCES_FINALIZER_NAME   = "dns.cav.enablers.ob/external-resources"
 	METRICS_FINALIZER_NAME     = "dns.cav.enablers.ob/metrics"
@@ -25,3 +31,11 @@ const (
 	BAD_REQUEST_ERROR_MSG    = "Bad Request"
 	BAD_REQUEST_ERROR_CODE   = 400
 )
+
+// pdnsStatusCode returns the HTTP status code of a PowerDNS API error, or 0 if err is not one.
+func pdnsStatusCode(err error) int {
+	if pe, ok := errors.AsType[*powerdns.Error](err); ok {
+		return pe.StatusCode
+	}
+	return 0
+}

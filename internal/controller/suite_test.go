@@ -379,8 +379,20 @@ func (m mockZonesClient) Add(ctx context.Context, zone *powerdns.Zone) (*powerdn
 		}
 	}
 
+	// The PowerDNS API rejects a nameserver which is not a valid hostname
+	// Linked to 'wrong-nameserver' tests
+	for _, ns := range zone.Nameservers {
+		if strings.HasSuffix(ns, "-.") {
+			return &powerdns.Zone{}, &powerdns.Error{
+				StatusCode: UNPROCESSABLE_ERROR_CODE,
+				Status:     fmt.Sprintf("%d %s", UNPROCESSABLE_ERROR_CODE, UNPROCESSABLE_ERROR_MSG),
+				Message:    "RRset " + makeCanonical(*zone.Name) + " IN NS: non-hostname content " + ns,
+			}
+		}
+	}
+
 	if _, ok := readFromZonesMap(makeCanonical(*zone.Name)); ok {
-		return &powerdns.Zone{}, powerdns.Error{StatusCode: CONFLICT_ERROR_CODE, Status: fmt.Sprintf("%d %s", CONFLICT_ERROR_CODE, CONFLICT_ERROR_MSG), Message: CONFLICT_ERROR_MSG}
+		return &powerdns.Zone{}, &powerdns.Error{StatusCode: CONFLICT_ERROR_CODE, Status: fmt.Sprintf("%d %s", CONFLICT_ERROR_CODE, CONFLICT_ERROR_MSG), Message: CONFLICT_ERROR_MSG}
 	}
 
 	// Serial initialization
@@ -427,7 +439,7 @@ func (m mockZonesClient) Get(ctx context.Context, domain string) (*powerdns.Zone
 	if z, ok := readFromZonesMap(makeCanonical(domain)); ok {
 		return z, nil
 	}
-	return &powerdns.Zone{}, powerdns.Error{StatusCode: NOT_FOUND_ERROR_CODE, Status: fmt.Sprintf("%d %s", NOT_FOUND_ERROR_CODE, NOT_FOUND_ERROR_MSG), Message: NOT_FOUND_ERROR_MSG}
+	return &powerdns.Zone{}, &powerdns.Error{StatusCode: NOT_FOUND_ERROR_CODE, Status: fmt.Sprintf("%d %s", NOT_FOUND_ERROR_CODE, NOT_FOUND_ERROR_MSG), Message: NOT_FOUND_ERROR_MSG}
 }
 
 func (m mockZonesClient) Delete(ctx context.Context, domain string) error {
@@ -443,7 +455,7 @@ func (m mockZonesClient) Delete(ctx context.Context, domain string) error {
 
 	deleteFromRecordsMap(makeCanonical(domain))
 	if _, ok := readFromZonesMap(makeCanonical(domain)); !ok {
-		return powerdns.Error{StatusCode: NOT_FOUND_ERROR_CODE, Status: fmt.Sprintf("%d %s", NOT_FOUND_ERROR_CODE, NOT_FOUND_ERROR_MSG), Message: NOT_FOUND_ERROR_MSG}
+		return &powerdns.Error{StatusCode: NOT_FOUND_ERROR_CODE, Status: fmt.Sprintf("%d %s", NOT_FOUND_ERROR_CODE, NOT_FOUND_ERROR_MSG), Message: NOT_FOUND_ERROR_MSG}
 	}
 	deleteFromZonesMap(makeCanonical(domain))
 	return nil
@@ -462,7 +474,7 @@ func (m mockZonesClient) Change(ctx context.Context, domain string, zone *powerd
 
 	localZone, ok := readFromZonesMap(makeCanonical(domain))
 	if !ok {
-		return powerdns.Error{StatusCode: NOT_FOUND_ERROR_CODE, Status: fmt.Sprintf("%d %s", NOT_FOUND_ERROR_CODE, NOT_FOUND_ERROR_MSG), Message: NOT_FOUND_ERROR_MSG}
+		return &powerdns.Error{StatusCode: NOT_FOUND_ERROR_CODE, Status: fmt.Sprintf("%d %s", NOT_FOUND_ERROR_CODE, NOT_FOUND_ERROR_MSG), Message: NOT_FOUND_ERROR_MSG}
 	}
 	serial := localZone.Serial
 	if *zone.Kind != *localZone.Kind || *zone.Catalog != *localZone.Catalog || *zone.SOAEditAPI != *localZone.SOAEditAPI {
@@ -531,6 +543,20 @@ func (m mockRecordsClient) Change(ctx context.Context, domain string, name strin
 			StatusCode: 422,
 			Status:     "422 Unprocessable Entity",
 			Message:    "Record " + name + "/TXT '" + strings.Join(content, ",") + "': Parsing record content (try 'pdnsutil check-zone'): Data field in DNS should start with quote(\") at position 0 of '" + strings.Join(content, ",") + "'",
+		}
+	}
+
+	// The PowerDNS API rejects a nameserver which is not a valid hostname
+	// Linked to 'wrong-nameserver' tests
+	if recordType == powerdns.RRTypeNS {
+		for _, ns := range content {
+			if strings.HasSuffix(ns, "-.") {
+				return &powerdns.Error{
+					StatusCode: UNPROCESSABLE_ERROR_CODE,
+					Status:     fmt.Sprintf("%d %s", UNPROCESSABLE_ERROR_CODE, UNPROCESSABLE_ERROR_MSG),
+					Message:    "RRset " + name + " IN NS: non-hostname content " + ns,
+				}
+			}
 		}
 	}
 
