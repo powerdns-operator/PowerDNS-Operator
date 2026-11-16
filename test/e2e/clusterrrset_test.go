@@ -67,7 +67,7 @@ var _ = Describe("ClusterRRset", Ordered, func() {
 	It("should create a cluster rrset referencing a ClusterZone", func() {
 		By("applying the ClusterRRset resource")
 		Expect(utils.ApplyManifest(rrsetManifest)).To(Succeed())
-		expectSyncSucceeded("clusterrrset", rrsetName, "")
+		expectSyncSynced("clusterrrset", rrsetName, "")
 
 		By("checking the record exists in PowerDNS")
 		Eventually(func(g Gomega) {

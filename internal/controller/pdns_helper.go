@@ -82,8 +82,21 @@ func makeCanonical(in string) string {
 }
 
 func getRRsetName(rrset dnsv1alpha2.GenericRRset) string {
-	if !strings.HasSuffix(rrset.GetSpec().Name, ".") {
-		return makeCanonical(rrset.GetSpec().Name + "." + rrset.GetSpec().ZoneRef.Name)
+	return getRRsetNameFromSpec(rrset.GetSpec())
+}
+
+// getRRsetNameFromSpec returns the canonical DNS name of the RRset described by spec.
+// It works on a bare spec so that it can also be applied to the last synchronized
+// definition kept in the status.
+func getRRsetNameFromSpec(spec *dnsv1alpha2.RRsetSpec) string {
+	if !strings.HasSuffix(spec.Name, ".") {
+		return makeCanonical(spec.Name + "." + spec.ZoneRef.Name)
 	}
-	return makeCanonical(rrset.GetSpec().Name)
+	return makeCanonical(spec.Name)
+}
+
+// getRRsetDomainFromSpec returns the canonical domain of the zone the RRset described by
+// spec belongs to.
+func getRRsetDomainFromSpec(spec *dnsv1alpha2.RRsetSpec) string {
+	return makeCanonical(spec.ZoneRef.Name)
 }

@@ -41,6 +41,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	dnsv1alpha2 "github.com/powerdns-operator/powerdns-operator/api/v1alpha2"
 	//+kubebuilder:scaffold:imports
@@ -144,6 +145,57 @@ func resetRecordsMap() {
 	records.Clear()
 }
 
+// cleanupAllTestDNSResources deletes leftover CRs between specs. envtest does not
+// run garbage collection, so extra RRsets/Zones created by a spec would otherwise
+// keep reconciling and make later metric/status assertions flaky.
+func cleanupAllTestDNSResources(timeout, interval time.Duration) {
+	GinkgoHelper()
+	ctx := context.Background()
+
+	rrsets := &dnsv1alpha2.RRsetList{}
+	Expect(k8sClient.List(ctx, rrsets)).To(Succeed())
+	for i := range rrsets.Items {
+		Expect(client.IgnoreNotFound(k8sClient.Delete(ctx, &rrsets.Items[i]))).To(Succeed())
+	}
+
+	clusterRrsets := &dnsv1alpha2.ClusterRRsetList{}
+	Expect(k8sClient.List(ctx, clusterRrsets)).To(Succeed())
+	for i := range clusterRrsets.Items {
+		Expect(client.IgnoreNotFound(k8sClient.Delete(ctx, &clusterRrsets.Items[i]))).To(Succeed())
+	}
+
+	Eventually(func() int {
+		r := &dnsv1alpha2.RRsetList{}
+		c := &dnsv1alpha2.ClusterRRsetList{}
+		Expect(k8sClient.List(ctx, r)).To(Succeed())
+		Expect(k8sClient.List(ctx, c)).To(Succeed())
+		return len(r.Items) + len(c.Items)
+	}, timeout, interval).Should(Equal(0))
+
+	zonesList := &dnsv1alpha2.ZoneList{}
+	Expect(k8sClient.List(ctx, zonesList)).To(Succeed())
+	for i := range zonesList.Items {
+		Expect(client.IgnoreNotFound(k8sClient.Delete(ctx, &zonesList.Items[i]))).To(Succeed())
+	}
+
+	clusterZones := &dnsv1alpha2.ClusterZoneList{}
+	Expect(k8sClient.List(ctx, clusterZones)).To(Succeed())
+	for i := range clusterZones.Items {
+		Expect(client.IgnoreNotFound(k8sClient.Delete(ctx, &clusterZones.Items[i]))).To(Succeed())
+	}
+
+	Eventually(func() int {
+		z := &dnsv1alpha2.ZoneList{}
+		cz := &dnsv1alpha2.ClusterZoneList{}
+		Expect(k8sClient.List(ctx, z)).To(Succeed())
+		Expect(k8sClient.List(ctx, cz)).To(Succeed())
+		return len(z.Items) + len(cz.Items)
+	}, timeout, interval).Should(Equal(0))
+
+	resetZonesMap()
+	resetRecordsMap()
+}
+
 func TestControllers(t *testing.T) {
 	RegisterFailHandler(Fail)
 
@@ -186,6 +238,10 @@ var _ = BeforeSuite(func() {
 
 	k8sManager, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: scheme.Scheme,
+		// Disable the default :8080 metrics server so repeated `go test`
+		// invocations do not fail with "bind: address already in use".
+		Metrics:                metricsserver.Options{BindAddress: "0"},
+		HealthProbeBindAddress: "0",
 	})
 	Expect(err).ToNot(HaveOccurred())
 
@@ -323,8 +379,20 @@ func (m mockZonesClient) Add(ctx context.Context, zone *powerdns.Zone) (*powerdn
 		}
 	}
 
+	// The PowerDNS API rejects a nameserver which is not a valid hostname
+	// Linked to 'wrong-nameserver' tests
+	for _, ns := range zone.Nameservers {
+		if strings.HasSuffix(ns, "-.") {
+			return &powerdns.Zone{}, &powerdns.Error{
+				StatusCode: UNPROCESSABLE_ERROR_CODE,
+				Status:     fmt.Sprintf("%d %s", UNPROCESSABLE_ERROR_CODE, UNPROCESSABLE_ERROR_MSG),
+				Message:    "RRset " + makeCanonical(*zone.Name) + " IN NS: non-hostname content " + ns,
+			}
+		}
+	}
+
 	if _, ok := readFromZonesMap(makeCanonical(*zone.Name)); ok {
-		return &powerdns.Zone{}, powerdns.Error{StatusCode: CONFLICT_ERROR_CODE, Status: fmt.Sprintf("%d %s", CONFLICT_ERROR_CODE, CONFLICT_ERROR_MSG), Message: CONFLICT_ERROR_MSG}
+		return &powerdns.Zone{}, &powerdns.Error{StatusCode: CONFLICT_ERROR_CODE, Status: fmt.Sprintf("%d %s", CONFLICT_ERROR_CODE, CONFLICT_ERROR_MSG), Message: CONFLICT_ERROR_MSG}
 	}
 
 	// Serial initialization
@@ -371,7 +439,7 @@ func (m mockZonesClient) Get(ctx context.Context, domain string) (*powerdns.Zone
 	if z, ok := readFromZonesMap(makeCanonical(domain)); ok {
 		return z, nil
 	}
-	return &powerdns.Zone{}, powerdns.Error{StatusCode: NOT_FOUND_ERROR_CODE, Status: fmt.Sprintf("%d %s", NOT_FOUND_ERROR_CODE, NOT_FOUND_ERROR_MSG), Message: NOT_FOUND_ERROR_MSG}
+	return &powerdns.Zone{}, &powerdns.Error{StatusCode: NOT_FOUND_ERROR_CODE, Status: fmt.Sprintf("%d %s", NOT_FOUND_ERROR_CODE, NOT_FOUND_ERROR_MSG), Message: NOT_FOUND_ERROR_MSG}
 }
 
 func (m mockZonesClient) Delete(ctx context.Context, domain string) error {
@@ -387,7 +455,7 @@ func (m mockZonesClient) Delete(ctx context.Context, domain string) error {
 
 	deleteFromRecordsMap(makeCanonical(domain))
 	if _, ok := readFromZonesMap(makeCanonical(domain)); !ok {
-		return powerdns.Error{StatusCode: NOT_FOUND_ERROR_CODE, Status: fmt.Sprintf("%d %s", NOT_FOUND_ERROR_CODE, NOT_FOUND_ERROR_MSG), Message: NOT_FOUND_ERROR_MSG}
+		return &powerdns.Error{StatusCode: NOT_FOUND_ERROR_CODE, Status: fmt.Sprintf("%d %s", NOT_FOUND_ERROR_CODE, NOT_FOUND_ERROR_MSG), Message: NOT_FOUND_ERROR_MSG}
 	}
 	deleteFromZonesMap(makeCanonical(domain))
 	return nil
@@ -406,7 +474,7 @@ func (m mockZonesClient) Change(ctx context.Context, domain string, zone *powerd
 
 	localZone, ok := readFromZonesMap(makeCanonical(domain))
 	if !ok {
-		return powerdns.Error{StatusCode: NOT_FOUND_ERROR_CODE, Status: fmt.Sprintf("%d %s", NOT_FOUND_ERROR_CODE, NOT_FOUND_ERROR_MSG), Message: NOT_FOUND_ERROR_MSG}
+		return &powerdns.Error{StatusCode: NOT_FOUND_ERROR_CODE, Status: fmt.Sprintf("%d %s", NOT_FOUND_ERROR_CODE, NOT_FOUND_ERROR_MSG), Message: NOT_FOUND_ERROR_MSG}
 	}
 	serial := localZone.Serial
 	if *zone.Kind != *localZone.Kind || *zone.Catalog != *localZone.Catalog || *zone.SOAEditAPI != *localZone.SOAEditAPI {
@@ -478,6 +546,20 @@ func (m mockRecordsClient) Change(ctx context.Context, domain string, name strin
 		}
 	}
 
+	// The PowerDNS API rejects a nameserver which is not a valid hostname
+	// Linked to 'wrong-nameserver' tests
+	if recordType == powerdns.RRTypeNS {
+		for _, ns := range content {
+			if strings.HasSuffix(ns, "-.") {
+				return &powerdns.Error{
+					StatusCode: UNPROCESSABLE_ERROR_CODE,
+					Status:     fmt.Sprintf("%d %s", UNPROCESSABLE_ERROR_CODE, UNPROCESSABLE_ERROR_MSG),
+					Message:    "RRset " + name + " IN NS: non-hostname content " + ns,
+				}
+			}
+		}
+	}
+
 	var isRRsetIdentical, isNewRRset, ok bool
 	var rrset *powerdns.RRset
 	var comment, specifiedComment string
@@ -540,6 +622,17 @@ func (m mockRecordsClient) Change(ctx context.Context, domain string, name strin
 }
 
 func (m mockRecordsClient) Delete(ctx context.Context, domain string, name string, recordType powerdns.RRType) error {
+	// The PowerDNS API rejects an unknown record type on deletion too, so an RRset whose
+	// Type has been modified into an invalid one cannot be deleted through its current spec
+	// Linked to 'wrong-rrset && wrong-type' tests
+	if string(recordType) == "AA" {
+		return &powerdns.Error{
+			StatusCode: UNPROCESSABLE_ERROR_CODE,
+			Status:     fmt.Sprintf("%d %s", UNPROCESSABLE_ERROR_CODE, UNPROCESSABLE_ERROR_MSG),
+			Message:    "RRset " + name + " IN AA: unknown type given",
+		}
+	}
+
 	deleteFromRecordsMap(makeCanonical(name))
 	return nil
 }

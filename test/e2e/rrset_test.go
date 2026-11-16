@@ -111,7 +111,7 @@ var _ = Describe("RRset", Ordered, func() {
 			Expect(utils.ApplyManifest(getRRsetManifest(
 				tc.metaName, namespace, tc.recordType, tc.recordName, "300", tc.records, zoneName, "Zone",
 			))).To(Succeed())
-			expectSyncSucceeded("rrset", tc.metaName, namespace)
+			expectSyncSynced("rrset", tc.metaName, namespace)
 
 			By(fmt.Sprintf("checking the %s record exists in PowerDNS", tc.recordType))
 			Eventually(func(g Gomega) {

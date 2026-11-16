@@ -240,6 +240,16 @@ func (in *RRsetStatus) DeepCopyInto(out *RRsetStatus) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.SyncGeneration != nil {
+		in, out := &in.SyncGeneration, &out.SyncGeneration
+		*out = new(int64)
+		**out = **in
+	}
+	if in.SyncSpec != nil {
+		in, out := &in.SyncSpec, &out.SyncSpec
+		*out = new(RRsetSpec)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions
 		*out = make([]v1.Condition, len(*in))
@@ -420,6 +430,16 @@ func (in *ZoneStatus) DeepCopyInto(out *ZoneStatus) {
 		in, out := &in.SyncStatus, &out.SyncStatus
 		*out = new(string)
 		**out = **in
+	}
+	if in.SyncGeneration != nil {
+		in, out := &in.SyncGeneration, &out.SyncGeneration
+		*out = new(int64)
+		**out = **in
+	}
+	if in.SyncSpec != nil {
+		in, out := &in.SyncSpec, &out.SyncSpec
+		*out = new(ZoneSpec)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions

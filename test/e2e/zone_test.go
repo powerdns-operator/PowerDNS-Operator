@@ -61,7 +61,7 @@ spec:
 		))).To(Succeed())
 
 		By("checking the Zone reaches Succeeded sync status")
-		expectSyncSucceeded("zone", zoneName, namespace)
+		expectSyncSynced("zone", zoneName, namespace)
 
 		By("checking the zone exists in PowerDNS with the expected kind")
 		Eventually(func(g Gomega) {
